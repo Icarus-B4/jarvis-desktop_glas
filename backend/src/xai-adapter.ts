@@ -109,8 +109,72 @@ export function createXaiAdapter(options: XaiAdapterOptions = {}): JarvisModelAd
   const model = options.model ?? DEFAULT_XAI_MODEL;
   const fetcher = options.fetcher ?? fetch;
 
+  async function completeChat(request: {
+    messages: Array<{ role: string; content?: string; tool_calls?: unknown; tool_call_id?: string }>;
+    tools?: Array<Record<string, unknown>>;
+    model?: string;
+    signal?: AbortSignal;
+  }): Promise<{ content: string; toolCalls?: Array<{ id: string; name: string; arguments: string }> }> {
+    if (!apiKey) {
+      throw new Error("XAI_API_KEY nicht konfiguriert.");
+    }
+
+    const activeModel = request.model ?? model;
+    const messages = request.messages.map((m) => {
+      if (typeof m.content === "string") return { role: m.role, content: m.content };
+      return { role: m.role, content: m.content ?? "" };
+    });
+
+    const body: Record<string, unknown> = {
+      model: activeModel,
+      messages,
+      stream: false,
+    };
+    if (request.tools && request.tools.length > 0) {
+      body.tools = request.tools;
+      body.tool_choice = "auto";
+    }
+
+    const response = await fetcher(`${XAI_BASE_URL}/chat/completions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      redirect: "error",
+      signal: request.signal,
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      throw new Error(`xAI completeChat Fehler: HTTP ${response.status} - ${text}`);
+    }
+
+    const data = (await response.json()) as Record<string, unknown>;
+    const choice = (data as { choices?: Array<{ message?: Record<string, unknown> }> }).choices?.[0];
+    const message = choice?.message ?? {};
+    const content = typeof message.content === "string" ? message.content : "";
+
+    const toolCalls = Array.isArray((message as Record<string, unknown>).tool_calls)
+      ? ((message as { tool_calls: Array<{ id?: string; function?: { name?: string; arguments?: unknown } }> }).tool_calls).map((tc) => ({
+          id: String(tc.id ?? `call-${crypto.randomUUID()}`),
+          name: String(tc.function?.name ?? ""),
+          arguments: typeof tc.function?.arguments === "string" ? tc.function.arguments : JSON.stringify(tc.function?.arguments ?? {}),
+        }))
+      : undefined;
+
+    if (!content && !toolCalls?.length) {
+      return { content: "" };
+    }
+
+    return { content, toolCalls };
+  }
+
   return {
     providerName: "xai",
+    completeChat,
 
     async getReadiness(signal?: AbortSignal): Promise<JarvisModelReadiness> {
       if (!apiKey) {

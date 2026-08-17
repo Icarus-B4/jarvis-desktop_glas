@@ -17,32 +17,6 @@ import {
 } from "./local-chat-transport";
 import { startBarehandsService, type BarehandsServiceHandle } from "../backend/src/service";
 
-function loadEnvFile(): void {
-  try {
-    const rootEnvPath = resolve(app.getAppPath(), "..", "..", ".env");
-    if (existsSync(rootEnvPath)) {
-      const content = readFileSync(rootEnvPath, "utf-8");
-      for (const line of content.split(/\r?\n/)) {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith("#")) continue;
-        const eqIdx = trimmed.indexOf("=");
-        if (eqIdx > 0) {
-          const key = trimmed.slice(0, eqIdx).trim();
-          const val = trimmed.slice(eqIdx + 1).trim().replace(/^["']|["']$/g, "");
-          if (key && !process.env[key]) {
-            process.env[key] = val;
-          }
-        }
-      }
-    }
-  } catch {
-    // Ignorieren falls .env nicht gelesen werden kann
-  }
-}
-
-// Env-Datei beim Start laden
-loadEnvFile();
-
 export type JarvisDesktopConfig = {
   xaiApiKey: string;
   autoApproveActions: boolean;
@@ -119,6 +93,10 @@ function loadDesktopConfig(): JarvisDesktopConfig {
   }
 
   return defaultConfig;
+}
+
+function getConfigFile(): string {
+  return join(app.getPath("userData"), "jarvis-desktop-config.json");
 }
 
 let desktopConfig = loadDesktopConfig();

@@ -33,7 +33,6 @@ import { FileJarvisFileAdapter, type JarvisFileAdapter } from "./file-adapter";
 import { FileJarvisKnowledgeAdapter, type JarvisKnowledgeAdapter } from "./knowledge-adapter";
 import {
   FileJarvisMemoryAdapter,
-  formatMemoryContext,
   type JarvisMemoryAdapter,
 } from "./memory-adapter";
 import type { JarvisModelAdapter } from "./model-adapter";
@@ -120,6 +119,368 @@ function chatStream(events: AsyncIterable<JarvisChatStreamEvent>, requestId: str
     },
   });
   return new Response(stream, { status: 200, headers: { "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache", Connection: "keep-alive" } });
+}
+
+const TOOL_DEFINITIONS: Array<Record<string, unknown>> = [
+  {
+    type: "function",
+    function: {
+      name: "memory.search",
+      description: "Durchsucht das Langzeitgedächtnis nach relevanten Informationen über Ed.",
+      parameters: { type: "object", properties: { query: { type: "string", description: "Suchbegriff" } }, required: ["query"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "files.list",
+      description: "Listet Dateien und Ordner im Projektverzeichnis auf.",
+      parameters: { type: "object", properties: { dir: { type: "string", description: "Unterordner (optional)" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "files.read",
+      description: "Liest den Inhalt einer Datei aus dem Projekt.",
+      parameters: { type: "object", properties: { path: { type: "string", description: "Relativer Pfad zur Datei" } }, required: ["path"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "web.search",
+      description: "Führt eine Websuche durch und gibt aktuelle Ergebnisse zurück.",
+      parameters: { type: "object", properties: { query: { type: "string", description: "Suchbegriff" }, limit: { type: "number", description: "Maximale Ergebnisse" } }, required: ["query"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "knowledge.query",
+      description: "Durchsucht die Wissensdatenbank.",
+      parameters: { type: "object", properties: { query: { type: "string", description: "Suchbegriff" }, category: { type: "string", description: "Kategorie (optional)" } }, required: ["query"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "app.open_url",
+      description: "Öffnet eine Webseite im Standard-Browser des PCs.",
+      parameters: { type: "object", properties: { url: { type: "string", description: "Die URL" } }, required: ["url"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "app.open_app",
+      description: "Startet eine Windows-Anwendung.",
+      parameters: { type: "object", properties: { name: { type: "string", description: "Name der Anwendung" } }, required: ["name"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "media.control",
+      description: "Steuert Medienwiedergabe (Play, Pause, Next, Prev, Stop, Volume).",
+      parameters: { type: "object", properties: { action: { type: "string", description: "play, pause, next, prev, stop, mute, volup, voldown" }, query: { type: "string", description: "Song/Interpret für direkte Wiedergabe" } }, required: ["action"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "system.execute_command",
+      description: "Führt einen Shell-Befehl aus.",
+      parameters: { type: "object", properties: { command: { type: "string", description: "Der auszuführende Befehl" } }, required: ["command"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "system.take_screenshot",
+      description: "Erstellt einen Screenshot des Bildschirms.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "camera.open",
+      description: "Öffnet den Kamera-Feed.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "scratchpad.write",
+      description: "Schreibt eine Notiz ins Scratchpad.",
+      parameters: { type: "object", properties: { text: { type: "string", description: "Der Notiztext" } }, required: ["text"] },
+    },
+  },
+];
+
+async function executeTool(
+  name: string,
+  args: Record<string, unknown>,
+  actionEngine: JarvisActionEngine,
+  memoryAdapter: JarvisMemoryAdapter,
+  fileAdapter: JarvisFileAdapter,
+  browserAdapter: JarvisBrowserAdapter,
+  knowledgeAdapter: JarvisKnowledgeAdapter,
+): Promise<string> {
+  switch (name) {
+    case "memory.search": {
+      const query = String(args.query ?? args.q ?? "").trim();
+      if (!query) return JSON.stringify({ error: "query parameter required" });
+      try {
+        const items = await memoryAdapter.listMemory({ search: query });
+        return JSON.stringify({ ok: true, items: items.slice(0, 10), count: items.length });
+      } catch (err) {
+        return JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    case "files.list": {
+      const dir = String(args.dir ?? "").trim();
+      try {
+        const files = await fileAdapter.listDirectory(dir);
+        return JSON.stringify({ ok: true, files: files.slice(0, 50), count: files.length });
+      } catch (err) {
+        return JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    case "files.read": {
+      const path = String(args.path ?? "").trim();
+      if (!path) return JSON.stringify({ error: "path parameter required" });
+      try {
+        const content = await fileAdapter.readFile(path);
+        return JSON.stringify({ ok: true, path, content: content.slice(0, 5000) });
+      } catch (err) {
+        return JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    case "web.search": {
+      const query = String(args.query ?? "").trim();
+      const limit = Number(args.limit ?? 4);
+      if (!query) return JSON.stringify({ error: "query parameter required" });
+      try {
+        const results = await browserAdapter.searchWeb(query, limit);
+        return JSON.stringify({ ok: true, results, count: results.length });
+      } catch (err) {
+        return JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    case "knowledge.query": {
+      const query = String(args.query ?? "").trim();
+      const categoryParam = String(args.category ?? "").trim() || undefined;
+      if (!query) return JSON.stringify({ error: "query parameter required" });
+      try {
+        const items = await knowledgeAdapter.listItems({ query, category: categoryParam as any });
+        return JSON.stringify({ ok: true, items: items.slice(0, 10), count: items.length });
+      } catch (err) {
+        return JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    case "app.open_url": {
+      const url = String(args.url ?? "").trim();
+      if (!url) return JSON.stringify({ error: "url parameter required" });
+      try {
+        const intent = await actionEngine.proposeAction({
+          capability: "app.open_url",
+          title: `${url} öffnen`,
+          description: `Öffnet ${url} im Standard-Browser`,
+          params: { url },
+        });
+        const updated = await actionEngine.decideAction({ intentId: intent.id, decision: "approve" });
+        return JSON.stringify({ ok: true, capability: "app.open_url", intent: updated });
+      } catch (err) {
+        return JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    case "app.open_app": {
+      const name = String(args.name ?? "").trim();
+      if (!name) return JSON.stringify({ error: "name parameter required" });
+      try {
+        const intent = await actionEngine.proposeAction({
+          capability: "app.open_app",
+          title: `${name} starten`,
+          description: `Startet ${name} auf dem PC`,
+          params: { name },
+        });
+        const updated = await actionEngine.decideAction({ intentId: intent.id, decision: "approve" });
+        return JSON.stringify({ ok: true, capability: "app.open_app", intent: updated });
+      } catch (err) {
+        return JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    case "media.control": {
+      const action = String(args.action ?? "").trim();
+      const query = String(args.query ?? "").trim();
+      if (!action) return JSON.stringify({ error: "action parameter required" });
+      try {
+        const intent = await actionEngine.proposeAction({
+          capability: "media.control",
+          title: `Mediensteuerung: ${action}`,
+          description: query ? `Spielt ${query}` : `Führt ${action} aus`,
+          params: { action, query: query || undefined },
+        });
+        const updated = await actionEngine.decideAction({ intentId: intent.id, decision: "approve" });
+        return JSON.stringify({ ok: true, capability: "media.control", intent: updated });
+      } catch (err) {
+        return JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    case "system.execute_command": {
+      const command = String(args.command ?? "").trim();
+      if (!command) return JSON.stringify({ error: "command parameter required" });
+      try {
+        const intent = await actionEngine.proposeAction({
+          capability: "system.execute_command",
+          title: "Befehl ausführen",
+          description: `Führt Shell-Befehl aus: ${command}`,
+          params: { command },
+        });
+        const updated = await actionEngine.decideAction({ intentId: intent.id, decision: "approve" });
+        return JSON.stringify({ ok: true, capability: "system.execute_command", intent: updated });
+      } catch (err) {
+        return JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    case "system.take_screenshot": {
+      try {
+        const intent = await actionEngine.proposeAction({
+          capability: "system.take_screenshot",
+          title: "Screenshot erstellen",
+          description: "Erstellt einen Screenshot des Bildschirms",
+          params: {},
+        });
+        const updated = await actionEngine.decideAction({ intentId: intent.id, decision: "approve" });
+        return JSON.stringify({ ok: true, capability: "system.take_screenshot", intent: updated });
+      } catch (err) {
+        return JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    case "camera.open": {
+      try {
+        const intent = await actionEngine.proposeAction({
+          capability: "camera.open",
+          title: "Kamera öffnen",
+          description: "Öffnet den Kamera-Feed auf der Hauptbühne",
+          params: {},
+        });
+        const updated = await actionEngine.decideAction({ intentId: intent.id, decision: "approve" });
+        return JSON.stringify({ ok: true, capability: "camera.open", intent: updated });
+      } catch (err) {
+        return JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    case "scratchpad.write": {
+      const text = String(args.text ?? args.note ?? args.message ?? "").trim();
+      if (!text) return JSON.stringify({ error: "text parameter required" });
+      try {
+        const intent = await actionEngine.proposeAction({
+          capability: "scratchpad.write",
+          title: "Notiz schreiben",
+          description: `Schreibt Notiz ins Scratchpad: ${text.slice(0, 100)}`,
+          params: { text },
+        });
+        const updated = await actionEngine.decideAction({ intentId: intent.id, decision: "approve" });
+        return JSON.stringify({ ok: true, capability: "scratchpad.write", intent: updated });
+      } catch (err) {
+        return JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    default:
+      return JSON.stringify({ error: `Unknown tool: ${name}` });
+  }
+}
+
+const JARVIS_TOOL_SYSTEM_PROMPT = `Du bist J.A.R.V.I.S., der persönliche Assistent von Ed.
+Nutze die verfügbaren Tools, um Informationen zu beschaffen oder Aktionen auszuführen.
+Wenn keine Aktion mehr nötig ist, antworte direkt auf Deutsch.
+Bei Medienwünschen gib in media.control zwingend den query-Parameter mit, wenn Song/Künstler genannt wird.
+Antworte präzise, hilfsbereit und auf Deutsch.`;
+
+async function* runToolLoopChat(
+  chatReq: JarvisChatRequest,
+  signal: AbortSignal,
+  xaiAdapter: { completeChat(request: { messages: Array<{ role: string; content?: string }>; tools?: Array<Record<string, unknown>>; model?: string; signal?: AbortSignal }): Promise<{ content: string; toolCalls?: Array<{ id: string; name: string; arguments: string }> }> },
+  actionEngine: JarvisActionEngine,
+  memoryAdapter: JarvisMemoryAdapter,
+  fileAdapter: JarvisFileAdapter,
+  browserAdapter: JarvisBrowserAdapter,
+  knowledgeAdapter: JarvisKnowledgeAdapter,
+): AsyncIterable<JarvisChatStreamEvent> {
+  try {
+    const systemPrompt = `${JARVIS_TOOL_SYSTEM_PROMPT}\n\nDu hast Zugriff auf folgende Tools:\n- memory.search: Suche im Langzeitgedächtnis\n- files.list: Dateien auflisten\n- files.read: Datei lesen\n- web.search: Websuche\n- knowledge.query: Wissensdatenbank durchsuchen\n- app.open_url: URL im Standardbrowser öffnen\n- app.open_app: Windows-App starten\n- media.control: Medien steuern\n- system.execute_command: Shell-Befehl ausführen\n- system.take_screenshot: Screenshot erstellen\n- camera.open: Kamera öffnen\n- scratchpad.write: Notiz schreiben`;
+
+    let messages: Array<{ role: string; content?: string; tool_calls?: unknown; tool_call_id?: string }> = [
+      { role: "system", content: systemPrompt },
+      ...chatReq.messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+        ...(m.imageData ? { image_url: m.imageData } : {}),
+      })),
+    ];
+
+    const maxTurns = 6;
+    let finalContent = "";
+
+    for (let turn = 0; turn < maxTurns; turn++) {
+      const result = await xaiAdapter.completeChat({
+        messages,
+        tools: TOOL_DEFINITIONS,
+        model: chatReq.model,
+        signal,
+      });
+
+      if (!result.toolCalls || result.toolCalls.length === 0) {
+        finalContent = result.content || "";
+        break;
+      }
+
+      const assistantMessage: Record<string, unknown> = {
+        role: "assistant",
+        content: result.content || "",
+        tool_calls: result.toolCalls.map((tc) => ({
+          id: tc.id,
+          type: "function",
+          function: { name: tc.name, arguments: tc.arguments },
+        })),
+      };
+      messages.push(assistantMessage as any);
+
+      for (const toolCall of result.toolCalls) {
+        let parsedArgs: Record<string, unknown> = {};
+        try {
+          parsedArgs = JSON.parse(toolCall.arguments || "{}");
+        } catch {
+          // keep empty
+        }
+        const toolResult = await executeTool(toolCall.name, parsedArgs, actionEngine, memoryAdapter, fileAdapter, browserAdapter, knowledgeAdapter);
+        messages.push({
+          role: "tool",
+          tool_call_id: toolCall.id,
+          content: toolResult,
+        } as any);
+      }
+    }
+
+    if (!finalContent) {
+      yield { type: "chat.error", requestId: chatReq.requestId, error: { code: "max_tool_turns", message: "Maximale Tool-Runden erreicht." } };
+      return;
+    }
+
+    yield { type: "chat.start", requestId: chatReq.requestId, model: chatReq.model ?? "grok-4.1-fast" };
+    yield { type: "chat.delta", requestId: chatReq.requestId, delta: finalContent };
+    yield { type: "chat.done", requestId: chatReq.requestId, message: { role: "assistant", content: finalContent } };
+  } catch (err) {
+    if (signal.aborted) {
+      yield { type: "chat.cancelled", requestId: chatReq.requestId };
+    } else {
+      yield { type: "chat.error", requestId: chatReq.requestId, error: { code: "tool_loop_failed", message: err instanceof Error ? err.message : "Tool-Loop fehlgeschlagen." } };
+    }
+  }
 }
 
 function apiError(status: number, code: string, message: string, headers?: HeadersInit): Response {
@@ -367,10 +728,10 @@ export function createJarvisRequestHandler(
     if (pathname === "/v1/knowledge/list" && request.method === "GET") {
       const url = new URL(request.url);
       const queryParam = url.searchParams.get("query");
-      const categoryParam = url.searchParams.get("category") as any;
+      const categoryParam = url.searchParams.get("category");
       const knowledgeQuery: JarvisKnowledgeQuery = {};
       if (queryParam) knowledgeQuery.query = queryParam;
-      if (categoryParam) knowledgeQuery.category = categoryParam;
+      if (categoryParam) knowledgeQuery.category = categoryParam as any;
       const items = await knowledgeAdapter.listItems(knowledgeQuery);
       return Response.json(items, { status: 200, headers });
     }
@@ -516,215 +877,24 @@ export function createJarvisRequestHandler(
       
       const chatReq = body as JarvisChatRequest;
 
-      // 0. Globales System-Mandat für Tool Use & Action Proposals (Sowohl für Cloud als auch für Lokale Modelle)
-      const TOOL_USE_MANDATE = `Du bist J.A.R.V.I.S., das souveräne KI-Betriebssystem.
-Du hast Zugriff auf lokale Tool-Capabilities auf dem PC des Nutzers.
-Wenn der Nutzer dich bittet, Webseiten zu öffnen, Windows-Apps/Programme zu starten, Medien zu steuern oder Systembefehle auszuführen, antworte kurz auf Deutsch und generiere am Ende deiner Antwort einen action_proposal Codeblock:
-
-\`\`\`action_proposal
-{
-  "capability": "app.open_url",
-  "title": "Aktionstitel",
-  "description": "Kurzbeschreibung",
-  "params": { "url": "https://beispiel.de" }
-}
-\`\`\`
-
-Unterstützte Capabilities:
-- "app.open_url" mit params: { "url": "https://..." }
-- "app.open_app" mit params: { "name": "rechner" | "notepad" | "cmd" | "chrome" | "explorer" | "vscode" | string }
-- "media.control" mit params: { "action": "play" | "pause" | "next" | "prev" }`;
-
-      try {
-        const msgs = [...chatReq.messages];
-        const firstMsg = msgs[0];
-        if (firstMsg && (firstMsg as { role: string }).role === "system") {
-          msgs[0] = { role: "system" as any, content: `${TOOL_USE_MANDATE}\n\n${firstMsg.content}` };
-        } else {
-          msgs.unshift({ role: "system" as any, content: TOOL_USE_MANDATE });
-        }
-        chatReq.messages = msgs;
-      } catch {
-        // Ignorieren falls System-Mandate Einschub fehlschlägt
-      }
-
-      // 1. Langzeit-Gedächtnis injizieren
-      try {
-        const memories = await memoryAdapter.listMemory();
-        const memContextStr = formatMemoryContext(memories);
-        if (memContextStr) {
-          const msgs = [...chatReq.messages];
-          const firstMsg = msgs[0];
-          if (firstMsg && (firstMsg as { role: string }).role === "system") {
-            msgs[0] = { role: "system" as any, content: `${firstMsg.content}\n\n${memContextStr}` };
-          } else {
-            msgs.unshift({ role: "system" as any, content: memContextStr });
-          }
-          chatReq.messages = msgs;
-        }
-      } catch {
-        // Ignorieren falls Memory-Laden fehlschlägt
-      }
-
-      // 2. Automatischer Projekt-RAG Kontexteinschub für die Benutzeranfrage
-      try {
-        const lastUserMsg = [...chatReq.messages].reverse().find((m) => m.role === "user")?.content ?? "";
-        if (lastUserMsg && lastUserMsg.length > 4) {
-          const ragChunks = await withTimeout(fileAdapter.queryRag(lastUserMsg, 3), 1500, []);
-          if (ragChunks.length > 0) {
-            const ragStr = "### RELEVANTE PROJEKT-DOKUMENTE & CODE (RAG-KONTEXT):\n" +
-              ragChunks.map((c) => `- [${c.filePath}:${c.lineStart}-${c.lineEnd}]\n${c.content}`).join("\n\n");
-            
-            const msgs = [...chatReq.messages];
-            const firstMsg = msgs[0];
-            if (firstMsg && (firstMsg as { role: string }).role === "system") {
-              msgs[0] = { role: "system" as any, content: `${firstMsg.content}\n\n${ragStr}` };
-            } else {
-              msgs.unshift({ role: "system" as any, content: ragStr });
-            }
-            chatReq.messages = msgs;
-          }
-
-          // 3. Automatischer Web-Search Trigger bei expliziter Suchanfrage oder News/Nachrichten-Fragen
-          const lowerMsg = lastUserMsg.toLowerCase();
-          const isNewsQuery = lowerMsg.includes("news") || lowerMsg.includes("nachrichten") || lowerMsg.includes("aktuell") || lowerMsg.includes("wetter") || lowerMsg.includes("wer ist") || lowerMsg.includes("was ist");
-          const isWebSearchExplicit = lowerMsg.includes("suche im web") || lowerMsg.includes("web-suche") || lowerMsg.includes("search web") || lowerMsg.includes("recherchiere") || lowerMsg.startsWith("http");
-
-          if (isWebSearchExplicit || isNewsQuery) {
-            const searchTerms = lastUserMsg
-              .replace(/^(suche im web|web-suche|search web|recherchiere|was sind die neuesten|was gibt es neues zu|was sind die|zeig mir die)\s*/i, "")
-              .trim();
-
-            if (searchTerms.startsWith("http")) {
-              const pageData = await withTimeout(browserAdapter.fetchPageContent(searchTerms), 3000, null);
-              if (pageData) {
-                const webStr = `### EXTRAHIERTER WEBSEITEN-INHALT VON ${pageData.url} (${pageData.title}):\n${pageData.content.slice(0, 3000)}`;
-                const msgs = [...chatReq.messages];
-                const firstMsg = msgs[0];
-                if (firstMsg && (firstMsg as { role: string }).role === "system") {
-                  msgs[0] = { role: "system" as any, content: `${firstMsg.content}\n\n${webStr}` };
-                } else {
-                  msgs.unshift({ role: "system" as any, content: webStr });
-                }
-                chatReq.messages = msgs;
-              }
-            } else if (searchTerms.length > 2) {
-              const queryToSearch = searchTerms.length < 5 ? lastUserMsg : searchTerms;
-              const webResults = await withTimeout(browserAdapter.searchWeb(queryToSearch, 4), 3000, []);
-              if (webResults.length > 0) {
-                const webStr = "### RELEVANTE LIVE-WEB-RECHERCHE ERGEBNISSE (ECHTZEIT-NEWS & RECHERCHE):\n" +
-                  webResults.map((r) => `- [${r.title}](${r.url}): ${r.snippet}`).join("\n");
-                const msgs = [...chatReq.messages];
-                const firstMsg = msgs[0];
-                if (firstMsg && (firstMsg as { role: string }).role === "system") {
-                  msgs[0] = { role: "system" as any, content: `${firstMsg.content}\n\n${webStr}` };
-                } else {
-                  msgs.unshift({ role: "system" as any, content: webStr });
-                }
-                chatReq.messages = msgs;
-              }
-            }
-          }
-        }
-      } catch {
-        // Ignorieren falls RAG/Web-Search fehlschlägt
-      }
-
-      // 4. Intent Detector & System Mandate für direkte System-Befehle (Browser & Apps & Medien)
-      try {
-        const lastMsgText = [...chatReq.messages].reverse().find((m) => m.role === "user")?.content ?? "";
-        const lowerMsg = lastMsgText.toLowerCase().trim();
-
-        // 0. Negative Antworten / Rejections ("Nein", "Nine", "Stop", "Abbrechen") nicht als App-Namen interpretieren!
-        const isNegative = /^(nein|nine|no|stop|abbrechen|nein danke|nicht öffnen)[\.\!\?]?$/i.test(lowerMsg);
-
-        if (!isNegative) {
-          const urlMatch = lastMsgText.match(/(?:öffne|starte|gehe zu|besuche)\s+(https?:\/\/[^\s]+|[a-z0-9-]+\.[a-z]{2,}(?:\/[^\s]*)?)/i);
-          const appMatch = lastMsgText.match(/(?:öffne|starte|starte die app|öffne die app|spiele|hüfne)\s+(?:die app\s+)?(rechner|calculator|notepad|editor|vscode|code|chrome|edge|explorer|windows media player|media player|wmplayer|spotify|vlc|paint|taskmanager|taskmgr|terminal|powershell|cmd|word|excel|powerpoint|discord|[a-z0-9äöüß.-]+(?:\s+[a-z0-9äöüß.-]+)?)/i);
-          const mediaMatch = lastMsgText.match(/(?:spiele einen song|nächster song|nächstes lied|vorheriger song|pausiere|stoppe die musik|musik abspielen|play music|next track|pause music)/i);
-
-          const isBarehandsPhonetic = lowerMsg.includes("bear head") || lowerMsg.includes("bearhead") || lowerMsg.includes("bear hand") || lowerMsg.includes("barehand") || lowerMsg.includes("bare hand") || lowerMsg.includes("hüfne hans") || lowerMsg.includes("öffne hand");
-
-          if (isBarehandsPhonetic) {
-            const mandate = `Kontext: Der Nutzer möchte das Barehands 3D Interaktions-Interface öffnen. Antworte kurz auf Deutsch und erstelle am Ende deiner Antwort einen Action-Proposal Block:\n\`\`\`action_proposal\n{\n  "capability": "barehands.open",\n  "title": "Barehands Stage öffnen",\n  "description": "Öffnet die 3D Barehands Bühne",\n  "params": {}\n}\n\`\`\``;
-            const msgs = [...chatReq.messages];
-            const firstMsg = msgs[0];
-            if (firstMsg && (firstMsg as { role: string }).role === "system") {
-              msgs[0] = { role: "system" as any, content: `${firstMsg.content}\n\n${mandate}` };
-            } else {
-              msgs.unshift({ role: "system" as any, content: mandate });
-            }
-            chatReq.messages = msgs;
-          } else if (urlMatch && urlMatch[1]) {
-            const targetUrl = urlMatch[1].startsWith("http") ? urlMatch[1] : `https://${urlMatch[1]}`;
-            const mandate = `Kontext: Der Nutzer möchte die Webseite '${targetUrl}' öffnen. Antworte kurz auf Deutsch und erstelle dafür am Ende deiner Antwort einen Action-Proposal Block:\n\`\`\`action_proposal\n{\n  "capability": "app.open_url",\n  "title": "${targetUrl} öffnen",\n  "description": "Öffnet ${targetUrl} im Standardbrowser",\n  "params": { "url": "${targetUrl}" }\n}\n\`\`\``;
-            const msgs = [...chatReq.messages];
-            const firstMsg = msgs[0];
-            if (firstMsg && (firstMsg as { role: string }).role === "system") {
-              msgs[0] = { role: "system" as any, content: `${firstMsg.content}\n\n${mandate}` };
-            } else {
-              msgs.unshift({ role: "system" as any, content: mandate });
-            }
-            chatReq.messages = msgs;
-          } else if (appMatch && appMatch[1] && !urlMatch) {
-            const rawTarget = appMatch[1].toLowerCase().trim();
-            if (rawTarget === "kamera" || rawTarget === "die kamera" || rawTarget === "webcam") {
-              const mandate = `Kontext: Der Nutzer möchte die Kamera auf der Hauptbühne öffnen. Antworte kurz auf Deutsch und erstelle am Ende deiner Antwort einen Action-Proposal Block:\n\`\`\`action_proposal\n{\n  "capability": "camera.open",\n  "title": "Kamera öffnen",\n  "description": "Öffnet den Kamera-Feed auf der Hauptbühne",\n  "params": {}\n}\n\`\`\``;
-              const msgs = [...chatReq.messages];
-              const firstMsg = msgs[0];
-              if (firstMsg && (firstMsg as { role: string }).role === "system") {
-                msgs[0] = { role: "system" as any, content: `${firstMsg.content}\n\n${mandate}` };
-              } else {
-                msgs.unshift({ role: "system" as any, content: mandate });
-              }
-              chatReq.messages = msgs;
-            } else if (rawTarget === "hands" || rawTarget === "hand" || rawTarget === "hans" || rawTarget === "barehands" || rawTarget === "bare hands" || rawTarget.includes("bear head")) {
-              const mandate = `Kontext: Der Nutzer möchte das Barehands 3D Interaktions-Interface öffnen. Antworte kurz auf Deutsch und erstelle am Ende deiner Antwort einen Action-Proposal Block:\n\`\`\`action_proposal\n{\n  "capability": "barehands.open",\n  "title": "Barehands Stage öffnen",\n  "description": "Öffnet die 3D Barehands Bühne",\n  "params": {}\n}\n\`\`\``;
-              const msgs = [...chatReq.messages];
-              const firstMsg = msgs[0];
-              if (firstMsg && (firstMsg as { role: string }).role === "system") {
-                msgs[0] = { role: "system" as any, content: `${firstMsg.content}\n\n${mandate}` };
-              } else {
-                msgs.unshift({ role: "system" as any, content: mandate });
-              }
-              chatReq.messages = msgs;
-            } else if (rawTarget.length > 1 && !["einen", "eine", "das", "die", "der", "im", "in", "nein", "nine", "no"].includes(rawTarget)) {
-              const mandate = `Kontext: Der Nutzer möchte die Anwendung '${rawTarget}' auf seinem Windows PC öffnen/starten. Antworte direkt auf Deutsch und erstelle dafür am Ende deiner Antwort einen Action-Proposal Block:\n\`\`\`action_proposal\n{\n  "capability": "app.open_app",\n  "title": "${rawTarget} starten",\n  "description": "Startet ${rawTarget} auf dem PC",\n  "params": { "name": "${rawTarget}" }\n}\n\`\`\``;
-              const msgs = [...chatReq.messages];
-              const firstMsg = msgs[0];
-              if (firstMsg && (firstMsg as { role: string }).role === "system") {
-                msgs[0] = { role: "system" as any, content: `${firstMsg.content}\n\n${mandate}` };
-              } else {
-                msgs.unshift({ role: "system" as any, content: mandate });
-              }
-              chatReq.messages = msgs;
-            }
-          }
-        } else if (mediaMatch) {
-          const mediaText = mediaMatch[0].toLowerCase();
-          const mediaAction = mediaText.includes("nächst") ? "next" : mediaText.includes("vorherig") ? "prev" : mediaText.includes("pause") || mediaText.includes("stopp") ? "pause" : "play";
-          const mandate = `Kontext: Der Nutzer möchte Medien-Steuerung '${mediaAction}' ausführen. Antworte kurz auf Deutsch und erstelle dafür am Ende deiner Antwort einen Action-Proposal Block:\n\`\`\`action_proposal\n{\n  "capability": "media.control",\n  "title": "Medien-Steuerung: ${mediaAction}",\n  "description": "Führt ${mediaAction} per Windows Media Keys aus",\n  "params": { "action": "${mediaAction}" }\n}\n\`\`\``;
-          const msgs = [...chatReq.messages];
-          const firstMsg = msgs[0];
-          if (firstMsg && (firstMsg as { role: string }).role === "system") {
-            msgs[0] = { role: "system" as any, content: `${firstMsg.content}\n\n${mandate}` };
-          } else {
-            msgs.unshift({ role: "system" as any, content: mandate });
-          }
-          chatReq.messages = msgs;
-        }
-      } catch {
-        // Ignorieren falls Intent-Detector fehlschlägt
-      }
-
       const xaiAdapter = getXaiAdapter();
       const isLocalModel = chatReq.model?.toLowerCase().includes("qwen") || chatReq.model?.toLowerCase().includes("ollama") || !xaiAdapter;
+      const supportsToolLoop = !isLocalModel && typeof (xaiAdapter as unknown as Record<string, unknown>)?.completeChat === "function";
       const targetAdapter = options.modelAdapter ?? (isLocalModel ? ollamaAdapter : xaiAdapter!);
 
       const timeout = AbortSignal.timeout(chatTimeoutMs);
       const signal = typeof (AbortSignal as any).any === "function"
         ? (AbortSignal as any).any([request.signal, timeout])
-        : request.signal;
+        : timeout;
+
+      if (supportsToolLoop) {
+        const toolLoopAdapter = xaiAdapter as unknown as {
+          completeChat(request: { messages: Array<{ role: string; content?: string }>; tools?: Array<Record<string, unknown>>; model?: string; signal?: AbortSignal }): Promise<{ content: string; toolCalls?: Array<{ id: string; name: string; arguments: string }> }>;
+        };
+        return chatStream(runToolLoopChat(chatReq, signal as AbortSignal, toolLoopAdapter, actionEngine, memoryAdapter, fileAdapter, browserAdapter, knowledgeAdapter), chatReq.requestId);
+      }
+
+      // Fallback: Legacy-Stream
       return chatStream(targetAdapter.streamChat(chatReq, signal), chatReq.requestId);
     }
 

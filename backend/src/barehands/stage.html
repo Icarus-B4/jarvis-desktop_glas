@@ -3049,6 +3049,12 @@ window.addEventListener("message", (event) => {
     document.body.appendChild(el);
   } else if (type === "jarvis:clear") {
     document.querySelectorAll(".jarvis-transcript-panel, .jarvis-note-panel").forEach((el) => el.remove());
+  } else if (type === "jarvis:release-camera") {
+    if (cam.srcObject) {
+      cam.srcObject.getTracks().forEach((t) => t.stop());
+      cam.srcObject = null;
+    }
+    toast("camera released", 1500);
   }
 });
 

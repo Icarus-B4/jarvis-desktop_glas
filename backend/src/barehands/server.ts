@@ -125,7 +125,28 @@ export function createBarehandsServer(options: BarehandsServerOptions) {
 
   async function handleRequest(request: Request): Promise<Response> {
     const url = new URL(request.url);
-    const pathname = url.pathname;
+    let pathname = url.pathname;
+
+    // The barehands stage.html and the upstream server.py address every API
+    // endpoint at the root path (/config, /tree, /props, /note, /state,
+    // /orb, /cmd). This server additionally exposes them under /barehands/
+    // (the contract exercised by server.test.ts). Alias the root paths so
+    // the stock frontend actually reaches its data instead of 404ing on
+    // every fetch.
+    const barehandsRootAliases: Record<string, string> = {
+      "/config": "/barehands/config",
+      "/tree": "/barehands/tree",
+      "/props": "/barehands/props",
+      "/note": "/barehands/note",
+      "/state": "/barehands/state",
+      "/orb": "/barehands/orb",
+      "/cmd": "/barehands/cmd",
+    };
+    const aliased = barehandsRootAliases[pathname];
+    if (aliased) {
+      url.pathname = aliased;
+      pathname = aliased;
+    }
 
     if (pathname === "/barehands/health") {
       return Response.json({

@@ -359,7 +359,7 @@ async function speakJarvisResponse(text: string): Promise<void> {
 
     const arrayBuffer = new Uint8Array(audioBytes).buffer;
     activeTtsContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const audioBuffer = await activeTtsContext.decodeAudioData(arrayBuffer);
+    const audioBuffer = await activeTtsContext.decodeAudioData(arrayBuffer.slice(0) as ArrayBuffer);
     activeTtsSource = activeTtsContext.createBufferSource();
     activeTtsSource.buffer = audioBuffer;
     activeTtsSource.connect(activeTtsContext.destination);
@@ -503,7 +503,10 @@ function setStageView(view: "action" | "camera" | "screenshot" | "code" | "morni
     stageScreenshotViewEl.hidden = true;
     stageCodeViewEl.hidden = true;
     if (stageMorningBriefViewEl) stageMorningBriefViewEl.hidden = true;
-    if (stageBarehandsViewEl) stageBarehandsViewEl.hidden = true;
+    if (stageBarehandsViewEl) {
+      stageBarehandsViewEl.hidden = true;
+      sendToBarehands("jarvis:release-camera");
+    }
     if (activeCameraStream) {
       activeCameraStream.getTracks().forEach((t) => t.stop());
       activeCameraStream = null;
@@ -731,11 +734,19 @@ document.querySelectorAll<HTMLButtonElement>("[data-refresh-morning-brief]").for
 // Bind events for Barehands Stage
 document.querySelectorAll<HTMLButtonElement>("[data-toggle-barehands]").forEach((btn) => {
   btn.addEventListener("click", async () => {
+    const isBarehandsActive = stageBarehandsViewEl && !stageBarehandsViewEl.hidden;
+    if (isBarehandsActive) {
+      setStageView(null);
+      await window.jarvisDesktop.stopBarehands();
+      if (stageBarehandsFrameEl) stageBarehandsFrameEl.src = "about:blank";
+      return;
+    }
     try {
       await window.jarvisDesktop.ensureBarehands();
     } catch {
       addEntry("warning", "Barehands service could not be started.");
     }
+    if (stageBarehandsFrameEl) stageBarehandsFrameEl.src = "http://127.0.0.1:8794/stage.html";
     setStageView("barehands");
   });
 });

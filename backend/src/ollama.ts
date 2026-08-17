@@ -125,8 +125,61 @@ export function createOllamaClient(options: OllamaClientOptions = {}): OllamaCli
   const fetcher = options.fetcher ?? fetch;
   const runtimeAvailable = options.runtimeAvailable ?? defaultRuntimeAvailable;
 
+  async function completeChat(request: {
+    messages: Array<{ role: string; content?: string; tool_calls?: unknown; tool_call_id?: string }>;
+    tools?: Array<Record<string, unknown>>;
+    model?: string;
+    signal?: AbortSignal;
+  }): Promise<{ content: string; toolCalls?: Array<{ id: string; name: string; arguments: string }> }> {
+    const modelToUse = request.model || DEFAULT_OLLAMA_MODEL;
+    const sanitizedMessages = request.messages.map((m) => ({
+      role: m.role === "user" || m.role === "assistant" || m.role === "system" ? m.role : "user",
+      content: typeof m.content === "string" ? m.content : String(m.content ?? ""),
+    }));
+
+    const body: Record<string, unknown> = {
+      model: modelToUse,
+      messages: sanitizedMessages,
+      stream: false,
+      think: false,
+      options: { num_predict: DEFAULT_OLLAMA_NUM_PREDICT },
+    };
+    if (request.tools && request.tools.length > 0) {
+      body.tools = request.tools;
+    }
+
+    const response = await fetcher(`${baseUrl}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      redirect: "error",
+      signal: request.signal,
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      throw new Error(`Ollama completeChat Fehler: HTTP ${response.status} - ${text}`);
+    }
+
+    const data = (await response.json()) as Record<string, unknown>;
+    const message = ((data as { message?: Record<string, unknown> }).message ?? {}) as Record<string, unknown>;
+    const content = typeof message.content === "string" ? message.content : "";
+
+    const toolCalls = Array.isArray(message.tool_calls)
+      ? ((message as { tool_calls: Array<{ id?: string; function?: { name?: string; arguments?: unknown } }> }).tool_calls).map((tc) => ({
+          id: String(tc.id ?? `call-${crypto.randomUUID()}`),
+          name: String(tc.function?.name ?? ""),
+          arguments: typeof tc.function?.arguments === "string" ? tc.function.arguments : JSON.stringify(tc.function?.arguments ?? {}),
+        }))
+      : undefined;
+
+    return { content, toolCalls };
+  }
+
   return {
     providerName: "ollama",
+    completeChat,
+
     async getReadiness(signal?: AbortSignal): Promise<JarvisModelReadiness> {
       try {
         const response = await fetcher(`${baseUrl}/api/tags`, {
