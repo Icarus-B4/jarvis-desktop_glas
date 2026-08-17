@@ -91,7 +91,9 @@ export function createBarehandsServer(options: BarehandsServerOptions) {
   function jailCheck(target: string, jail: string): boolean {
     const resolved = resolve(target);
     const resolvedJail = resolve(jail);
-    return resolved.startsWith(resolvedJail + "/") || resolved === resolvedJail;
+    // Plattformunabhängig: path.sep ist `\` auf Windows, `/` auf Unix
+    const sep = require("node:path").sep;
+    return resolved.startsWith(resolvedJail + sep) || resolved === resolvedJail;
   }
 
   function mediaAirlock(src: string): string {

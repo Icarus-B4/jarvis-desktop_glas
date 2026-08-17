@@ -239,10 +239,10 @@ export class DefaultJarvisActionEngine implements JarvisActionEngine {
       else if (cmd.includes("discord")) cmd = "discord";
 
       await new Promise<void>((resolve, reject) => {
-        exec(`start "" "${cmd}"`, { shell: "cmd.exe" }, (err) => {
+        exec(`start "" "${cmd}"`, { shell: "cmd.exe", timeout: 4000 }, (err) => {
           if (err) {
-            exec(`start ${cmd}`, { shell: "cmd.exe" }, (err2) => {
-              if (err2) reject(new Error(`Fehler beim Starten von '${rawName}': ${err2.message}`));
+            exec(`start ${cmd}`, { shell: "cmd.exe", timeout: 4000 }, (err2) => {
+              if (err2) reject(new Error(`Anwendung '${rawName}' konnte nicht gestartet werden.`));
               else resolve();
             });
           } else resolve();

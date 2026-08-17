@@ -759,11 +759,10 @@ window.addEventListener("message", async (event: MessageEvent) => {
   const payload = data.payload ?? {};
 
   if (type === "barehands:chat") {
-    await window.jarvisDesktop.startChat({
-      requestId: `barehands-${Date.now()}`,
-      model: "local",
-      messages: [{ role: "user", content: String(payload.text ?? "") }],
-    });
+    const text = String(payload.text ?? "").trim();
+    if (text) {
+      submitCurrentMessage(text);
+    }
   } else if (type === "barehands:action") {
     if (payload.intentId && (payload.decision === "approve" || payload.decision === "reject")) {
       await window.jarvisDesktop.decideAction(String(payload.intentId), payload.decision);
@@ -899,6 +898,11 @@ async function handleActionDecision(intentId: string, decision: "approve" | "rej
         setStageView("screenshot", dataUrl);
       } else if (updated.capability === "camera.open" || updated.capability === "camera.capture" || updated.capability === "camera.capture_photo") {
         setStageView("camera");
+      } else if (updated.capability === "barehands.open" || updated.capability === "app.open_barehands") {
+        try {
+          await window.jarvisDesktop.ensureBarehands();
+        } catch {}
+        setStageView("barehands");
       }
     }
   } catch (err) {
@@ -1179,15 +1183,55 @@ async function toggleVoiceMute(): Promise<void> {
   }
 }
 
-function submitCurrentMessage(textParam?: string, imageDataParam?: string): void {
-  const text = (textParam ?? input?.value ?? "").trim();
+async function submitCurrentMessage(textParam?: string, imageDataParam?: string): Promise<void> {
+  let text = (textParam ?? input?.value ?? "").trim();
   if (!text || activeRequestId) return;
   if (!textParam && input) input.value = "";
-  if (text.startsWith(">") || text.startsWith("$") || text.startsWith("/") || readiness?.status !== "ready") {
+  if (text.startsWith(">") || text.startsWith("$") || text.startsWith("/")) {
     const cmd = text.replace(/^[\>\$\/]\s*/, "");
     void runTerminalCommand(cmd);
     return;
   }
+
+  // 1. Automatischer Kamera-Snapshot wenn Kamera auf der Hauptbühne aktiv ist
+  if (!imageDataParam && stageCameraViewEl && !stageCameraViewEl.hidden && stageCameraVideoEl && stageCameraVideoEl.videoWidth > 0) {
+    const lower = text.toLowerCase();
+    if (lower.includes("kamera") || lower.includes("webcam") || lower.includes("kamerafoto")) {
+      try {
+        const ctx = stageCameraCanvasEl.getContext("2d");
+        stageCameraCanvasEl.width = stageCameraVideoEl.videoWidth || 640;
+        stageCameraCanvasEl.height = stageCameraVideoEl.videoHeight || 480;
+        ctx?.drawImage(stageCameraVideoEl, 0, 0);
+        imageDataParam = stageCameraCanvasEl.toDataURL("image/png");
+      } catch (err) {
+        console.warn("Auto Kamera Capture fehlgeschlagen:", err);
+      }
+    }
+  }
+
+  // 2. Automatischer Bildschirm-Screenshot wenn Nutzer nach Screen, App-Inhalt, Bildschirm oder 'was siehst du' fragt
+  if (!imageDataParam) {
+    const lower = text.toLowerCase();
+    if (
+      lower.includes("screen") ||
+      lower.includes("bildschirm") ||
+      lower.includes("in der app") ||
+      lower.includes("auf meinem screen") ||
+      lower.includes("auf dem bildschirm") ||
+      lower.includes("was siehst du")
+    ) {
+      try {
+        const dataUrl = await window.jarvisDesktop.captureScreenshot();
+        if (dataUrl) {
+          imageDataParam = dataUrl;
+          setStageView("screenshot", dataUrl);
+        }
+      } catch (err) {
+        console.warn("Auto Screen Screenshot fehlgeschlagen:", err);
+      }
+    }
+  }
+
   previewState = undefined;
   const userMessage: JarvisChatMessage = { role: "user", content: text, imageData: imageDataParam };
   messages.push(userMessage);
@@ -1204,10 +1248,10 @@ function submitCurrentMessage(textParam?: string, imageDataParam?: string): void
   chatSafetyTimer = setTimeout(() => {
     if (activeRequestId) {
       console.warn("Safety timeout hit: KI response took too long.");
-      addEntry("warning", "Zeitüberschreitung bei der KI-Antwort (30s Fallback). Bitte erneut versuchen.");
+      addEntry("warning", "Zeitüberschreitung bei der KI-Antwort (45s Fallback). Bitte erneut versuchen.");
       stopConversation();
     }
-  }, 30000);
+  }, 45000);
 
   const targetModel = activeModelMode === "local" ? "qwen3:8b" : "grok-4.20-non-reasoning";
   window.jarvisDesktop.startChat({ requestId: activeRequestId, model: targetModel, messages: messages.slice(-24) });
@@ -1254,6 +1298,10 @@ function handleChatEvent(event: JarvisChatStreamEvent): void {
   if (event.requestId !== activeRequestId) return;
   if (event.type === "chat.start") { setLiveState("thinking"); return; }
   if (event.type === "chat.delta") {
+    if (chatSafetyTimer) {
+      clearTimeout(chatSafetyTimer);
+      chatSafetyTimer = undefined;
+    }
     setLiveState("responding");
     if (activeAssistantEntry) {
       activeAssistantEntry.message = activeAssistantEntry.pending ? (event.delta ?? "") : activeAssistantEntry.message + (event.delta ?? "");
@@ -1269,7 +1317,6 @@ function handleChatEvent(event: JarvisChatStreamEvent): void {
     renderTranscript();
     clearChatState();
 
-    // Action Proposal JSON-Block im Modell-Antworttext erkennen & registrieren (Action Proposal, Action, JSON oder freies JSON)
     const codeBlockMatch = event.message.content.match(/```(?:action_proposal|action|json)?\s*([\s\S]*?)\s*```/i);
     const inlineJsonMatch = event.message.content.match(/(\{\s*"capability"\s*:[\s\S]*?\})/i);
     const rawJsonText = codeBlockMatch?.[1]?.trim() ?? inlineJsonMatch?.[1]?.trim();
@@ -1303,9 +1350,9 @@ function handleChatEvent(event: JarvisChatStreamEvent): void {
       }
     }
 
-    // Sprachausgabe (ohne den rohen JSON Codeblock vorzulesen)
     const spokenText = event.message.content.replace(/```action_proposal[\s\S]*?```/gi, "").trim();
     void speakJarvisResponse(spokenText || event.message.content);
+    pushTranscriptToBarehands(spokenText || event.message.content);
     return;
   }
   if (event.type === "chat.cancelled") {
@@ -1430,63 +1477,6 @@ function renderMemoryList(): void {
       (item.content ?? "").toLowerCase().includes(term)
     );
   });
-
-// Settings Tab Navigation
-document.querySelectorAll<HTMLButtonElement>("[data-settings-tab]").forEach((tabBtn) => {
-  tabBtn.addEventListener("click", () => {
-    const tabName = tabBtn.dataset.settingsTab;
-    if (!tabName) return;
-
-    document.querySelectorAll("[data-settings-tab]").forEach((b) => b.classList.remove("settings-tab--active"));
-    tabBtn.classList.add("settings-tab--active");
-
-    document.querySelectorAll<HTMLElement>("[data-settings-section]").forEach((sec) => {
-      sec.hidden = sec.dataset.settingsSection !== tabName;
-    });
-  });
-});
-
-async function loadSettings(): Promise<void> {
-  try {
-    const config = await window.jarvisDesktop.getConfig();
-    const xaiInput = optionalElement<HTMLInputElement>("[data-config-key='xaiApiKey']");
-    const tavilyInput = optionalElement<HTMLInputElement>("[data-config-key='tavilyApiKey']");
-    const ollamaInput = optionalElement<HTMLInputElement>("[data-config-key='ollamaUrl']");
-    const autoApproveInput = optionalElement<HTMLInputElement>("[data-config-key='autoApproveActions']");
-    const voiceSelect = optionalElement<HTMLSelectElement>("[data-config-key='ttsVoice']");
-    const langInput = optionalElement<HTMLInputElement>("[data-config-key='sttLanguage']");
-
-    if (xaiInput && config.xaiApiKey) xaiInput.value = config.xaiApiKey;
-    if (ollamaInput && config.ollamaUrl) ollamaInput.value = config.ollamaUrl;
-    if (autoApproveInput) autoApproveInput.checked = config.autoApproveActions;
-    if (voiceSelect && config.ttsVoice) voiceSelect.value = config.ttsVoice;
-    if (langInput && config.sttLanguage) langInput.value = config.sttLanguage;
-  } catch (err) {
-    console.warn("Fehler beim Laden der Einstellungen:", err);
-  }
-}
-
-settingsForm?.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const xaiInput = optionalElement<HTMLInputElement>("[data-config-key='xaiApiKey']");
-  const autoApproveInput = optionalElement<HTMLInputElement>("[data-config-key='autoApproveActions']");
-
-  try {
-    const payload: Record<string, unknown> = {};
-    if (xaiInput && xaiInput.value.trim() && !xaiInput.value.includes("...")) {
-      payload.xaiApiKey = xaiInput.value.trim();
-    }
-    if (autoApproveInput) {
-      payload.autoApproveActions = autoApproveInput.checked;
-    }
-
-    const res = await window.jarvisDesktop.updateConfig(payload);
-    addEntry("system", `⚙️ ${res.message}`);
-    await refreshRuntimeStatus();
-  } catch (err) {
-    addEntry("warning", `Fehler beim Speichern der Einstellungen: ${err instanceof Error ? err.message : String(err)}`);
-  }
-});
 
   if (filtered.length === 0) {
     const emptyCard = document.createElement("li");

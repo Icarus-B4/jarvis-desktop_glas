@@ -354,7 +354,7 @@ export function isJarvisChatMessage(value: unknown): value is JarvisChatMessage 
 export function isJarvisChatRequest(value: unknown): value is JarvisChatRequest {
   return isRecord(value) && hasOnlyKeys(value, ["requestId", "model", "messages"])
     && isBoundedString(value.requestId, 128) && /^[A-Za-z0-9._:-]+$/.test(value.requestId)
-    && value.model === DEFAULT_OLLAMA_MODEL && Array.isArray(value.messages)
+    && isBoundedString(value.model, 128) && Array.isArray(value.messages)
     && value.messages.length > 0 && value.messages.length <= 100
     && value.messages.every(isJarvisChatMessage);
 }

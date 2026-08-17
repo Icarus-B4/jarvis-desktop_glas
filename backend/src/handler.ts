@@ -154,13 +154,14 @@ export function createJarvisRequestHandler(
   const startedAt = options.startedAt ?? now();
   const startedAtTimestamp = startedAt.toISOString();
 
-  // Modul-Adapter für xAI Cloud und Ollama Local vorhalten
-  const xaiApiKey = options.xaiApiKey ?? process.env.XAI_API_KEY ?? "";
+  // Modul-Adapter für xAI Cloud und Ollama Local dynamisch vorhalten
+  const getXaiApiKey = (): string => options.xaiApiKey ?? process.env.XAI_API_KEY ?? "";
   const ollamaAdapter: JarvisModelAdapter = options.ollamaClient ?? createOllamaClient();
-  const xaiAdapter: JarvisModelAdapter | null = xaiApiKey
-    ? (options.modelAdapter ?? createXaiAdapter({ apiKey: xaiApiKey }))
-    : null;
-  const defaultAdapter = xaiAdapter ?? ollamaAdapter;
+  const getXaiAdapter = (): JarvisModelAdapter | null => {
+    const apiKey = getXaiApiKey();
+    return apiKey ? (options.modelAdapter ?? createXaiAdapter({ apiKey })) : null;
+  };
+  const getDefaultAdapter = (): JarvisModelAdapter => getXaiAdapter() ?? ollamaAdapter;
 
   const pairingManager = options.pairingManager ?? new PairingManager();
   const voiceAdapter = options.voiceAdapter ?? new DefaultJarvisVoiceAdapter();
@@ -224,6 +225,7 @@ export function createJarvisRequestHandler(
 
     // --- xAI STT: Audio-Blob → Text-Transkript ---
     if (pathname === "/v1/voice/stt" && request.method === "POST") {
+      const xaiApiKey = getXaiApiKey();
       if (!xaiApiKey) return apiError(503, "stt_not_configured", "XAI_API_KEY nicht konfiguriert.", headers);
       try {
         const formData = await request.formData();
@@ -240,6 +242,7 @@ export function createJarvisRequestHandler(
 
     // --- xAI TTS: Text → MP3-Audio ---
     if (pathname === "/v1/voice/tts" && request.method === "POST") {
+      const xaiApiKey = getXaiApiKey();
       if (!xaiApiKey) return apiError(503, "tts_not_configured", "XAI_API_KEY nicht konfiguriert.", headers);
       let body: unknown;
       try { body = await request.json(); } catch { return apiError(400, "tts_invalid_request", "Gültiges JSON erforderlich.", headers); }
@@ -409,6 +412,7 @@ export function createJarvisRequestHandler(
 
     // --- System Configuration Endpoints ---
     if (pathname === "/v1/config" && request.method === "GET") {
+      const xaiApiKey = getXaiApiKey();
       const config = {
         xaiApiKey: xaiApiKey ? `${xaiApiKey.slice(0, 7)}...` : "",
         hasXaiApiKey: Boolean(xaiApiKey),
@@ -629,25 +633,20 @@ Unterstützte Capabilities:
       // 4. Intent Detector & System Mandate für direkte System-Befehle (Browser & Apps & Medien)
       try {
         const lastMsgText = [...chatReq.messages].reverse().find((m) => m.role === "user")?.content ?? "";
-        const urlMatch = lastMsgText.match(/(?:öffne|starte|gehe zu|besuche)\s+(https?:\/\/[^\s]+|[a-z0-9-]+\.[a-z]{2,}(?:\/[^\s]*)?)/i);
-        const appMatch = lastMsgText.match(/(?:öffne|starte|starte die app|öffne die app|spiele)\s+(?:die app\s+)?(rechner|calculator|notepad|editor|vscode|code|chrome|edge|explorer|windows media player|media player|wmplayer|spotify|vlc|paint|taskmanager|taskmgr|terminal|powershell|cmd|word|excel|powerpoint|discord|[a-z0-9äöüß.-]+(?:\s+[a-z0-9äöüß.-]+)?)/i);
-        const mediaMatch = lastMsgText.match(/(?:spiele einen song|nächster song|nächstes lied|vorheriger song|pausiere|stoppe die musik|musik abspielen|play music|next track|pause music)/i);
+        const lowerMsg = lastMsgText.toLowerCase().trim();
 
-        if (urlMatch && urlMatch[1]) {
-          const targetUrl = urlMatch[1].startsWith("http") ? urlMatch[1] : `https://${urlMatch[1]}`;
-          const mandate = `Kontext: Der Nutzer möchte die Webseite '${targetUrl}' öffnen. Antworte kurz auf Deutsch und erstelle dafür am Ende deiner Antwort einen Action-Proposal Block:\n\`\`\`action_proposal\n{\n  "capability": "app.open_url",\n  "title": "${targetUrl} öffnen",\n  "description": "Öffnet ${targetUrl} im Standardbrowser",\n  "params": { "url": "${targetUrl}" }\n}\n\`\`\``;
-          const msgs = [...chatReq.messages];
-          const firstMsg = msgs[0];
-          if (firstMsg && (firstMsg as { role: string }).role === "system") {
-            msgs[0] = { role: "system" as any, content: `${firstMsg.content}\n\n${mandate}` };
-          } else {
-            msgs.unshift({ role: "system" as any, content: mandate });
-          }
-          chatReq.messages = msgs;
-        } else if (appMatch && appMatch[1] && !urlMatch) {
-          const rawTarget = appMatch[1].toLowerCase().trim();
-          if (rawTarget.length > 1 && !["einen", "eine", "das", "die", "der", "im", "in"].includes(rawTarget)) {
-            const mandate = `Kontext: Der Nutzer möchte die Anwendung '${rawTarget}' auf seinem Windows PC öffnen/starten. Antworte direkt auf Deutsch und erstelle dafür am Ende deiner Antwort einen Action-Proposal Block:\n\`\`\`action_proposal\n{\n  "capability": "app.open_app",\n  "title": "${rawTarget} starten",\n  "description": "Startet ${rawTarget} auf dem PC",\n  "params": { "name": "${rawTarget}" }\n}\n\`\`\``;
+        // 0. Negative Antworten / Rejections ("Nein", "Nine", "Stop", "Abbrechen") nicht als App-Namen interpretieren!
+        const isNegative = /^(nein|nine|no|stop|abbrechen|nein danke|nicht öffnen)[\.\!\?]?$/i.test(lowerMsg);
+
+        if (!isNegative) {
+          const urlMatch = lastMsgText.match(/(?:öffne|starte|gehe zu|besuche)\s+(https?:\/\/[^\s]+|[a-z0-9-]+\.[a-z]{2,}(?:\/[^\s]*)?)/i);
+          const appMatch = lastMsgText.match(/(?:öffne|starte|starte die app|öffne die app|spiele|hüfne)\s+(?:die app\s+)?(rechner|calculator|notepad|editor|vscode|code|chrome|edge|explorer|windows media player|media player|wmplayer|spotify|vlc|paint|taskmanager|taskmgr|terminal|powershell|cmd|word|excel|powerpoint|discord|[a-z0-9äöüß.-]+(?:\s+[a-z0-9äöüß.-]+)?)/i);
+          const mediaMatch = lastMsgText.match(/(?:spiele einen song|nächster song|nächstes lied|vorheriger song|pausiere|stoppe die musik|musik abspielen|play music|next track|pause music)/i);
+
+          const isBarehandsPhonetic = lowerMsg.includes("bear head") || lowerMsg.includes("bearhead") || lowerMsg.includes("bear hand") || lowerMsg.includes("barehand") || lowerMsg.includes("bare hand") || lowerMsg.includes("hüfne hans") || lowerMsg.includes("öffne hand");
+
+          if (isBarehandsPhonetic) {
+            const mandate = `Kontext: Der Nutzer möchte das Barehands 3D Interaktions-Interface öffnen. Antworte kurz auf Deutsch und erstelle am Ende deiner Antwort einen Action-Proposal Block:\n\`\`\`action_proposal\n{\n  "capability": "barehands.open",\n  "title": "Barehands Stage öffnen",\n  "description": "Öffnet die 3D Barehands Bühne",\n  "params": {}\n}\n\`\`\``;
             const msgs = [...chatReq.messages];
             const firstMsg = msgs[0];
             if (firstMsg && (firstMsg as { role: string }).role === "system") {
@@ -656,6 +655,50 @@ Unterstützte Capabilities:
               msgs.unshift({ role: "system" as any, content: mandate });
             }
             chatReq.messages = msgs;
+          } else if (urlMatch && urlMatch[1]) {
+            const targetUrl = urlMatch[1].startsWith("http") ? urlMatch[1] : `https://${urlMatch[1]}`;
+            const mandate = `Kontext: Der Nutzer möchte die Webseite '${targetUrl}' öffnen. Antworte kurz auf Deutsch und erstelle dafür am Ende deiner Antwort einen Action-Proposal Block:\n\`\`\`action_proposal\n{\n  "capability": "app.open_url",\n  "title": "${targetUrl} öffnen",\n  "description": "Öffnet ${targetUrl} im Standardbrowser",\n  "params": { "url": "${targetUrl}" }\n}\n\`\`\``;
+            const msgs = [...chatReq.messages];
+            const firstMsg = msgs[0];
+            if (firstMsg && (firstMsg as { role: string }).role === "system") {
+              msgs[0] = { role: "system" as any, content: `${firstMsg.content}\n\n${mandate}` };
+            } else {
+              msgs.unshift({ role: "system" as any, content: mandate });
+            }
+            chatReq.messages = msgs;
+          } else if (appMatch && appMatch[1] && !urlMatch) {
+            const rawTarget = appMatch[1].toLowerCase().trim();
+            if (rawTarget === "kamera" || rawTarget === "die kamera" || rawTarget === "webcam") {
+              const mandate = `Kontext: Der Nutzer möchte die Kamera auf der Hauptbühne öffnen. Antworte kurz auf Deutsch und erstelle am Ende deiner Antwort einen Action-Proposal Block:\n\`\`\`action_proposal\n{\n  "capability": "camera.open",\n  "title": "Kamera öffnen",\n  "description": "Öffnet den Kamera-Feed auf der Hauptbühne",\n  "params": {}\n}\n\`\`\``;
+              const msgs = [...chatReq.messages];
+              const firstMsg = msgs[0];
+              if (firstMsg && (firstMsg as { role: string }).role === "system") {
+                msgs[0] = { role: "system" as any, content: `${firstMsg.content}\n\n${mandate}` };
+              } else {
+                msgs.unshift({ role: "system" as any, content: mandate });
+              }
+              chatReq.messages = msgs;
+            } else if (rawTarget === "hands" || rawTarget === "hand" || rawTarget === "hans" || rawTarget === "barehands" || rawTarget === "bare hands" || rawTarget.includes("bear head")) {
+              const mandate = `Kontext: Der Nutzer möchte das Barehands 3D Interaktions-Interface öffnen. Antworte kurz auf Deutsch und erstelle am Ende deiner Antwort einen Action-Proposal Block:\n\`\`\`action_proposal\n{\n  "capability": "barehands.open",\n  "title": "Barehands Stage öffnen",\n  "description": "Öffnet die 3D Barehands Bühne",\n  "params": {}\n}\n\`\`\``;
+              const msgs = [...chatReq.messages];
+              const firstMsg = msgs[0];
+              if (firstMsg && (firstMsg as { role: string }).role === "system") {
+                msgs[0] = { role: "system" as any, content: `${firstMsg.content}\n\n${mandate}` };
+              } else {
+                msgs.unshift({ role: "system" as any, content: mandate });
+              }
+              chatReq.messages = msgs;
+            } else if (rawTarget.length > 1 && !["einen", "eine", "das", "die", "der", "im", "in", "nein", "nine", "no"].includes(rawTarget)) {
+              const mandate = `Kontext: Der Nutzer möchte die Anwendung '${rawTarget}' auf seinem Windows PC öffnen/starten. Antworte direkt auf Deutsch und erstelle dafür am Ende deiner Antwort einen Action-Proposal Block:\n\`\`\`action_proposal\n{\n  "capability": "app.open_app",\n  "title": "${rawTarget} starten",\n  "description": "Startet ${rawTarget} auf dem PC",\n  "params": { "name": "${rawTarget}" }\n}\n\`\`\``;
+              const msgs = [...chatReq.messages];
+              const firstMsg = msgs[0];
+              if (firstMsg && (firstMsg as { role: string }).role === "system") {
+                msgs[0] = { role: "system" as any, content: `${firstMsg.content}\n\n${mandate}` };
+              } else {
+                msgs.unshift({ role: "system" as any, content: mandate });
+              }
+              chatReq.messages = msgs;
+            }
           }
         } else if (mediaMatch) {
           const mediaText = mediaMatch[0].toLowerCase();
@@ -674,6 +717,7 @@ Unterstützte Capabilities:
         // Ignorieren falls Intent-Detector fehlschlägt
       }
 
+      const xaiAdapter = getXaiAdapter();
       const isLocalModel = chatReq.model?.toLowerCase().includes("qwen") || chatReq.model?.toLowerCase().includes("ollama") || !xaiAdapter;
       const targetAdapter = options.modelAdapter ?? (isLocalModel ? ollamaAdapter : xaiAdapter!);
 
@@ -713,7 +757,7 @@ Unterstützte Capabilities:
     }
 
     if (pathname === "/v1/model/readiness") {
-      const readiness = await defaultAdapter.getReadiness(AbortSignal.timeout(2_500));
+      const readiness = await getDefaultAdapter().getReadiness(AbortSignal.timeout(2_500));
       return Response.json(readiness, { status: 200, headers });
     }
 

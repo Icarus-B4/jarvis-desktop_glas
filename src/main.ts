@@ -56,7 +56,36 @@ export type JarvisDesktopConfig = {
   fishAudioModelId: string;
 };
 
-const getConfigFile = (): string => join(app.getPath("userData"), "jarvis-config.json");
+function loadEnvFile(): void {
+  const candidates = [
+    join(process.cwd(), ".env"),
+    join(app.getAppPath(), ".env"),
+    resolve(app.getAppPath(), "..", ".env"),
+  ];
+  for (const envPath of candidates) {
+    if (existsSync(envPath)) {
+      try {
+        const content = readFileSync(envPath, "utf-8");
+        for (const line of content.split(/\r?\n/)) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith("#")) continue;
+          const eqIdx = trimmed.indexOf("=");
+          if (eqIdx > 0) {
+            const key = trimmed.slice(0, eqIdx).trim();
+            const val = trimmed.slice(eqIdx + 1).trim().replace(/^["']|["']$/g, "");
+            if (key && val && !process.env[key]) {
+              process.env[key] = val;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Fehler beim Lesen der .env Datei:", err);
+      }
+    }
+  }
+}
+
+loadEnvFile();
 
 function loadDesktopConfig(): JarvisDesktopConfig {
   const defaultConfig: JarvisDesktopConfig = {
@@ -958,18 +987,14 @@ app.whenReady().then(async () => {
   if (process.platform === "win32") {
     app.setAppUserModelId("com.jarvis.desktop");
   }
-  // Automatischen Mikrofon-Zugriff für das Desktop-Interface erlauben
+  // Automatischen Kamera- und Mikrofon-Zugriff für Desktop & Barehands Iframe erlauben
+  const allowedPermissions = new Set(["media", "camera", "microphone", "videoCapture", "audioCapture", "notifications", "pointerLock"]);
   session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
-    if (permission === "media") {
-      callback(true);
-    } else {
-      callback(false);
-    }
+    callback(allowedPermissions.has(permission));
   });
 
   session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
-    if (permission === "media") return true;
-    return false;
+    return allowedPermissions.has(permission);
   });
 
   try {

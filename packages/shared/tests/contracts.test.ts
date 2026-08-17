@@ -96,8 +96,8 @@ describe("Jarvis shared contracts", () => {
     expect(isJarvisChatMessage({ role: "user", content: "   " })).toBe(false);
     expect(isJarvisChatRequest({ requestId: "request-1", model: DEFAULT_OLLAMA_MODEL, messages: [{ role: "user", content: "Hello" }] })).toBe(true);
     expect(isJarvisChatRequest({ requestId: "request 1", model: DEFAULT_OLLAMA_MODEL, messages: [{ role: "user", content: "Hello" }] })).toBe(false);
-    expect(isJarvisChatRequest({ requestId: "request-1", model: "other", messages: [{ role: "user", content: "Hello" }] })).toBe(false);
-    expect(isJarvisChatRequest({ requestId: "request-1", model: DEFAULT_OLLAMA_MODEL, messages: [] })).toBe(false);
+    expect(isJarvisChatRequest({ requestId: "request-1", model: "grok-4.20-non-reasoning", messages: [{ role: "user", content: "Hello" }] })).toBe(true);
+    expect(isJarvisChatRequest({ requestId: "request-1", model: "", messages: [{ role: "user", content: "Hello" }] })).toBe(false);
   });
 
   test("validates every readiness state and requires manual guidance when blocked", () => {
