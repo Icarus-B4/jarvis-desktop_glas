@@ -13,8 +13,10 @@ export {
 } from "./handler";
 export {
   startJarvisService,
+  startBarehandsService,
   type JarvisServiceOptions,
   type RunningJarvisService,
+  type BarehandsServiceHandle,
 } from "./service";
 export {
   createOllamaClient,

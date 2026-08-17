@@ -610,6 +610,7 @@ export type JarvisConfig = {
     workflows: boolean;
     knowledge: boolean;
     diagnostics: boolean;
+    barehands: boolean;
   };
 };
 
@@ -624,6 +625,7 @@ export function isJarvisConfig(value: unknown): value is JarvisConfig {
     typeof value.enabledModules.agents === "boolean" &&
     typeof value.enabledModules.workflows === "boolean" &&
     typeof value.enabledModules.knowledge === "boolean" &&
-    typeof value.enabledModules.diagnostics === "boolean"
+    typeof value.enabledModules.diagnostics === "boolean" &&
+    typeof value.enabledModules.barehands === "boolean"
   );
 }

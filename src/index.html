@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:* https://api.open-meteo.com; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:* https://api.open-meteo.com; object-src 'none'; frame-src 'self' http://127.0.0.1:8794; base-uri 'none'; form-action 'none'"
     />
     <title>J.A.R.V.I.S. — Private Control Room</title>
     <link rel="stylesheet" href="./renderer.css" />
@@ -147,6 +147,17 @@
               </div>
             </div>
           </div>
+
+          <!-- 6. Barehands Stage View -->
+          <div class="stage-view-item stage-barehands-view" data-stage-view="barehands" hidden>
+            <div class="stage-media-header">
+              <span>🖐️ BAREHANDS INTERFACE</span>
+              <div style="display: flex; gap: 8px;">
+                <button type="button" class="btn-primitive btn-ghost btn-xs" data-stage-close-media>✖ Schließen</button>
+              </div>
+            </div>
+            <iframe class="stage-barehands-frame" data-barehands-frame src="about:blank" sandbox="allow-scripts allow-same-origin allow-popups allow-modals" allow="camera; microphone" style="width: 100%; height: 100%; border: none; background: #000;"></iframe>
+          </div>
         </div>
 
         <div class="orb-composition" aria-hidden="true">
@@ -255,6 +266,7 @@
                 <span class="module-group-label">WORKSPACE</span>
                 <div class="module-pills">
                   <button type="button" class="module-pill" data-toggle-morning-brief title="Morning Briefing & Daily Digest auf der Hauptbühne">🌅 Briefing</button>
+                  <button type="button" class="module-pill" data-toggle-barehands title="Barehands Hand-Tracking Interface">🖐️ Hands</button>
                   <button type="button" class="module-pill" data-toggle-settings-panel title="App-Einstellungen & Keys">⚙️ Settings</button>
                   <button type="button" class="module-pill" data-toggle-lifeos-panel title="LifeOS & TELOS Governance">🎯 LifeOS</button>
                   <button type="button" class="module-pill" data-toggle-memory-panel title="Memory Inspector">🧠 Memory</button>

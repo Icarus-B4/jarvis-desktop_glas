@@ -6,6 +6,7 @@ import {
   assertPort,
 } from "./config";
 import { createJarvisRequestHandler } from "./handler";
+import { createBarehandsServer, type BarehandsConfig, type BarehandsServerHandle } from "./barehands";
 
 type BunServer = {
   hostname: string;
@@ -27,12 +28,20 @@ export type JarvisServiceOptions = {
   hostname?: string;
   port?: number;
   allowedOrigins?: readonly string[];
+  barehandsRoot?: string;
+  barehandsPort?: number;
 };
 
 export type RunningJarvisService = {
   baseUrl: string;
   hostname: string;
   port: number;
+  stop(): void;
+};
+
+export type BarehandsServiceHandle = BarehandsServerHandle & {
+  baseUrl: string;
+  hostname: string;
   stop(): void;
 };
 
@@ -102,4 +111,67 @@ export function startJarvisService(options: JarvisServiceOptions = {}): RunningJ
 
   throw lastError instanceof Error ? lastError : new Error(`Failed to bind Jarvis local service on ports ${initialPort} through ${initialPort + maxAttempts - 1}.`);
 }
+
+export function startBarehandsService(options: { root: string; port?: number; onCommand?: (action: string, payload: Record<string, unknown>) => void }): BarehandsServiceHandle {
+  const barehands = createBarehandsServer({
+    root: options.root,
+    port: options.port,
+    onCommand: options.onCommand,
+  });
+
+  const http = require("node:http");
+  const runtimePort = barehands.port;
+
+  const server = http.createServer(async (req: import("node:http").IncomingMessage, res: import("node:http").ServerResponse) => {
+    try {
+      const chunks: Buffer[] = [];
+      await new Promise<void>((resolve, reject) => {
+        req.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+        req.on("end", () => resolve());
+        req.on("error", reject);
+      });
+      const bodyBuffer = Buffer.concat(chunks);
+      const request = new Request(`http://127.0.0.1:${runtimePort}${req.url ?? "/"}`, {
+        method: req.method,
+        headers: req.headers as Record<string, string>,
+        body: bodyBuffer.length === 0 ? null : bodyBuffer,
+      });
+      const response = await barehands.handleRequest(request);
+      res.statusCode = response.status;
+      response.headers.forEach((value, key) => {
+        res.setHeader(key, value);
+      });
+      const body = await response.arrayBuffer();
+      res.end(Buffer.from(body));
+    } catch (error) {
+      res.statusCode = 500;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: { code: "internal_error", message: "The barehands service encountered an internal error." } }));
+    }
+  });
+
+  server.listen(runtimePort, "127.0.0.1", () => {
+    console.info(`[barehands] listening on 127.0.0.1:${runtimePort}`);
+  });
+
+  server.on("error", (err: Error) => {
+    console.error("[barehands] server error:", err);
+  });
+
+  return {
+    baseUrl: `http://127.0.0.1:${runtimePort}`,
+    hostname: "127.0.0.1",
+    port: runtimePort,
+    config: barehands.config,
+    root: barehands.root,
+    handleRequest: barehands.handleRequest,
+    pushJarvisEvent: (type: string, payload?: Record<string, unknown>) => barehands.pushJarvisEvent(type, payload),
+    stop(): void {
+      server.close(() => {
+        console.info("[barehands] server stopped");
+      });
+    },
+  };
+}
+
 

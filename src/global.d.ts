@@ -44,6 +44,10 @@ declare global {
       getConfig: JarvisDesktopBridge["getConfig"];
       updateConfig: JarvisDesktopBridge["updateConfig"];
       ensureOllama: JarvisDesktopBridge["ensureOllama"];
+      ensureBarehands: JarvisDesktopBridge["ensureBarehands"];
+      getBarehandsStatus: JarvisDesktopBridge["getBarehandsStatus"];
+      stopBarehands: JarvisDesktopBridge["stopBarehands"];
+      barehandsPushEvent: JarvisDesktopBridge["barehandsPushEvent"];
     };
   }
 }

@@ -15,6 +15,7 @@ import {
   forwardJarvisChatStream,
   normalizeLoopbackHttpOrigin,
 } from "./local-chat-transport";
+import { startBarehandsService, type BarehandsServiceHandle } from "../backend/src/service";
 
 function loadEnvFile(): void {
   try {
@@ -206,6 +207,10 @@ let serviceOwnedByDesktop = false;
 let serviceStartupError: string | undefined;
 const activeChats = new ChatSessionRegistry();
 
+let barehandsService: BarehandsServiceHandle | undefined;
+let barehandsOwnedByDesktop = false;
+let barehandsStartupError: string | undefined;
+
 type RuntimeStatus = {
   serviceBaseUrl: string;
   health: unknown;
@@ -292,6 +297,61 @@ async function ensureLocalService(): Promise<void> {
   });
 
   await waitForHealth();
+}
+
+async function ensureBarehandsService(): Promise<void> {
+  if (barehandsService) return;
+
+  const appPath = app.getAppPath();
+  const candidates = [
+    join(appPath, "backend", "src", "barehands"),
+    resolve(appPath, "..", "jarvis-desktop_glas", "backend", "src", "barehands"),
+    resolve(appPath, "..", "backend", "src", "barehands"),
+  ];
+
+  let root: string | undefined;
+  for (const candidate of candidates) {
+    if (existsSync(join(candidate, "server.py")) || existsSync(join(candidate, "stage.html"))) {
+      root = candidate;
+      break;
+    }
+  }
+
+  if (!root) {
+    barehandsStartupError = "Barehands assets not found in project directory.";
+    console.error(`[barehands] ${barehandsStartupError}`);
+    return;
+  }
+
+  try {
+    barehandsService = startBarehandsService({
+      root,
+      port: 8794,
+      onCommand: (action, payload) => {
+        console.info(`[barehands] command: ${action}`, payload);
+      },
+    });
+    barehandsOwnedByDesktop = true;
+    console.info(`[barehands] up at ${barehandsService.baseUrl}`);
+  } catch (error) {
+    barehandsStartupError = error instanceof Error ? error.message : "Failed to start barehands service";
+    console.error(`[barehands] ${barehandsStartupError}`);
+  }
+}
+
+function getBarehandsStatus(): { running: boolean; baseUrl?: string; config?: { name: string; orbs: Array<{ title: string; kind: string }> }; startupError?: string } {
+  if (!barehandsService) {
+    return { running: false, startupError: barehandsStartupError };
+  }
+  return {
+    running: true,
+    baseUrl: barehandsService.baseUrl,
+    config: {
+      name: barehandsService.config.name,
+      orbs: barehandsService.config.orbs.map((o: { title: string; kind: string }) => ({ title: o.title, kind: o.kind })),
+    },
+    startupError: barehandsStartupError,
+  };
 }
 
 async function getRuntimeStatus(): Promise<RuntimeStatus> {
@@ -918,6 +978,12 @@ app.whenReady().then(async () => {
     serviceStartupError = error instanceof Error ? error.message : "Local service failed to start";
   }
 
+  try {
+    await ensureBarehandsService();
+  } catch {
+    // barehands is optional; continue without it
+  }
+
   ipcMain.handle("jarvis:get-runtime-status", getRuntimeStatus);
   ipcMain.handle("jarvis:get-model-readiness", getModelReadiness);
   ipcMain.handle("jarvis:get-pairing-code", getPairingCode);
@@ -981,6 +1047,27 @@ app.whenReady().then(async () => {
       return { started: false, message: `Ollama konnte nicht gestartet werden: ${err instanceof Error ? err.message : String(err)}` };
     }
   });
+  // Barehands Service Handler
+  ipcMain.handle("jarvis:ensure-barehands", async () => {
+    await ensureBarehandsService();
+    return getBarehandsStatus();
+  });
+  ipcMain.handle("jarvis:get-barehands-status", getBarehandsStatus);
+  ipcMain.handle("jarvis:stop-barehands", () => {
+    if (barehandsService) {
+      barehandsService.stop();
+      barehandsService = undefined;
+      barehandsOwnedByDesktop = false;
+      return { stopped: true };
+    }
+    return { stopped: false };
+  });
+  ipcMain.handle("jarvis:barehands-push-event", (_event, type: string, payload?: Record<string, unknown>) => {
+    if (barehandsService?.pushJarvisEvent) {
+      barehandsService.pushJarvisEvent(type, payload);
+    }
+    return { pushed: true };
+  });
   // xAI Voice-IPC-Handler
   ipcMain.handle("jarvis:transcribe-audio", transcribeAudio);
   ipcMain.handle("jarvis:synthesize-speech", synthesizeSpeech);
@@ -1037,8 +1124,16 @@ app.on("before-quit", () => {
   ipcMain.removeHandler("jarvis:search-web");
   ipcMain.removeHandler("jarvis:transcribe-audio");
   ipcMain.removeHandler("jarvis:synthesize-speech");
+  ipcMain.removeHandler("jarvis:ensure-barehands");
+  ipcMain.removeHandler("jarvis:get-barehands-status");
+  ipcMain.removeHandler("jarvis:stop-barehands");
   activeChats.abortAll();
   if (serviceOwnedByDesktop && serviceProcess && !serviceProcess.killed) {
     serviceProcess.kill();
+  }
+  if (barehandsOwnedByDesktop && barehandsService) {
+    barehandsService.stop();
+    barehandsService = undefined;
+    barehandsOwnedByDesktop = false;
   }
 });

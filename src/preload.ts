@@ -90,14 +90,17 @@ export type JarvisDesktopBridge = {
   onTerminalOutput(listener: (data: string) => void): () => void;
   onDictateShortcut(listener: () => void): () => void;
   writeClipboard(text: string): Promise<boolean>;
-  /** xAI STT: Audiodaten transkribieren */
   transcribeAudio(payload: { audioData: number[]; mimeType: string; language?: string }): Promise<{ text: string }>;
-  /** xAI TTS: Text in MP3-Audio umwandeln (als number[]-Array) */
   synthesizeSpeech(payload: { text: string; voice?: string; language?: string }): Promise<number[]>;
   getConfig(): Promise<any>;
   updateConfig(config: any): Promise<{ success: boolean; message: string }>;
   ensureOllama(): Promise<{ started: boolean; message: string }>;
+  ensureBarehands(): Promise<{ running: boolean; baseUrl?: string; config?: { name: string; orbs: Array<{ title: string; kind: string }> }; startupError?: string }>;
+  getBarehandsStatus(): Promise<{ running: boolean; baseUrl?: string; config?: { name: string; orbs: Array<{ title: string; kind: string }> }; startupError?: string }>;
+  stopBarehands(): Promise<{ stopped: boolean }>;
+  barehandsPushEvent(type: string, payload?: Record<string, unknown>): Promise<{ pushed: boolean }>;
 };
+
 
 const bridge: JarvisDesktopBridge = {
   getRuntimeStatus: (): Promise<DesktopRuntimeStatus> => ipcRenderer.invoke("jarvis:get-runtime-status"),
@@ -157,6 +160,14 @@ const bridge: JarvisDesktopBridge = {
   getConfig: (): Promise<any> => ipcRenderer.invoke("jarvis:get-config"),
   updateConfig: (config: any): Promise<{ success: boolean; message: string }> => ipcRenderer.invoke("jarvis:update-config", config),
   ensureOllama: (): Promise<{ started: boolean; message: string }> => ipcRenderer.invoke("jarvis:ensure-ollama"),
+  ensureBarehands: (): Promise<{ running: boolean; baseUrl?: string; config?: { name: string; orbs: Array<{ title: string; kind: string }> }; startupError?: string }> =>
+    ipcRenderer.invoke("jarvis:ensure-barehands"),
+  getBarehandsStatus: (): Promise<{ running: boolean; baseUrl?: string; config?: { name: string; orbs: Array<{ title: string; kind: string }> }; startupError?: string }> =>
+    ipcRenderer.invoke("jarvis:get-barehands-status"),
+  stopBarehands: (): Promise<{ stopped: boolean }> =>
+    ipcRenderer.invoke("jarvis:stop-barehands"),
+  barehandsPushEvent: (type: string, payload?: Record<string, unknown>): Promise<{ pushed: boolean }> =>
+    ipcRenderer.invoke("jarvis:barehands-push-event", type, payload),
 };
 
 contextBridge.exposeInMainWorld("jarvisDesktop", bridge);

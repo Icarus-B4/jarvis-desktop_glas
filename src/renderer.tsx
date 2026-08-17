@@ -483,6 +483,8 @@ const stageCodeViewEl = requiredElement<HTMLElement>(".stage-code-view");
 const stageCodeContentEl = requiredElement<HTMLElement>(".stage-code-content");
 
 const stageMorningBriefViewEl = optionalElement<HTMLElement>(".stage-morning-brief-view");
+const stageBarehandsViewEl = optionalElement<HTMLElement>(".stage-barehands-view");
+const stageBarehandsFrameEl = optionalElement<HTMLIFrameElement>("[data-barehands-frame]");
 const weather7DayGridEl = optionalElement<HTMLElement>("[data-weather-7day-grid]");
 const weatherTodayTempEl = optionalElement<HTMLElement>("[data-weather-today-temp]");
 const weatherTodayIconEl = optionalElement<HTMLElement>("[data-weather-today-icon]");
@@ -493,7 +495,7 @@ const newsFeedGridEl = optionalElement<HTMLElement>("[data-news-feed-grid]");
 
 let activeCameraStream: MediaStream | null = null;
 
-function setStageView(view: "action" | "camera" | "screenshot" | "code" | "morning-brief" | null, data?: any): void {
+function setStageView(view: "action" | "camera" | "screenshot" | "code" | "morning-brief" | "barehands" | null, data?: any): void {
   if (!view) {
     orbStageEl.dataset.stageMode = "hero";
     stageActionHudEl.hidden = true;
@@ -501,6 +503,7 @@ function setStageView(view: "action" | "camera" | "screenshot" | "code" | "morni
     stageScreenshotViewEl.hidden = true;
     stageCodeViewEl.hidden = true;
     if (stageMorningBriefViewEl) stageMorningBriefViewEl.hidden = true;
+    if (stageBarehandsViewEl) stageBarehandsViewEl.hidden = true;
     if (activeCameraStream) {
       activeCameraStream.getTracks().forEach((t) => t.stop());
       activeCameraStream = null;
@@ -515,9 +518,17 @@ function setStageView(view: "action" | "camera" | "screenshot" | "code" | "morni
   stageScreenshotViewEl.hidden = view !== "screenshot";
   stageCodeViewEl.hidden = view !== "code";
   if (stageMorningBriefViewEl) stageMorningBriefViewEl.hidden = view !== "morning-brief";
+  if (stageBarehandsViewEl) stageBarehandsViewEl.hidden = view !== "barehands";
 
   if (view === "morning-brief") {
     void loadMorningBriefingData();
+  }
+
+  if (view === "barehands" && stageBarehandsFrameEl) {
+    const barehandsUrl = "http://127.0.0.1:8794/stage.html";
+    if (stageBarehandsFrameEl.src !== barehandsUrl) {
+      stageBarehandsFrameEl.src = barehandsUrl;
+    }
   }
 
   if (view === "action" && data) {
@@ -715,6 +726,53 @@ document.querySelectorAll<HTMLButtonElement>("[data-toggle-morning-brief]").forE
 });
 document.querySelectorAll<HTMLButtonElement>("[data-refresh-morning-brief]").forEach((btn) => {
   btn.addEventListener("click", () => void loadMorningBriefingData());
+});
+
+// Bind events for Barehands Stage
+document.querySelectorAll<HTMLButtonElement>("[data-toggle-barehands]").forEach((btn) => {
+  btn.addEventListener("click", async () => {
+    try {
+      await window.jarvisDesktop.ensureBarehands();
+    } catch {
+      addEntry("warning", "Barehands service could not be started.");
+    }
+    setStageView("barehands");
+  });
+});
+
+function sendToBarehands(type: string, payload: Record<string, unknown> = {}): void {
+  const frame = document.querySelector<HTMLIFrameElement>("[data-barehands-frame]");
+  if (frame?.contentWindow) {
+    frame.contentWindow.postMessage({ source: "jarvis-barehands-bridge", type, payload }, "*");
+  }
+}
+
+function pushTranscriptToBarehands(text: string): void {
+  sendToBarehands("jarvis:transcript", { text });
+}
+
+window.addEventListener("message", async (event: MessageEvent) => {
+  const data = event.data;
+  if (!data || data.source !== "jarvis-barehands-bridge") return;
+
+  const type = String(data.type ?? "");
+  const payload = data.payload ?? {};
+
+  if (type === "barehands:chat") {
+    await window.jarvisDesktop.startChat({
+      requestId: `barehands-${Date.now()}`,
+      model: "local",
+      messages: [{ role: "user", content: String(payload.text ?? "") }],
+    });
+  } else if (type === "barehands:action") {
+    if (payload.intentId && (payload.decision === "approve" || payload.decision === "reject")) {
+      await window.jarvisDesktop.decideAction(String(payload.intentId), payload.decision);
+    }
+  } else if (type === "barehands:open-note") {
+    sendToBarehands("note-opened", { file: payload.file, content: payload.content });
+  } else {
+    await window.jarvisDesktop.barehandsPushEvent(type, payload);
+  }
 });
 
 // Grok Vision Bild-Analyse Handhabung für Hauptbühnen-Medien
