@@ -1,0 +1,216 @@
+# J.A.R.V.I.S. — Living Backend and Desktop Architecture Roadmap
+
+This document is the living architecture roadmap for the J.A.R.V.I.S. product. The original product requirements remain preserved at the end. Implementation status, boundaries, security principles, state contracts, and open decisions are maintained at the top as the system evolves.
+
+## Product boundary
+
+- `apps/jarvis` is the public static website plus the account/licence/download dashboard. Its landing page remains statically exportable and never depends on a process running on the visitor's computer.
+- `apps/jarvis/backend` is the local loopback-only TypeScript service boundary. It publishes deliberately minimized status/dashboard data plus the approved local chat stream (xAI Grok), STT (`POST /v1/voice/stt`), and TTS (`POST /v1/voice/tts`) routes. It does not expose filesystem, browser, shell, application-control, memory, or action routes.
+- `apps/jarvis-desktop` is the private Electron Control Room. It owns local-service startup/shutdown, renders the operator experience, and keeps its renderer sandboxed behind a narrow status/readiness/chat/voice preload bridge.
+- `packages/jarvis-shared` owns runtime-validated API types, the live-event seam, the orb state contract, and the canonical JARVIS design tokens used by web and desktop.
+
+The website dashboard and desktop Control Room are intentionally different products. Account purchases, licences, and downloads belong to the website. Personal device state, local activity, future approvals, and future local capabilities belong to the desktop.
+
+## Implementation status
+
+### Foundation 01 — implemented in this change
+
+- Electron + TypeScript desktop shell with a landing-page-faithful dark cyan HUD.
+- Meaningful orb state contract and visual mappings.
+- Real ready/disconnected mapping from the loopback health probe.
+- Explicitly labeled simulation-only previews for non-live orb states.
+- Text command draft input and timestamped activity feed that perform no execution.
+- Safe empty states for voice, model provider, memory, and actions.
+- Loopback TypeScript service with health and dashboard routes.
+- Typed live-event model with a deliberately unimplemented streaming endpoint.
+- Shared runtime contract validation for desktop, service, and web dashboard.
+- Static web-dashboard fallback when no API URL is configured.
+- Renderer isolation, origin allowlisting, restrictive CSP, and a pairing seam.
+
+Verification evidence and any limitations belong in the accompanying `apps/jarvis-desktop/ISA.md`.
+
+### Paired local session and real event transport 03 — implemented in this change
+
+- In-memory 6-digit OTP pairing code generator (`POST /v1/pairing/code`) and token exchanger (`POST /v1/pairing/exchange`).
+- Authenticated SSE EventStream route at `GET /v1/events` providing `service.connected` events, periodic `ping` heartbeats, and live orb state events.
+- Shared contract types (`JarvisPairingCodeRequest`, `JarvisPairingExchangeRequest`, `JarvisLiveEvent`) with Zod-free runtime validators.
+- Electron preload bridge extension (`getPairingCode`, `onLiveEvent`) forwarding live events to HUD renderer.
+
+### Voice engine evaluation 04 — implemented in this change
+
+- Privacy-first hard-mute architecture (`muted: true` default) preventing background audio capture before user authorization.
+- Structured voice status contract (`JarvisVoiceStatus`) for wakeword, speech-to-text, and text-to-speech engine readiness.
+- Backend voice routes (`GET /v1/voice/status`, `POST /v1/voice/mute`) and `JarvisVoiceAdapter` interface.
+- Electron preload bridge extensions (`getVoiceStatus`, `setVoiceMute`) for Control Room integration.
+
+### Persistent memory 05 — implemented in this change
+
+- Explicit memory item contract (`JarvisMemoryItem`) with categories (`operator_preference`, `structured_fact`, `semantic_document`), provenance tracking, and timestamps.
+- Backend memory routes (`GET /v1/memory`, `POST /v1/memory`, `DELETE /v1/memory/:id`, `DELETE /v1/memory`) with `JarvisMemoryAdapter` interface.
+- Configurable file storage path (`FileJarvisMemoryAdapter`) customizable via constructor parameter or `JARVIS_MEMORY_FILE_PATH`.
+- Electron preload bridge methods (`getMemoryItems`, `addMemoryItem`, `deleteMemoryItem`, `clearMemory`).
+
+### xAI Grok Chat + Voice Engine 07 — implemented in this change
+
+- Provider-neutral `JarvisModelAdapter` extended with `xai-adapter.ts` for streaming chat via `grok-3` model.
+- xAI selected over Ollama when `XAI_API_KEY` environment variable is set (zero-config fallback to Ollama).
+- Backend routes `POST /v1/voice/stt` (xAI Whisper → transcript) and `POST /v1/voice/tts` (text → MP3 via `grok-tts`, voice `zenith`).
+- Electron main process IPC handlers `jarvis:transcribe-audio` and `jarvis:synthesize-speech` calling xAI directly without routing through loopback service.
+- Preload bridge extended with `transcribeAudio()` and `synthesizeSpeech()` methods.
+- Renderer replaced Browser WebSpeech API with `MediaRecorder` + VAD (silence detection) + xAI Whisper STT pipeline.
+- `speakJarvisResponse()` fully implemented: Markdown cleanup → xAI TTS → Web Audio API playback → Orb `responding` state during playback.
+- `XAI_API_KEY` injected from host environment into child service process without writing to disk.
+
+### Action engine with approval 06 — implemented in this change
+
+- Explicit human-in-the-loop approval architecture (`JarvisActionIntent`, `JarvisActionProposeRequest`, `JarvisActionDecideRequest`).
+- Action status lifecycle (`proposed` -> `executing` -> `completed` / `failed` or `rejected`).
+- Backend action routes (`GET /v1/actions`, `POST /v1/actions/propose`, `POST /v1/actions/decide`) and `JarvisActionEngine` interface with bounded capability `scratchpad.write`.
+- Live event envelopes (`action.intent.proposed`, `action.intent.updated`) emitting realtime updates to connected clients.
+- Electron preload bridge methods (`getActions`, `proposeAction`, `decideAction`).
+
+## Orb state extensibility contract
+
+The orb is a composite semantic system indicator, not decoration. The public landing page's real `VoiceOrb3D` shader sphere and `OrbHudRings` geometry remain the large, primary identity without reflection; the distinct outer animation shell is subordinate and communicates state without replacing the original orb. State mappings drive the real shader orb as well as the supporting shell. A state may be shown as live only when its underlying subsystem emits verified status. Until then, the lower status controls/legend must say they are UI-only simulations.
+
+| State | Meaning | Visual language | Foundation source |
+|---|---|---|---|
+| `idle` | Core initialized, no active work | muted cyan, slow orbit | startup/preview |
+| `ready` | Local service is healthy | luminous cyan/blue, steady pulse | real health probe |
+| `listening` | Future voice intake is active | green/cyan receptive pulse | preview only |
+| `thinking` | Future model inference is active | violet/blue faster orbit | preview only |
+| `responding` | Future response output is active | bright cyan/green expansion | preview only |
+| `executing-approved` | Future action is running after explicit approval | amber segmented orbit | preview only |
+| `error` | Runtime fault needs attention | red high-contrast warning | preview/runtime error |
+| `disconnected` | Local service is unreachable | dim desaturated core | real health failure |
+
+The lower state controls are the UI-only legend for this mapping: selecting one updates both the outer status shell and the central shader energy without invoking a camera, microphone, model, or action capability. Future event streaming must use the shared typed event envelope and preserve the distinction between observed live state and operator-selected visual preview.
+
+## Security principles
+
+1. **Local is a network location, not an authentication policy.** Bind only to explicit loopback addresses and independently reject non-allowlisted browser origins.
+2. **Pair before personalizing.** The current unauthenticated surface is read-only and non-sensitive. Any future personal, account, memory, or action route requires a short-lived pairing code exchanged for a revocable, scoped token.
+3. **Authority stays out of the renderer.** Electron uses sandboxing, context isolation, disabled Node integration, a restrictive CSP, and a minimal preload API.
+4. **Minimize before publishing.** Dashboard data must never leak machine paths, local activity history, browser state, environment variables, or capability internals.
+5. **No ambient execution.** Future actions require explicit capability scopes, a human-readable plan, per-action approval, bounded arguments, audit events, and cancellation.
+6. **State claims need evidence.** The orb claims thinking/responding only during a real local chat lifecycle; listening and executing still require future subsystems.
+7. **The public site remains independent.** An unset API URL is a supported production state, not an error.
+8. **No silent acquisition.** Readiness may explain `ollama pull qwen3:8b`, but neither the service nor desktop runs installation or download commands.
+9. **Text is not authority.** Ollama receives conversation text without tool declarations; model output is displayed, never executed.
+
+## Pairing and authentication seam
+
+Foundation 01 intentionally has no authentication because its exposed payload is a non-sensitive local preview. Before the first personalized endpoint is added:
+
+1. Desktop displays a short-lived pairing code generated by the local service.
+2. A trusted client exchanges the code over loopback for a scoped token.
+3. Tokens are stored using the operating system credential vault, never localStorage or source files.
+4. Every token names allowed routes/capabilities, expires, rotates, and can be revoked.
+5. Browser-origin checks remain active even after token authentication.
+
+Open decision: choose the exact token format and OS credential-vault adapter only when the first authenticated feature is selected.
+
+## Next build phases
+
+### Phase 02 — paired local session and real event transport
+
+- Implement pairing, scoped tokens, revocation, and audit-safe session metadata.
+- Replace the `/v1/events` stub with authenticated WebSocket or Server-Sent Events.
+- Add reconnect, monotonic sequence handling, bounded replay, and stale-state recovery.
+- Keep the dashboard payload minimized and separate from private Control Room events.
+
+### Phase 03 — model evaluation and provider-neutral conversation seam
+
+- Evolve the initial Ollama adapter into a provider-neutral contract without changing the renderer authority boundary.
+- Benchmark `qwen3:8b` against later candidates using explicit latency, privacy, offline, quality, context-window, hardware-load, licensing, and cost criteria.
+- Keep `qwen3:8b` as the recommended daily local default until reproducible operator-task evidence supports a change.
+- Do not add cloud fallback or GLM-5 without a separate user decision and privacy-tier design.
+
+### Phase 04 — voice engine evaluation
+
+- Evaluate wake-word, speech-to-text, and text-to-speech independently.
+- Decision criteria: local/offline ability, latency, language quality, microphone privacy, hardware load, licensing, and accessibility.
+- Add microphone permission, visible listening state, hard mute, and retention controls before always-listening behavior.
+- The foundation must not request microphone access before this phase.
+
+### Phase 05 — persistent memory
+
+- Define what is remembered, why, retention, provenance, correction, export, and deletion before choosing storage.
+- Separate operator preferences and structured facts from semantic document retrieval.
+- Require inspection and deletion controls before background memory capture.
+
+### Phase 06 — action engine with approval
+
+- Begin with one bounded, reversible capability rather than general filesystem or shell access.
+- Require typed arguments, previewable intent, explicit approval, least privilege, timeouts, cancellation, and audit evidence.
+- Never interpret the `executing-approved` orb state as permission; it reports an already-approved action lifecycle.
+
+## Eventual commercial product lifecycle
+
+The current build remains a local-first personal development preview. The landing page already establishes commercial intent through early access, the account/purchases dashboard, and the downloadable desktop product. Future commercial work must preserve these explicit seams without coupling the public site to a running desktop service:
+
+1. **Public landing and early access** — explain the product, requirements, privacy posture, editions, and supported platforms without local runtime dependencies.
+2. **Account and authentication** — introduce a cloud account/session boundary for customer identity; do not reuse the local Control Room token as a web login.
+3. **Purchase and licence entitlement** — translate completed purchases into explicit product/version/platform entitlements with auditable refunds and revocation semantics.
+4. **Secure download and onboarding** — issue time-bounded authenticated downloads for signed installers, then guide local Ollama/model readiness without silently acquiring large models.
+5. **Desktop pairing and activation** — pair the installed desktop to an entitled account using short-lived codes and OS-vault-backed revocable credentials; keep personal conversations local.
+6. **Product updates** — distribute signed, integrity-verified desktop/service updates with release channels, rollback strategy, and user-visible change notes.
+
+Payments, account authentication, cloud customer records, licence enforcement, telemetry, analytics, installers, activation, and update delivery are architecture seams only in this milestone. None are implemented by the local text-chat preview.
+
+## Open decisions
+
+- WebSocket versus Server-Sent Events: decide from bidirectionality, reconnect, backpressure, and packaging evidence in Phase 02.
+- Local versus cloud models: decide from task benchmarks and privacy tiers in Phase 03.
+- Model selection after `qwen3:8b`: require a reproducible benchmark corpus, comparable quantization/hardware settings, response-quality grading, latency-to-first-token, tokens/second, memory use, offline availability, licence suitability, and total cost.
+- Wake-word, STT, and TTS providers: decide independently from measured latency/privacy/quality in Phase 04.
+- Vector, relational, or graph persistence: decide only after the memory data contract exists in Phase 05.
+- Action framework and automation adapters: decide only after the approval/capability security model exists in Phase 06.
+- Installer, auto-update, signing, and packaging: decide after the development preview and service lifecycle are stable.
+- Commercial account, payment processor, entitlement schema, activation grace/offline policy, privacy-respecting product analytics, and update-channel infrastructure: decide in a dedicated commercial architecture milestone, not in local chat.
+
+---
+
+# Original product requirements — preserved
+
+Du bist ein Senior AI Systems Architect und Lead Software Engineer. Ich möchte ein lokales, hochpersonalisiertes AI-Assistenten-System namens "J.A.R.V.I.S." bauen, das wie ein echtes KI-Betriebssystem funktioniert.
+
+Entwirf für mich eine vollständige, modulare Software-Architektur und erstelle den Grundcode/Skeleton für diese Anwendung.
+
+### System-Anforderungen & Kernkomponenten:
+
+1. **Voice Engine (Always-Listening & Speech-to-Text / Text-to-Speech):**
+   - Lokale Wake-Word Detection (z. B. via Porcupine / OpenWakeWord).
+   - Fast Speech-to-Text (z. B. Whisper.cpp oder Faster-Whisper).
+   - Ultra-low latency Text-to-Speech (z. B. ElevenLabs API oder lokale Kokoro TTS / Piper TTS).
+
+2. **Core Brain & Orchestrator:**
+   - Hybrid-Modell-Anbindung (Lokale LLMs via Ollama/vLLM für schnelle Tasks, Cloud LLMs wie Claude 3.5/GPT-4o für komplexe Logik).
+   - System-Prompts für Persönlichkeit, Prägnanz und proaktive Unterstützung.
+
+3. **Persistent Memory System (Long-Term Memory):**
+   - Vektordatenbank (z. B. Qdrant, ChromaDB oder LanceDB) für kontextuelle Erinnerungen & Dokumente (RAG).
+   - Relationale / Graph-Datenbank (z. B. SQLite / Neo4j) für Benutzerpräferenzen, Beziehungen und Fakten.
+
+4. **Action Engine & Tool Calling / Agents:**
+   - Multi-Agenten-Architektur (z. B. via AutoGen, CrewAI oder LangGraph).
+   - Module für:
+     - Dateisystem-Operationen (Suchen, Umbenennen, Auslesen, Verwalten).
+     - Browser-Automatisierung (z. B. via Playwright / Browser-Use).
+     - System-/App-Steuerung (Lokale Skripte ausführen, Apps öffnen).
+
+5. **Live Interface & HUD Integration:**
+   - Websocket-Server (Python FastAPI oder Node.js), der Echtzeit-Statusdaten (Voice Status, Memory Access, Tool Execution, CPU/GPU Load) an ein Frontend pusht.
+
+### Bitte liefere mir Folgendes:
+
+1. **System-Architekturdiagramm** (als Mermaid.js Code).
+2. **Projekt-Verzeichnisstruktur** (ordnerbasierter Aufbau).
+3. **Ausführbarer Python-Grundcode (Core Orchestrator):**
+   - FastAPI Websocket Server.
+   - Ein einfaches Agenten-Framework mit Function Calling (Tools).
+   - Ein Schnittstellen-Modul für Memory RAG.
+4. **Schritt-für-Schritt-Anleitung**, wie ich dieses System lokal auf meinem Rechner aufsetzen und starten kann.
+
+Architecture evolution note: Foundation 01 supersedes the original Python/FastAPI implementation preference with the user's current explicit TypeScript/Bun/Electron constraint. The product capabilities remain roadmap requirements; they are not implemented or simulated in the first preview.
+

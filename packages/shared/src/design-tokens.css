@@ -1,0 +1,34 @@
+:root {
+  --cyan: #54e6ff;
+  --cyan-bright: #96edff;
+  --cyan-soft: #86f5ff;
+  --cyan-dim: rgba(84, 230, 255, 0.15);
+  --cyan-glow: rgba(84, 230, 255, 0.4);
+  --blue: #38bdf8;
+  --blue-glow: rgba(56, 189, 248, 0.35);
+  --green: #10b981;
+  --green-glow: rgba(16, 185, 129, 0.35);
+  --amber: #ffb74d;
+  --amber-glow: rgba(255, 183, 77, 0.4);
+  --red: #ff657a;
+  --red-glow: rgba(255, 101, 122, 0.4);
+  
+  --void: #02050b;
+  --void-soft: #060d19;
+  --bg-dark: #03060d;
+  --bg-glass: rgba(3, 10, 20, 0.92);
+  --border-glass: rgba(84, 230, 255, 0.18);
+  
+  --text: #f8fafc;
+  --text-dim: #cbd5e1;
+  --muted: #94a3b8;
+  --muted-dark: #64748b;
+  
+  --line: rgba(84, 230, 255, 0.16);
+  --line-bright: rgba(84, 230, 255, 0.38);
+  
+  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "Fira Code", "JetBrains Mono", Consolas, monospace;
+  --font-family-sans: var(--font-sans);
+  --font-family-mono: var(--font-mono);
+}

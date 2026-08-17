@@ -1,0 +1,26 @@
+[
+  {
+    "id": "kb-esp32-trgb",
+    "title": "ESP32 T-RGB (LilyGo) Setup & Pins",
+    "category": "architecture",
+    "tags": [
+      "esp32",
+      "lilygo",
+      "hardware"
+    ],
+    "content": "LilyGo T-RGB Display Setup:\n- Bildschirm: ST7789 SPI Display 480x480\n- LVGL 8.x Framework in PlatformIO / VS Code nutzen.\n- Debugging via Serial.printf() auf 115200 Baud.",
+    "updatedAt": "2026-08-17T09:01:08.518Z"
+  },
+  {
+    "id": "kb-css-design-tokens",
+    "title": "Vanilla CSS & Rich Aesthetics Richtlinien",
+    "category": "code",
+    "tags": [
+      "css",
+      "webdesign",
+      "aesthetics"
+    ],
+    "content": "Design-Regeln:\n- Keine generischen Farben (plain red/blue).\n- Curated HSL Palette mit Glowing Neon Cyan (#54e6ff) & Dark Void Theme.\n- Glassmorphism, Micro-Animations & Inter Fonts.",
+    "updatedAt": "2026-08-17T09:01:08.518Z"
+  }
+]

@@ -1,0 +1,39 @@
+- Wenn wir schon in den Settings sind. Ich möchte gerne das der User einstellen kann, 
+  App Hintergrund Dark Transparenz mit nur 97% deck kraft.
+- Jarvis Commando liste erweitern: siehe file auf dem Desktop!! JARVIS_Commandes.txt
+
+Eines der letzteren Tasks muss genau Recherchiert werden!!:
+- Eines der Features dass noch zu implementieren ist, 
+siehe: https://github.com/vierisid/jarvis.git
+  - Abwägen ob es möglich ist, repo in mein Projekt voll funktionsfähig zu implementieren!!
+  - Oder als Plugin das in der App aktiviert werden kann / damit der cursor mit jarvis connectet ist auch ausserhalb der Desktop App!!! 
+
+- Nach einer erfolgreicher Implementierung auch mit repo README.md anpassen!
+
+
+- README.md bearbeiten und anpassen mit meiner App funktionen. 
+*#DOCS / Detailed Documentation mit Marmeid/Diagrammen etc. 
+was nötig ist um es verständlich zu machen was das Projekt kann.
+- Auf /jarvis/docs oder in app evtl. beides für Public Release+ Reichweite?
+https://github.com/nousresearch/hermes-agent / https://github.com/Icarus-B4/harness-hj 
+- Diese 2 Readme.md zusammenfügen und mit meiner repo anpassen/angleichen
+- Tutorial#* wie man die app nutzt etc. etc. etc. 
+
+
+Memory/Note
+
+
+not allowed by ACL-Errors: nach langer zeit behoben:
+--------------------------------
+"Root Cause (vollständig)
+Die App schlägt bei jedem IPC-Command im Release-Build mit Command <name> not allowed by ACL fehl. Die Ursache besteht aus zwei Teilen:
+
+1. Fehlender remote-Scope in der Capability
+Die Webview startet auf der Splash-Seite (tauri://localhost), wird dann in 
+lib.rs:692
+ via window.navigate() auf den lokalen Next.js-Standalone-Server (http://127.0.0.1:<port>) umgeleitet. Tauri v2 stuft diese URL als Remote-Origin ein. Ohne expliziten remote.urls-Block in der Capability gilt die Permission-Liste nur für tauri://localhost (lokale Assets), nicht für http://127.0.0.1:*.
+
+Zusätzlich mussten die URL-Patterns den Pfad-Wildcard /* enthalten, da der URLPattern-Standard bei http://127.0.0.1:* nur exakt / matcht — Next.js-Routen wie /settings, /dashboard etc. werden ohne /* nicht erfasst.
+
+2. Fehlende withGlobalTauri-Flag
+Ohne "withGlobalTauri": true in tauri.conf.json injiziert Tauri das window.__TAURI_INTERNALS__-Objekt nicht in Remote-Origins. Die @tauri-apps/api/core-Bibliothek greift auf dieses Objekt zu — fehlt es, crasht invoke() mit TypeError: Cannot read properties of undefined (reading 'invoke')."

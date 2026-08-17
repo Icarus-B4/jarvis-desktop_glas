@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "types": ["bun", "node", "electron", "react", "react-dom"]
+  },
+  "include": ["src/**/*", "packages/shared/src/**/*", "scripts/build.ts", "tests/**/*"],
+  "exclude": ["scripts/test-scroll.ts"]
+}

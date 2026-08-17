@@ -1,0 +1,75 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Local tooling / scratch work
+.agent/
+.playwright-mcp/
+scratch/
+
+# Environment / secrets — NEVER commit real .env files
+.env
+.env.*
+!.env.example
+apps/*/.env
+apps/*/.env.*
+!apps/*/.env.example
+
+# Generated screenshots and media artifacts
+screenshot*.png
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.gif
+*.mov
+*.avi
+*.mp3
+*.wav
+*.zip
+*.tar
+*.gz
+*.bz2
+*.7z
+*.rar
+*.pdf
+
+# Cache / build metadata
+.parcel-cache/
+.vite/
+coverage/
+*.tsbuildinfo
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.next/
+apps/jarvis/.next/
+apps/jarvis-desktop/.next/
+apps/jarvis-desktop/releases/
+apps/jarvis-desktop/release/win-unpacked/
+apps/jarvis/.next-dev/*
+apps/jarvis/out/*
+apps/lebenslauf/.next-dev/*
+apps/lebenslauf/out/*
+apps/jarvis-desktop/release/*.exe
+apps/jarvis-desktop/release/*.dmg
+apps/jarvis-desktop/release/*.AppImage
+.env

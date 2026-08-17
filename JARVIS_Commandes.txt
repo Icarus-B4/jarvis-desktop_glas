@@ -1,0 +1,118 @@
+
+?????????????????????????????????????????????????????????
+  LOKALE BEFEHLE  (sofort, ohne Internet)
+?????????????????????????????????????????????????????????
+
+[ Uhrzeit & Datum ]
+  Wie spät ist es?                     ? Aktuelle Uhrzeit
+  Welcher Tag ist heute? / Welches Datum?  ? Vollständiges Datum
+  Welcher Monat? / Welches Jahr?       ? Monat / Jahr
+  Wie alt bin ich?                     ? Alter des Benutzers
+
+[ PC-System ]
+  Batterie / Ladezustand               ? % Akku + Status
+  CPU / Prozessorauslastung            ? % CPU-Auslastung
+  RAM / Arbeitsspeicher                ? Genutzte GB / gesamt
+  Seit wann ist der PC an? / Uptime    ? Einschaltdauer des PCs
+  Lautstärke hoch / Ton lauter         ? +5 Stufen Systemlautstärke
+  Lautstärke runter                    ? -5 Stufen
+  Ton aus / Stumm                      ? Mute
+  Screenshot / Bildschirmaufnahme      ? Speichert auf dem Desktop
+  Schalte den PC aus / Herunterfahren  ? Ausschalten in 5 Sekunden
+
+[ Musik — Spotify ]
+  Spiele Musik                         ? Startet deine Spotify-Playlist
+  Spiele Musik auf YouTube             ? Öffnet deine YouTube-URL
+  Öffne Spotify / Starte Spotify       ? Öffnet die App
+  Pause / Stoppe die Musik             ? Pause
+  Musik fortsetzen / Wiedergabe        ? Play
+  Nächster Song / Weiter               ? Nächster Titel
+  Vorheriger Song                      ? Vorheriger Titel
+  Lautstärke hoch / Lauter             ? Spotify-Lautstärke +4
+  Ton runter / Leiser                  ? Spotify-Lautstärke -4
+  Spiele [Künstler] / Spiele [Titel]   ? Suche auf Spotify
+  Starte [Titel] auf YouTube           ? Sucht und öffnet im Vollbild
+
+[ Ordner ]
+  Öffne meinen Desktop / meine Dokumente / meine Downloads
+  Öffne meine Bilder / meine Videos / meine Musik
+  Ordne meine Ordner / Fenster-Mosaik  ? Kachelansicht der Fenster
+
+[ Standard-Apps ]
+  Öffne / Starte den Taschenrechner
+  Öffne / Starte den Editor / Notepad
+  Öffne / Starte Paint
+  Öffne / Starte den Task-Manager
+  Öffne / Starte Brave Browser / den Explorer
+
+[ Gaming-Apps & Browser ]
+  Öffne / Starte Steam / Origin / EA / EA App
+  Öffne / Starte Firefox / Edge / Microsoft Edge
+  Öffne / Starte Opera / Opera GX
+  Schließe / Beende [dieselben Apps]   ? Sauberes Beenden
+
+[ Arbeitsmodus ]
+  Jarvis, an die Arbeit! / Wir arbeiten / Arbeitsmodus
+  ? Startet Antigravity IDE + Proton mail + Brave Browser in Anordnung
+    + Spotify Web automatisch im Hintergrund
+
+[ Mathematische Berechnungen ]
+  Berechne 12 mal 8 / Was ergibt 150 geteilt durch 3
+  Quadratwurzel von 144 / 5 im Quadrat / 7 hoch 3
+
+[ Umrechnungen ]
+  100 km in Meilen / 50 Meilen in km
+  37 Grad Celsius in Fahrenheit (und umgekehrt)
+  100 Euro in Dollar (und umgekehrt)
+
+[ Übersetzungen (gebräuchliche Wörter) ]
+  Wie sagt man Hallo auf Englisch / Spanisch / Deutsch?
+  Übersetze Danke ins Spanische
+
+?????????????????????????????????????????????????????????
+  KI-BEFEHLE  (Gemini ? Grok (xAi) ? Groq ? SerpAPI ? Ollama) / (User API KEY in Settings / Eintragen "moment fehlend") -erledigt
+?????????????????????????????????????????????????????????
+
+[ Wetter ]
+  Wie ist das Wetter? / Vorhersage / Wird es regnen?
+  Außentemperatur (Angezeigt auf der Hauptbühne)
+
+[ Sport ]
+  Ergebnisse Ligue 1 / Premier League / La Liga / Bundesliga
+  Ergebnisse Serie A / Champions League / [Team]
+  Tabelle der Ligue 1...
+  Live-Ergebnisse   ? Gemini + Google Search
+
+[ Google Workspace ]
+  Erstelle ein Google Doc [Titel]
+  Erstelle ein Google Sheet [Titel]
+  Lies meine E-Mails / Zeige meinen Kalender
+  Gibt es heute Geburtstage?
+
+[ Vision — Bildschirm ]
+  Schau auf meinen Bildschirm / Analysiere meinen Bildschirm
+  Klicke auf [Element]   ? Automatischer Klick per Vision
+  Schreibe [Text] in [Feld]  ? Automatisches Tippen
+
+[ Vision — Kamera ] zum teil erledigt! untersuchen!
+  Starte die Kamera / Öffne die Kamera
+  Schau mich an / Analysiere mich / Mein Outfit
+  Wie bin ich angezogen? / Was ist das?
+  Identifiziere dieses Objekt / Was ist das?
+
+[ Personalisierter Speicher ]
+  Merke dir, dass [Info] / Denk daran, dass [Info]
+  Vergiss [Info]
+  Was weißt du über mich? / Liste meinen Speicher auf
+
+[ Iron-Man-Modus ]
+  Aktiviere den Iron-Man-Modus   ? KI immer im Zuhörmodus
+  Deaktiviere den Iron-Man-Modus ? Zurück in den Standby
+
+[ Konversation & Allgemeine Intelligenz ]
+  Jede Frage  ? Gemini + Google Search in Echtzeit
+  Automatischer Fallback: Grok (xAI) ? Groq (Llama) ? SerpAPI ? lokales Ollama
+
+?????????????????????????????????????????????????????????
+  webstark.org/jarvis/ ? Unterstütze das Projekt auf Github
+?????????????????????????????????????????????????????????

@@ -1,0 +1,66 @@
+Du bist ein erstklassiger UI/UX-Designer und Frontend-Entwickler. Erstelle eine moderne, futuristische Landingpage im Sci-Fi- / Cyberpunk-Minimalismus-Stil, inspiriert von "Iron Man J.A.R.V.I.S." und High-Tech-Dashboards.
+
+### 1. Design-Sprache & Aesthetics
+- **Farbschema:** Deep Space Black / Dark Navy Background (#030712 oder #0B0F19), Cyan/Neon-Blau (#00F0FF, #0EA5E9), Muted Slate/Gray für Fließtext.
+- **Typografie:** Technische Sans-Serif-Schriftart (z. B. Inter, Space Grotesk oder JetBrains Mono für HUD-Elemente).
+- **Visuelle Effekte:** Glassmorphism (Blur-Effekte, semi-transparente Dark Cards), subtile Grid-Overlays im Hintergrund, Glowing Neon-Gradients, leuchtende Kugel/Particle-Sphere als Hero-Element (WebGL / Canvas / Three.js Optik), Cyber-HUD Statusanzeigen ("CORE LOAD", "SYNC INTEGRITY", "LATENCY", "SYSTEM STATUS: ACTIVE").
+
+### 2. Struktur & Sektionen (von oben nach unten)
+
+1. **Header & Hero Section:**
+   - **HUD-Statusleiste oben:** Kleine Systemmetriken (System-Auslastung, Latenz, Status "ACTIVE").
+   - **Hero Visual:** Interaktive oder animierte 3D-Leuchtkugel (AI Sphere/HUD) im Zentrum.
+   - **Hero Text:** Haupt-Headline: "Build Your Own J.A.R.V.I.S. AI Assistant Framework".
+   - **Subheadline:** "I built J.A.R.V.I.S. as a personal AI assistant project — and the framework, UI templates, and guidance to help you build your own."
+   - **CTAs:** Primary Button ("JOIN EARLY ACCESS", cyan glow) + Secondary Button ("WATCH DEMO").
+
+2. **Metrics / Social Proof Grid:**
+   - 4-Spalten-Grid mit HUD-Styling:
+     * 600+ Interested builders following development
+     * 20,000+ Community members across the network
+     * 3,200+ Development hours poured into the system
+     * 1,000+ AI experiments run during prototyping
+
+3. **System Overview ("This is what I built"):**
+   - 2-Spalten-Layout: Links Text-Storytelling, rechts eine schicke "Code Console / Memory Core" UI-Mockup Card im Dark Mode mit leuchtenden Code-Snippets und JSON-Strukturen.
+
+4. **Capabilities Grid ("Ten capabilities you'll learn to build"):**
+   - 10 Cards in einem sauberen Grid (Dark Glassmorphism, feine Borders, Cyber-Nummerierung `01`, `02` etc.):
+     1. Voice Interaction (Wake-word, conversational)
+     2. Long-Term Memory (Personalization, context persistence)
+     3. File Management (RAG on documents, file operations)
+     4. Browser Automation (Web navigation, data gathering)
+     5. Application Control (App orchestration)
+     6. AI Agents (Sub-agent collaboration for hard tasks)
+     7. Workflow Automation (Single-command routines)
+     8. Personal Knowledge Base (Second brain integration)
+     9. Real-Time Diagnostics (Live performance metrics)
+     10. Neural Interface (Living holographic UI reactiveness)
+
+5. **Comparison Section ("Why J.A.R.V.I.S. is different"):**
+   - Gegenüberstellung im Tabellen- oder Split-Card-Format: "TRADITIONAL AI" vs. "BUILT DIFFERENT: J.A.R.V.I.S.".
+   - Vergleichspunkte: Continuous Listening vs. Prompt-based, Persistent Memory vs. Session-based, Action-taking vs. Text-only answers, Local Control vs. Cloud-locked.
+
+6. **Interactive Demo Grid ("See my J.A.R.V.I.S. in action"):**
+   - 6 Video/Demo-Card-Slots mit Play-Buttons und der leuchtenden KI-Kugel als Platzhalter (Voice Commands, Memory Recall, App Launching, File Operations, Workflow Automation, Neural Interface Demo).
+
+7. **Early Access Lead-Capture Form:**
+   - Formular-Card im HUD-Look:
+     * Inputs: First Name, Email Address.
+     * Button: "RESERVE MY SPOT".
+     * Live-Zähler / Micro-Copy: "Join 600+ builders already interested".
+
+8. **Founder / Builder Story ("The Builder"):**
+   - Portrait des Entwicklers im Dark Lab/Monitor-Look.
+   - Personal Quote & Vision von Sam Manina ("...building in the open").
+
+9. **FAQ Accordion:**
+   - Aufklappbare Fragen (z. B. "What is J.A.R.V.I.S.?", "Am I buying a finished AI assistant?", "Do I need coding experience?").
+
+10. **Footer CTA & Navigation:**
+    - Erneuter Call-to-Action ("The Future of Personal AI Starts Here"), Social Links, Impressum und Footer-Navigation.
+
+### 3. Technische Anforderungen für die Umsetzung
+- Nutze React / Next.js mit Tailwind CSS und Lucide Icons.
+- Setze Framer Motion für flüssige Micro-Interactions, Scroll-Animationen und HUD-Glow-Effekte ein.
+- Stelle sicher, dass die Seite vollkommen responsive (Mobile First bis Ultra-Wide Desktop) aufgebaut ist.
