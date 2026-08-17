@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { join, resolve } from "node:path";
-import { app, BrowserWindow, clipboard, desktopCapturer, globalShortcut, ipcMain, Menu, nativeImage, session, Tray } from "electron";
+import { app, BrowserWindow, clipboard, desktopCapturer, dialog, globalShortcut, ipcMain, Menu, nativeImage, session, Tray } from "electron";
 import {
   isJarvisApiError,
   isJarvisChatRequest,
@@ -114,8 +114,21 @@ function saveDesktopConfig(newConfig: Partial<JarvisDesktopConfig>): JarvisDeskt
 let appTray: Tray | undefined;
 let isAppQuitting = false;
 
+function getTrayIconPath(): string {
+  return join(app.getPath("userData"), "jarvis-tray-icon.png");
+}
+
+function ensureTrayIconFile(): string {
+  const iconPath = getTrayIconPath();
+  if (!existsSync(iconPath)) {
+    const pngDataUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAqdJREFUeNqMV81y00AQnZ0drCSOwxAOhBscOCEH4MCFA4eE3Blyi8M5wBnyBHAZTsAZOAEfIPgAHDhw4gRxCE5wBv6g5d2V16t1WbIsWyW1qpmdnd2Z3fl7u1o2mzW2rZTSXn321+M4to/H41o/12v6Hdu23wRBAF5/eX5+Vvf391u957K+C0fX9Qk8/67rfl4fV6vVL9d150VRfNne3n4SBEFxfn7+Vggxm81mz+/5fH5BvtPpdF7GcbwAzz+TydQB3/1hGF6EofjxeDzL8xz2r/h+38g8QggnURRBZ7wH/z4+Pn7s+/5V0zS/0+n0h0yvA+Kz3+X1ev3X8zw4H/i/1/H/B+6fgN9Q+Hq9/pFlWZfn+Xmapt9VVVWBn0jQp7C1tbX1c2Nj402SJEv+7h31562trT8zJID7N9T/J2R/sryzs7MH9wvhf5t+wDvgFvB/wA3gN/Q/g9vALeAeeL8K8n/0v4T+B/o89H84HA45D+4/wz/eA7/2ff/F1tbWZ1EUfXdd94fnv/vB/R78z1dZlt0VRfHN932470m1Cq+vr58Ph8N319fXb87Ozj7s7e19/F/lC71/Wffz+XxZluXX0NDfA/tB+F+xWq1+d7vdq6Ojo+XJycnx7e3tr1+T0t9j8l+D62W73T7p9XpnXdd9Xl1dfToYDF7Kfgj7f7xev1ar1edxHMOh/6/sA3qf4/G4KsvyeLPZ/AaO/fH19fUznv0E4H+lGz633W7f39zc/MqyDE7+mO9y/gfgT+i8C7+V77rdbvflcDj84Pf+i+8v+8/X33t63mNlWb5aLBbPh8MhHP1n3//d2Wb8B/gI+Ah4uP9N/gC1014H4FvAC+Ap5H0A/v64t/B7BfwO2Aew+zvgE+A94BbwHfgV8BnwOf0vYAD0QGv9W7+zTwAAAABJRU5ErkJggg==";
+    const buffer = Buffer.from(pngDataUrl.replace(/^data:image\/png;base64,/, ""), "base64");
+    writeFileSync(iconPath, buffer);
+  }
+  return iconPath;
+}
+
 function getAppIcon(): Electron.NativeImage {
-  // High-Res 32x32 PNG Icon (Cyan Orb auf dunklem Grund) als Base64 Data-URL für Windows System-Tray
   const pngDataUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAqdJREFUeNqMV81y00AQnZ0drCSOwxAOhBscOCEH4MCFA4eE3Blyi8M5wBnyBHAZTsAZOAEfIPgAHDhw4gRxCE5wBv6g5d2V16t1WbIsWyW1qpmdnd2Z3fl7u1o2mzW2rZTSXn321+M4to/H41o/12v6Hdu23wRBAF5/eX5+Vvf391u957K+C0fX9Qk8/67rfl4fV6vVL9d150VRfNne3n4SBEFxfn7+Vggxm81mz+/5fH5BvtPpdF7GcbwAzz+TydQB3/1hGF6EofjxeDzL8xz2r/h+38g8QggnURRBZ7wH/z4+Pn7s+/5V0zS/0+n0h0yvA+Kz3+X1ev3X8zw4H/i/1/H/B+6fgN9Q+Hq9/pFlWZfn+Xmapt9VVVWBn0jQp7C1tbX1c2Nj402SJEv+7h31562trT8zJID7N9T/J2R/sryzs7MH9wvhf5t+wDvgFvB/wA3gN/Q/g9vALeAeeL8K8n/0v4T+B/o89H84HA45D+4/wz/eA7/2ff/F1tbWZ1EUfXdd94fnv/vB/R78z1dZlt0VRfHN932470m1Cq+vr58Ph8N319fXb87Ozj7s7e19/F/lC71/Wffz+XxZluXX0NDfA/tB+F+xWq1+d7vdq6Ojo+XJycnx7e3tr1+T0t9j8l+D62W73T7p9XpnXdd9Xl1dfToYDF7Kfgj7f7xev1ar1edxHMOh/6/sA3qf4/G4KsvyeLPZ/AaO/fH19fUznv0E4H+lGz633W7f39zc/MqyDE7+mO9y/gfgT+i8C7+V77rdbvflcDj84Pf+i+8v+8/X33t63mNlWb5aLBbPh8MhHP1n3//d2Wb8B/gI+Ah4uP9N/gC1014H4FvAC+Ap5H0A/v64t/B7BfwO2Aew+zvgE+A94BbwHfgV8BnwOf0vYAD0QGv9W7+zTwAAAABJRU5ErkJggg==";
   return nativeImage.createFromDataURL(pngDataUrl);
 }
@@ -123,10 +136,31 @@ function getAppIcon(): Electron.NativeImage {
 function createSystemTray(win: BrowserWindow): void {
   if (appTray) return;
   try {
-    const icon = getAppIcon();
-    win.setIcon(icon);
+    let trayIconSource: Electron.NativeImage | undefined;
+    let trayIconPath: string | undefined;
 
-    appTray = new Tray(icon);
+    try {
+      trayIconPath = ensureTrayIconFile();
+      if (existsSync(trayIconPath)) {
+        trayIconSource = nativeImage.createFromPath(trayIconPath);
+      }
+    } catch {
+      trayIconSource = undefined;
+    }
+
+    if (!trayIconSource || trayIconSource.isEmpty()) {
+      trayIconSource = getAppIcon();
+      trayIconPath = undefined;
+    }
+
+    win.setIcon(trayIconSource);
+
+    if (trayIconPath) {
+      appTray = new Tray(trayIconPath);
+    } else {
+      appTray = new Tray(trayIconSource);
+    }
+
     appTray.setToolTip("J.A.R.V.I.S. Private Control Room");
 
     const contextMenu = Menu.buildFromTemplate([
@@ -336,8 +370,8 @@ function createControlRoomWindow(): BrowserWindow {
     height: 1080,
     minWidth: 1448,
     minHeight: 860,
-    backgroundColor: "#03060d",
-    opacity: 1.0,
+    backgroundColor: "#03060dff",
+    opacity: 0.95,
     icon: getAppIcon(),
     show: false,
     autoHideMenuBar: false,
@@ -353,16 +387,24 @@ function createControlRoomWindow(): BrowserWindow {
 
   createSystemTray(window);
 
-  window.on("close", (event) => {
-    if (!isAppQuitting && desktopConfig.closeToTray) {
-      event.preventDefault();
-      window.hide();
-    }
-  });
+  window.on("close", async (event) => {
+    if (isAppQuitting) return;
 
-  window.on("minimize", () => {
-    if (desktopConfig.minimizeToTray) {
+    event.preventDefault();
+
+    const choice = await dialog.showMessageBox(window, {
+      type: "question",
+      buttons: ["In den System Tray minimieren", "Beenden"],
+      defaultId: desktopConfig.closeToTray ? 0 : 1,
+      title: "J.A.R.V.I.S. schließen",
+      message: "Möchten Sie J.A.R.V.I.S. minimieren oder beenden?",
+    });
+
+    if (choice.response === 0) {
       window.hide();
+    } else {
+      isAppQuitting = true;
+      app.quit();
     }
   });
 
@@ -853,6 +895,9 @@ async function captureDesktopScreenshot(): Promise<string> {
 }
 
 app.whenReady().then(async () => {
+  if (process.platform === "win32") {
+    app.setAppUserModelId("com.jarvis.desktop");
+  }
   // Automatischen Mikrofon-Zugriff für das Desktop-Interface erlauben
   session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
     if (permission === "media") {
