@@ -55,6 +55,13 @@ export type JarvisWebPageContent = {
   content: string;
 };
 
+export type JarvisSystemInfo = {
+  battery: { available: boolean; percent?: number; charging?: boolean };
+  cpuPercent: number;
+  memory: { totalBytes: number; usedBytes: number; percent: number };
+  uptimeSeconds: number;
+};
+
 export type JarvisDesktopBridge = {
   getRuntimeStatus(): Promise<DesktopRuntimeStatus>;
   getModelReadiness(): Promise<JarvisModelReadiness>;
@@ -70,6 +77,9 @@ export type JarvisDesktopBridge = {
   decideAction(intentId: string, decision: "approve" | "reject"): Promise<JarvisActionIntent>;
   executeTerminalCommand(command: string): Promise<{ exitCode: number; output: string }>;
   captureScreenshot(): Promise<string>;
+  saveScreenshot(): Promise<{ path: string; dataUrl: string }>;
+  getSystemInfo(): Promise<JarvisSystemInfo>;
+  locateScreenTarget(target: string): Promise<{ found: boolean; x?: number; y?: number; confidence?: number; reason?: string }>;
   listProjectFiles(dir?: string): Promise<JarvisFileInfo[]>;
   readFileContent(path: string): Promise<{ path: string; content: string }>;
   queryDocumentRag(query: string, limit?: number): Promise<{ query: string; chunks: JarvisRagChunk[] }>;
@@ -99,6 +109,8 @@ export type JarvisDesktopBridge = {
   getBarehandsStatus(): Promise<{ running: boolean; baseUrl?: string; config?: { name: string; orbs: Array<{ title: string; kind: string }> }; startupError?: string }>;
   stopBarehands(): Promise<{ stopped: boolean }>;
   barehandsPushEvent(type: string, payload?: Record<string, unknown>): Promise<{ pushed: boolean }>;
+  barehandsCursor(action: string, payload?: Record<string, unknown>): Promise<{ ok: boolean }>;
+  openUrl(url: string): Promise<{ ok: boolean }>;
 };
 
 
@@ -117,6 +129,9 @@ const bridge: JarvisDesktopBridge = {
   decideAction: (intentId: string, decision: "approve" | "reject"): Promise<JarvisActionIntent> => ipcRenderer.invoke("jarvis:decide-action", { intentId, decision }),
   executeTerminalCommand: (command: string): Promise<{ exitCode: number; output: string }> => ipcRenderer.invoke("jarvis:execute-command", command),
   captureScreenshot: (): Promise<string> => ipcRenderer.invoke("jarvis:capture-screenshot"),
+  saveScreenshot: (): Promise<{ path: string; dataUrl: string }> => ipcRenderer.invoke("jarvis:save-screenshot"),
+  getSystemInfo: (): Promise<JarvisSystemInfo> => ipcRenderer.invoke("jarvis:get-system-info"),
+  locateScreenTarget: (target: string): Promise<{ found: boolean; x?: number; y?: number; confidence?: number; reason?: string }> => ipcRenderer.invoke("jarvis:locate-screen-target", target),
   listProjectFiles: (dir?: string): Promise<JarvisFileInfo[]> => ipcRenderer.invoke("jarvis:list-files", dir),
   readFileContent: (path: string): Promise<{ path: string; content: string }> => ipcRenderer.invoke("jarvis:read-file", path),
   queryDocumentRag: (query: string, limit?: number): Promise<{ query: string; chunks: JarvisRagChunk[] }> => ipcRenderer.invoke("jarvis:query-rag", { query, limit }),
@@ -168,6 +183,10 @@ const bridge: JarvisDesktopBridge = {
     ipcRenderer.invoke("jarvis:stop-barehands"),
   barehandsPushEvent: (type: string, payload?: Record<string, unknown>): Promise<{ pushed: boolean }> =>
     ipcRenderer.invoke("jarvis:barehands-push-event", type, payload),
+  barehandsCursor: (action: string, payload?: Record<string, unknown>): Promise<{ ok: boolean }> =>
+    ipcRenderer.invoke("jarvis:barehands-cursor", action, payload),
+  openUrl: (url: string): Promise<{ ok: boolean }> =>
+    ipcRenderer.invoke("jarvis:open-url", url),
 };
 
 contextBridge.exposeInMainWorld("jarvisDesktop", bridge);

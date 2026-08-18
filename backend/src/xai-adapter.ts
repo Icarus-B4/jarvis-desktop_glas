@@ -110,7 +110,7 @@ export function createXaiAdapter(options: XaiAdapterOptions = {}): JarvisModelAd
   const fetcher = options.fetcher ?? fetch;
 
   async function completeChat(request: {
-    messages: Array<{ role: string; content?: string; tool_calls?: unknown; tool_call_id?: string }>;
+    messages: Array<{ role: string; content?: string; imageData?: string; tool_calls?: unknown; tool_call_id?: string }>;
     tools?: Array<Record<string, unknown>>;
     model?: string;
     signal?: AbortSignal;
@@ -119,10 +119,21 @@ export function createXaiAdapter(options: XaiAdapterOptions = {}): JarvisModelAd
       throw new Error("XAI_API_KEY nicht konfiguriert.");
     }
 
-    const activeModel = request.model ?? model;
+    const hasImages = request.messages.some((m) => Boolean(m.imageData));
+    const activeModel = hasImages ? "grok-2-vision-latest" : (request.model ?? model);
     const messages = request.messages.map((m) => {
-      if (typeof m.content === "string") return { role: m.role, content: m.content };
-      return { role: m.role, content: m.content ?? "" };
+      const normalized: Record<string, unknown> = {
+        role: m.role,
+        content: m.imageData
+          ? [
+              { type: "text", text: m.content || "Analysiere dieses Bild:" },
+              { type: "image_url", image_url: { url: m.imageData } },
+            ]
+          : (m.content ?? ""),
+      };
+      if (m.tool_calls !== undefined) normalized.tool_calls = m.tool_calls;
+      if (m.tool_call_id !== undefined) normalized.tool_call_id = m.tool_call_id;
+      return normalized;
     });
 
     const body: Record<string, unknown> = {
@@ -247,12 +258,12 @@ export function createXaiAdapter(options: XaiAdapterOptions = {}): JarvisModelAd
         "}\n" +
         "```\n\n" +
         "Verfügbare Capabilities:\n" +
-        "- app.open_url (Params: { \"url\": \"https://...\" })\n" +
+        "- app.open_url (Params: { \"url\": \"https://...\" }) — WICHTIG: Nutze diese Capability NICHT als Tool-Call, sondern erstelle am Ende deiner Antwort IMMER ein action_proposal JSON-Block mit capability \"app.open_url\" und dem url-Parameter. Die Webseite wird dann automatisch auf der Hauptbühne im Desktop geöffnet.\n" +
         "- app.open_app (Params: { \"name\": \"<beliebige_windows_app>\" } — z. B. \"windows media player\", \"spotify\", \"vlc\", \"calc\", \"notepad\", \"code\", \"chrome\", \"edge\", \"explorer\", etc.)\n" +
         "- media.control (Params: { \"action\": \"play\" | \"pause\" | \"next\" | \"prev\" | \"stop\", \"query\": \"<optional_song_oder_künstler_name>\" })\n" +
         "- system.take_screenshot (Erstellt einen Screenshot von Eds Bildschirm und zeigt ihn auf der Hauptbühne an)\n" +
         "- camera.open (Öffnet den Kamera-Feed auf der Hauptbühne)\n" +
-        "- system.execute_command (Params: { \"command\": \"...\" })\n" +
+        "- system.execute_command ist nur für explizit eingegebene Terminalbefehle vorgesehen und darf nicht selbstständig vorgeschlagen werden.\n" +
         "- scratchpad.write (Params: { \"text\": \"...\" })\n\n" +
         "Wichtig bei Musikwünschen:\n" +
         "- Wenn Ed einen spezifischen Song, Titel oder Künstler nennt (z. B. 'Spiele Lead-Up von Boris Brejcha'), gib in media.control zwingend den 'query'-Parameter mit (z. B. { \"action\": \"play\", \"query\": \"Boris Brejcha Lead-Up\" }), damit die KI den Song direkt sucht und abspielt!\n\n" +

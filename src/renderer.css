@@ -1698,3 +1698,46 @@ html[data-orb-state="disconnected"] .orb-composition { --status-accent: #5f6e78;
   padding: 10px;
 }
 
+/* Hauptbühne Toggle-Bar */
+.stage-toggle-bar {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  border-radius: 10px;
+  padding: 4px 8px;
+}
+
+.stage-toggle-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: rgba(220, 245, 238, 0.6);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.stage-toggle-btn:hover {
+  background: rgba(0, 229, 255, 0.1);
+  color: #dcf5ee;
+  border-color: rgba(0, 229, 255, 0.3);
+}
+
+.stage-toggle-btn.active {
+  background: rgba(0, 229, 255, 0.2);
+  color: #00e5ff;
+  border-color: rgba(0, 229, 255, 0.5);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.2);
+}
+

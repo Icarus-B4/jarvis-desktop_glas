@@ -35,6 +35,18 @@ export class DefaultJarvisWorkflowEngine implements JarvisWorkflowEngine {
       ],
     },
     {
+      id: "work-mode",
+      name: "Jarvis Arbeitsmodus",
+      triggerPhrases: ["jarvis an die arbeit", "wir arbeiten", "arbeitsmodus", "starte arbeitsmodus"],
+      description: "Startet Antigravity IDE, Proton Mail, Brave und die vorhandene Spotify-PWA.",
+      steps: [
+        { id: "step-1", type: "open_app", description: "Antigravity IDE starten", params: { name: "antigravity" } },
+        { id: "step-2", type: "open_app", description: "Proton Mail starten", params: { name: "proton mail" } },
+        { id: "step-3", type: "open_app", description: "Brave starten", params: { name: "brave" } },
+        { id: "step-4", type: "open_app", description: "Spotify-PWA bereitstellen", params: { name: "spotify" } },
+      ],
+    },
+    {
       id: "system-check",
       name: "Vollständiger System-Check",
       triggerPhrases: ["system check", "führe system check aus", "systemdiagnose", "prüfe status"],
@@ -68,6 +80,7 @@ export class DefaultJarvisWorkflowEngine implements JarvisWorkflowEngine {
     for (const step of wf.steps) {
       logs.push(`[${step.type.toUpperCase()}] ${step.description}`);
       try {
+        let stepExecuted = false;
         if (step.type === "open_url" && step.params?.url && this.actionEngine) {
           const intent = await this.actionEngine.proposeAction({
             capability: "app.open_url",
@@ -75,7 +88,9 @@ export class DefaultJarvisWorkflowEngine implements JarvisWorkflowEngine {
             description: step.description,
             params: { url: String(step.params.url) },
           });
-          await this.actionEngine.decideAction({ intentId: intent.id, decision: "approve" });
+          const decided = await this.actionEngine.decideAction({ intentId: intent.id, decision: "approve" });
+          stepExecuted = decided.status === "completed";
+          if (!stepExecuted) logs.push(`[ERROR] ${decided.error ?? "URL-Aktion fehlgeschlagen."}`);
         } else if (step.type === "open_app" && step.params?.name && this.actionEngine) {
           const intent = await this.actionEngine.proposeAction({
             capability: "app.open_app",
@@ -83,20 +98,25 @@ export class DefaultJarvisWorkflowEngine implements JarvisWorkflowEngine {
             description: step.description,
             params: { name: String(step.params.name) },
           });
-          await this.actionEngine.decideAction({ intentId: intent.id, decision: "approve" });
+          const decided = await this.actionEngine.decideAction({ intentId: intent.id, decision: "approve" });
+          stepExecuted = decided.status === "completed";
+          if (!stepExecuted) logs.push(`[ERROR] ${decided.error ?? "App-Aktion fehlgeschlagen."}`);
+        } else {
+          logs.push(`[SKIPPED] Schritt-Typ '${step.type}' besitzt in diesem Workflow keine ausführbare Implementierung.`);
         }
-        executedSteps++;
+        if (stepExecuted) executedSteps++;
       } catch (err) {
         logs.push(`[ERROR] Fehler in Schritt '${step.id}': ${err instanceof Error ? err.message : String(err)}`);
       }
     }
 
+    const success = executedSteps === wf.steps.length;
     return {
       workflowId: wf.id,
-      success: true,
+      success,
       executedSteps,
       logs,
-      summary: `Workflow '${wf.name}' mit ${executedSteps}/${wf.steps.length} Schritten erfolgreich ausgeführt.`,
+      summary: `Workflow '${wf.name}' mit ${executedSteps}/${wf.steps.length} Schritten ${success ? "erfolgreich ausgeführt" : "nur teilweise ausgeführt"}.`,
     };
   }
 }

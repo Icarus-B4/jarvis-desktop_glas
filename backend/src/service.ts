@@ -112,7 +112,7 @@ export function startJarvisService(options: JarvisServiceOptions = {}): RunningJ
   throw lastError instanceof Error ? lastError : new Error(`Failed to bind Jarvis local service on ports ${initialPort} through ${initialPort + maxAttempts - 1}.`);
 }
 
-export function startBarehandsService(options: { root: string; port?: number; onCommand?: (action: string, payload: Record<string, unknown>) => void }): BarehandsServiceHandle {
+export async function startBarehandsService(options: { root: string; port?: number; onCommand?: (action: string, payload: Record<string, unknown>) => void }): Promise<BarehandsServiceHandle> {
   const barehands = createBarehandsServer({
     root: options.root,
     port: options.port,
@@ -150,12 +150,23 @@ export function startBarehandsService(options: { root: string; port?: number; on
     }
   });
 
-  server.listen(runtimePort, "127.0.0.1", () => {
-    console.info(`[barehands] listening on 127.0.0.1:${runtimePort}`);
+  await new Promise<void>((resolve, reject) => {
+    const onStartupError = (err: Error): void => {
+      server.removeListener("listening", onListening);
+      reject(err);
+    };
+    const onListening = (): void => {
+      server.removeListener("error", onStartupError);
+      console.info(`[barehands] listening on 127.0.0.1:${runtimePort}`);
+      resolve();
+    };
+    server.once("error", onStartupError);
+    server.once("listening", onListening);
+    server.listen(runtimePort, "127.0.0.1");
   });
 
   server.on("error", (err: Error) => {
-    console.error("[barehands] server error:", err);
+    console.error("[barehands] runtime server error:", err);
   });
 
   return {

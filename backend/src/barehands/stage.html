@@ -246,7 +246,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 <body>
 <video id="cam" autoplay playsinline muted></video>
 <div id="behind"></div>
-<div id="boot">BAREHANDS<br><span style="color:#a8d8cf;font-size:12px;letter-spacing:0.22em">by jaredrhod</span><br><span style="color:#a8d8cf;font-size:13px">loading hand tracker… allow the camera when asked</span></div>
+<div id="boot">BAREHANDS<br><span style="color:#a8d8cf;font-size:12px;letter-spacing:0.22em">by jaredrhod</span><br><span style="color:#a8d8cf;font-size:13px">loading hand tracker… erlaube die Kamera wenn gefragt wird</span></div>
 <div id="hint">tap the RING = orbs · tap an orb = its tree · TAP a card = open · pinch-drag = move · hold still ~1s = 3D rotate · two hands = scale · TAP an open item = close · CLAP (palms together, fingers up) = ring center-stage · CLAW: flash open, claw, aim, hold the strain 2s, SNAP = force pull · empty pinch dragged sideways = explode scrub · R respawn / C camera / D debug</div>
 <div id="debug"></div>
 <div id="toast"></div>
@@ -299,6 +299,8 @@ const BEHIND = document.getElementById("behind");
 const dbg = document.getElementById("debug");
 let items = [];        // cards + panels: {el,type,x,y,scale,vx,vy,grabbedBy:[],ox,oy,flying,file,stretch,scrollY,body}
 let cursors = {};
+const SYSTEM_CURSOR_MODE = new URLSearchParams(location.search).get("systemCursor") === "1";
+let lastSystemCursorEmit = 0;
 let SAMPLER = null;    // the pose sampler (dormant — claw/pinch tuning)
 let CLAPSAMP = null;   // the P clap recorder (v3.9.1)
 let SAMPLED = "";      // its frozen last result (D overlay)
@@ -1519,6 +1521,15 @@ function toScreen(lm) {
 let lastClearT = 0, lastResetT = 0;   // clear/reset cooldowns (wipe + clap)
 const clap = { hist: [] };            // inter-hand distance samples (v3)
 
+function emitSystemCursor(action, payload = {}) {
+  if (!SYSTEM_CURSOR_MODE || !window.parent || !window.parent.postMessage) return;
+  window.parent.postMessage({
+    source: "jarvis-barehands-bridge",
+    type: "barehands:cursor",
+    payload: { action, ...payload },
+  }, "*");
+}
+
 function getCursor(i) {
   if (!cursors[i]) {
     const el = document.createElement("div");
@@ -1940,7 +1951,13 @@ async function boot() {
   document.getElementById("boot").remove();
   await loadTree();
   spawnStage();
-  toast("barehands v1.0", 2000);  // build fingerprint
+  if (SYSTEM_CURSOR_MODE) {
+    const hint = document.getElementById("hint");
+    if (hint) hint.textContent = "SYSTEMCURSOR · Hand bewegen = Cursor · kurzer Pinch = Linksklick · Pinch ≥0,9s = Rechtsklick · Sprachbefehl: Deaktiviere Cursorsteuerung";
+    toast("system cursor active", 2500);
+  } else {
+    toast("barehands v1.0", 2000);
+  }
   let lastT = performance.now();
 
   function frame(now) {
@@ -2115,6 +2132,29 @@ async function boot() {
         if (cur.pinched) cur.lastPinchT = now;   // v3.9: clap disqualifier
         cur.el.classList.toggle("pinched", cur.pinched);
         cur.el.style.left = cur.x + "px"; cur.el.style.top = cur.y + "px";
+
+        if (SYSTEM_CURSOR_MODE) {
+          if (i !== 0) return;
+          if (now - lastSystemCursorEmit >= 50) {
+            lastSystemCursorEmit = now;
+            emitSystemCursor("move", {
+              dx: Math.round(Math.max(0, Math.min(1000, (cur.x / Math.max(1, innerWidth)) * 1000))),
+              dy: Math.round(Math.max(0, Math.min(1000, (cur.y / Math.max(1, innerHeight)) * 1000))),
+            });
+          }
+          if (cur.pinched && !wasPinched) {
+            cur.systemPinchStart = now;
+            cur.systemPinchX = cur.x;
+            cur.systemPinchY = cur.y;
+          } else if (!cur.pinched && wasPinched && cur.systemPinchStart) {
+            const duration = now - cur.systemPinchStart;
+            const travel = Math.hypot(cur.x - cur.systemPinchX, cur.y - cur.systemPinchY);
+            if (duration >= 900 && travel < 100) emitSystemCursor("right_click");
+            else if (duration <= 500 && travel < 60) emitSystemCursor("click");
+            cur.systemPinchStart = 0;
+          }
+          return;
+        }
 
         // ---- THE PALM ENGINE — a gesture set designed for imperfect,
         // real-world hands: every trigger is finger EXTENSION

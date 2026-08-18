@@ -17,6 +17,9 @@ declare global {
       decideAction: JarvisDesktopBridge["decideAction"];
       executeTerminalCommand: JarvisDesktopBridge["executeTerminalCommand"];
       captureScreenshot: JarvisDesktopBridge["captureScreenshot"];
+      saveScreenshot: JarvisDesktopBridge["saveScreenshot"];
+      getSystemInfo: JarvisDesktopBridge["getSystemInfo"];
+      locateScreenTarget: JarvisDesktopBridge["locateScreenTarget"];
       listProjectFiles: JarvisDesktopBridge["listProjectFiles"];
       readFileContent: JarvisDesktopBridge["readFileContent"];
       queryDocumentRag: JarvisDesktopBridge["queryDocumentRag"];
@@ -48,6 +51,8 @@ declare global {
       getBarehandsStatus: JarvisDesktopBridge["getBarehandsStatus"];
       stopBarehands: JarvisDesktopBridge["stopBarehands"];
       barehandsPushEvent: JarvisDesktopBridge["barehandsPushEvent"];
+      barehandsCursor: JarvisDesktopBridge["barehandsCursor"];
+      openUrl: JarvisDesktopBridge["openUrl"];
     };
   }
 }

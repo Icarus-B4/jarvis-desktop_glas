@@ -45,8 +45,35 @@ import {
   type JarvisVoiceAdapter,
 } from "./voice-adapter";
 import { createXaiAdapter } from "./xai-adapter";
+import { readFileSync, existsSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const SERVICE_VERSION = "0.1.0";
+
+// Load SOUL.md (agent identity core) from project root and inject into system prompt.
+function loadSoulPrompt(): string {
+  try {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const candidates = [
+      join(here, "..", "..", "..", "SOUL.md"),
+      join(here, "..", "..", "SOUL.md"),
+      join(process.cwd(), "SOUL.md"),
+      join(process.cwd(), "jarvis-desktop_glas", "SOUL.md"),
+    ];
+    for (const p of candidates) {
+      if (existsSync(p)) {
+        const content = readFileSync(p, "utf-8").trim();
+        if (content) return content;
+      }
+    }
+  } catch (err) {
+    console.warn("[handler] SOUL.md load failed:", err);
+  }
+  return "";
+}
+
+const SOUL_PROMPT = loadSoulPrompt();
 
 const dashboardFixture = {
   profile: {
@@ -165,33 +192,9 @@ const TOOL_DEFINITIONS: Array<Record<string, unknown>> = [
   {
     type: "function",
     function: {
-      name: "app.open_url",
-      description: "Öffnet eine Webseite im Standard-Browser des PCs.",
-      parameters: { type: "object", properties: { url: { type: "string", description: "Die URL" } }, required: ["url"] },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "app.open_app",
-      description: "Startet eine Windows-Anwendung.",
-      parameters: { type: "object", properties: { name: { type: "string", description: "Name der Anwendung" } }, required: ["name"] },
-    },
-  },
-  {
-    type: "function",
-    function: {
       name: "media.control",
       description: "Steuert Medienwiedergabe (Play, Pause, Next, Prev, Stop, Volume).",
       parameters: { type: "object", properties: { action: { type: "string", description: "play, pause, next, prev, stop, mute, volup, voldown" }, query: { type: "string", description: "Song/Interpret für direkte Wiedergabe" } }, required: ["action"] },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "system.execute_command",
-      description: "Führt einen Shell-Befehl aus.",
-      parameters: { type: "object", properties: { command: { type: "string", description: "Der auszuführende Befehl" } }, required: ["command"] },
     },
   },
   {
@@ -207,7 +210,37 @@ const TOOL_DEFINITIONS: Array<Record<string, unknown>> = [
     function: {
       name: "camera.open",
       description: "Öffnet den Kamera-Feed.",
-      parameters: { type: "object", properties: {} },
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "barehands.toggle",
+      description: "Aktiviert oder deaktiviert den Barehands- bzw. No-Hands-Modus.",
+      parameters: {
+        type: "object",
+        properties: {
+          mode: { type: "string", description: "Modus: 'stage' für die Stage-Bedienung oder 'cursor' für die systemweite Maussteuerung." },
+        },
+        required: ["mode"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "barehands.cursor",
+      description: "Sendet Cursor-Bewegungen oder Klicks im systemweiten No-Hands-Modus.",
+      parameters: {
+        type: "object",
+        properties: {
+          action: { type: "string", description: "Bewegung oder Klick: move, click, right_click, scroll_up, scroll_down" },
+          dx: { type: "number", description: "Delta X in Pixeln für move." },
+          dy: { type: "number", description: "Delta Y in Pixeln für move." },
+        },
+        required: ["action"],
+      },
     },
   },
   {
@@ -390,6 +423,16 @@ async function executeTool(
         return JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) });
       }
     }
+    case "barehands.toggle": {
+      const mode = String(args.mode ?? "").trim();
+      if (!mode) return JSON.stringify({ error: "mode parameter required" });
+      return JSON.stringify({ ok: true, capability: "barehands.toggle", mode, message: `Barehands-Modus '${mode}' angefordert. Steuerung erfolgt über die Desktop-Bridge.` });
+    }
+    case "barehands.cursor": {
+      const action = String(args.action ?? "").trim();
+      if (!action) return JSON.stringify({ error: "action parameter required" });
+      return JSON.stringify({ ok: true, capability: "barehands.cursor", action, message: `Cursor-Aktion '${action}' angefordert.` });
+    }
     default:
       return JSON.stringify({ error: `Unknown tool: ${name}` });
   }
@@ -397,14 +440,14 @@ async function executeTool(
 
 const JARVIS_TOOL_SYSTEM_PROMPT = `Du bist J.A.R.V.I.S., der persönliche Assistent von Ed.
 Nutze die verfügbaren Tools, um Informationen zu beschaffen oder Aktionen auszuführen.
-Wenn keine Aktion mehr nötig ist, antworte direkt auf Deutsch.
+Wenn keine Aktion mehr nötig ist, antworte kurz und direkt auf Deutsch.
 Bei Medienwünschen gib in media.control zwingend den query-Parameter mit, wenn Song/Künstler genannt wird.
 Antworte präzise, hilfsbereit und auf Deutsch.`;
 
 async function* runToolLoopChat(
   chatReq: JarvisChatRequest,
   signal: AbortSignal,
-  xaiAdapter: { completeChat(request: { messages: Array<{ role: string; content?: string }>; tools?: Array<Record<string, unknown>>; model?: string; signal?: AbortSignal }): Promise<{ content: string; toolCalls?: Array<{ id: string; name: string; arguments: string }> }> },
+  xaiAdapter: { completeChat(request: { messages: Array<{ role: string; content?: string; imageData?: string; tool_calls?: unknown; tool_call_id?: string }>; tools?: Array<Record<string, unknown>>; model?: string; signal?: AbortSignal }): Promise<{ content: string; toolCalls?: Array<{ id: string; name: string; arguments: string }> }> },
   actionEngine: JarvisActionEngine,
   memoryAdapter: JarvisMemoryAdapter,
   fileAdapter: JarvisFileAdapter,
@@ -412,21 +455,22 @@ async function* runToolLoopChat(
   knowledgeAdapter: JarvisKnowledgeAdapter,
 ): AsyncIterable<JarvisChatStreamEvent> {
   try {
-    const systemPrompt = `${JARVIS_TOOL_SYSTEM_PROMPT}\n\nDu hast Zugriff auf folgende Tools:\n- memory.search: Suche im Langzeitgedächtnis\n- files.list: Dateien auflisten\n- files.read: Datei lesen\n- web.search: Websuche\n- knowledge.query: Wissensdatenbank durchsuchen\n- app.open_url: URL im Standardbrowser öffnen\n- app.open_app: Windows-App starten\n- media.control: Medien steuern\n- system.execute_command: Shell-Befehl ausführen\n- system.take_screenshot: Screenshot erstellen\n- camera.open: Kamera öffnen\n- scratchpad.write: Notiz schreiben`;
+    const systemPrompt = `${JARVIS_TOOL_SYSTEM_PROMPT}\n\n${SOUL_PROMPT ? `=== AGENT IDENTITY (SOUL.md) ===\n${SOUL_PROMPT}\n=== END IDENTITY ===\n\n` : ""}Du hast Zugriff auf folgende Tools:\n- memory.search: Suche im Langzeitgedächtnis\n- files.list: Dateien auflisten\n- files.read: Datei lesen\n- web.search: Websuche\n- knowledge.query: Wissensdatenbank durchsuchen\n- app.open_url: URL auf der Hauptbühne (im Desktop) öffnen, NICHT extern\n- app.open_app: Windows-App per Action Proposal starten (nicht als Tool-Call)\n- media.control: Medien steuern\n- system.execute_command: Nur explizite Benutzereingabe mit >, $ oder /; nicht als LLM-Tool\n- system.take_screenshot: Screenshot erstellen\n- camera.open: Kamera öffnen\n- scratchpad.write: Notiz schreiben\n- barehands.toggle: Barehands-/No-Hands-Modus umschalten\n- barehands.cursor: Cursor-Bewegung/Klick/Scroll senden`;
 
-    let messages: Array<{ role: string; content?: string; tool_calls?: unknown; tool_call_id?: string }> = [
+    let messages: Array<{ role: string; content?: string; imageData?: string; tool_calls?: unknown; tool_call_id?: string }> = [
       { role: "system", content: systemPrompt },
       ...chatReq.messages.map((m) => ({
         role: m.role,
         content: m.content,
-        ...(m.imageData ? { image_url: m.imageData } : {}),
+        ...(m.imageData ? { imageData: m.imageData } : {}),
       })),
     ];
 
     const maxTurns = 6;
+    const seenToolCalls = new Set<string>();
     let finalContent = "";
 
-    for (let turn = 0; turn < maxTurns; turn++) {
+    toolLoop: for (let turn = 0; turn < maxTurns; turn++) {
       const result = await xaiAdapter.completeChat({
         messages,
         tools: TOOL_DEFINITIONS,
@@ -451,6 +495,17 @@ async function* runToolLoopChat(
       messages.push(assistantMessage as any);
 
       for (const toolCall of result.toolCalls) {
+        if (seenToolCalls.size >= 3) {
+          finalContent = "Die Werkzeugkette wurde nach drei unterschiedlichen Aufrufen sicher beendet.";
+          break toolLoop;
+        }
+        const fingerprint = `${toolCall.name}:${toolCall.arguments || "{}"}`;
+        if (seenToolCalls.has(fingerprint)) {
+          finalContent = result.content?.trim() || "Der identische Werkzeugaufruf wurde bereits verarbeitet; keine Wiederholung ausgeführt.";
+          break toolLoop;
+        }
+        seenToolCalls.add(fingerprint);
+
         let parsedArgs: Record<string, unknown> = {};
         try {
           parsedArgs = JSON.parse(toolCall.arguments || "{}");
@@ -889,7 +944,7 @@ export function createJarvisRequestHandler(
 
       if (supportsToolLoop) {
         const toolLoopAdapter = xaiAdapter as unknown as {
-          completeChat(request: { messages: Array<{ role: string; content?: string }>; tools?: Array<Record<string, unknown>>; model?: string; signal?: AbortSignal }): Promise<{ content: string; toolCalls?: Array<{ id: string; name: string; arguments: string }> }>;
+          completeChat(request: { messages: Array<{ role: string; content?: string; imageData?: string; tool_calls?: unknown; tool_call_id?: string }>; tools?: Array<Record<string, unknown>>; model?: string; signal?: AbortSignal }): Promise<{ content: string; toolCalls?: Array<{ id: string; name: string; arguments: string }> }>;
         };
         return chatStream(runToolLoopChat(chatReq, signal as AbortSignal, toolLoopAdapter, actionEngine, memoryAdapter, fileAdapter, browserAdapter, knowledgeAdapter), chatReq.requestId);
       }

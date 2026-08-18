@@ -16,8 +16,9 @@ import {
 } from "@jarvis/shared";
 import { OrbHudRings } from "./components/OrbHudRings";
 import { SafeVoiceOrb } from "./components/safe-voice-orb";
+import { getDeterministicCalculation, getDeterministicConversion, getDeterministicTranslation } from "./deterministic-local-commands";
 
-type TranscriptKind = "system" | "user" | "assistant" | "warning" | "action";
+type TranscriptKind = "system" | "user" | "assistant" | "warning" | "action" | "info";
 type TranscriptEntry = {
   id: number;
   at: Date;
@@ -114,6 +115,7 @@ let recordingChunks: Blob[] = [];
 let isTtsPlaying = false;
 let activeTtsContext: AudioContext | undefined;
 let activeTtsSource: AudioBufferSourceNode | undefined;
+let stopRequested = false;
 
 function stopTtsPlayback(): void {
   isTtsPlaying = false;
@@ -129,17 +131,28 @@ function stopTtsPlayback(): void {
 
 /** bricht laufendes TTS oder aktive KI-Generierung sofort ab */
 function stopConversation(): void {
+  stopRequested = true;
   stopTtsPlayback();
   const reqId = activeRequestId;
   clearChatState();
   if (reqId) {
     window.jarvisDesktop.cancelChat(reqId);
   }
+  // Sofort auch Medienwiedergabe (YouTube, Spotify, etc.) stoppen
+  try {
+    void window.jarvisDesktop.proposeAction({
+      capability: "media.control",
+      title: "Medien stoppen",
+      description: "Stoppt jede laufende Medienwiedergabe",
+      params: { action: "stop" },
+    });
+  } catch {}
   if (voiceStatus && !voiceStatus.muted) {
     setLiveState("listening");
   } else {
     setLiveState(readiness?.status === "ready" ? "ready" : "idle");
   }
+  setTimeout(() => { stopRequested = false; }, 500);
 }
 
 /**
@@ -198,8 +211,39 @@ function isNoiseOrHallucination(text: string): boolean {
         });
         const text = result.text.trim();
         if (text && !isNoiseOrHallucination(text)) {
-          const lower = text.toLowerCase();
-          // "stop", "stopp", "abbrechen", "halt", "pause", "ruhe" Sprachbefehl zum Abbrechen
+          const lower = text.toLowerCase().replace(/[.!?+]+$/,"").trim();
+          // "with no hands" / Varianten aktiviert den systemweiten Cursor-Modus
+          if (
+            lower === "with no hands" ||
+            lower === "no hands" ||
+            lower === "cursor mode" ||
+            lower === "mouse mode" ||
+            lower === "hands mode" ||
+            lower.includes("no hands") ||
+            lower.includes("cursor mode") ||
+            lower.includes("mouse mode")
+          ) {
+            if (stageBarehandsViewEl && stageBarehandsViewEl.hidden) {
+              try { await window.jarvisDesktop.ensureBarehands(); } catch {}
+              setStageView("barehands");
+            }
+            sendToBarehands("jarvis:cursor-mode", { on: true });
+            return;
+          }
+          if (
+            lower === "hands off" ||
+            lower === "back to normal" ||
+            lower === "disable cursor" ||
+            lower === "hands off" ||
+            lower.includes("hands off") ||
+            lower.includes("back to normal") ||
+            lower.includes("disable cursor") ||
+            lower.includes("turn off cursor")
+          ) {
+            sendToBarehands("jarvis:cursor-mode", { on: false });
+            return;
+          }
+          // "stop", "stopp", "abbrechen", "halt", "pause", "ruhe" = SOFORT ABBRECHEN
           if (
             lower === "stop" ||
             lower === "stopp" ||
@@ -211,8 +255,6 @@ function isNoiseOrHallucination(text: string): boolean {
             lower.includes("jarvis stopp")
           ) {
             stopConversation();
-            addEntry("system", "Unterhaltung per Sprachbefehl ('stop') unterbrochen.");
-            if (voiceStatus && !voiceStatus.muted) setLiveState("listening");
             return;
           }
 
@@ -342,6 +384,7 @@ async function speakJarvisResponse(text: string): Promise<void> {
 
   try {
     isTtsPlaying = true;
+    stopRequested = false;
     setLiveState("responding");
 
     const audioBytes = await window.jarvisDesktop.synthesizeSpeech({
@@ -350,38 +393,31 @@ async function speakJarvisResponse(text: string): Promise<void> {
       language: "de",
     });
 
-    if (!audioBytes || audioBytes.length === 0 || !isTtsPlaying) {
+    if (!audioBytes || audioBytes.length === 0 || !isTtsPlaying || stopRequested) {
       stopTtsPlayback();
       if (voiceStatus && !voiceStatus.muted) setLiveState("listening");
       else if (readiness?.status === "ready") setLiveState("ready");
       return;
     }
 
-    const arrayBuffer = new Uint8Array(audioBytes).buffer;
+    const u8 = new Uint8Array(audioBytes);
     activeTtsContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const audioBuffer = await activeTtsContext.decodeAudioData(arrayBuffer.slice(0) as ArrayBuffer);
+    const audioBuffer = await activeTtsContext.decodeAudioData(u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength) as ArrayBuffer);
     activeTtsSource = activeTtsContext.createBufferSource();
     activeTtsSource.buffer = audioBuffer;
     activeTtsSource.connect(activeTtsContext.destination);
-
     activeTtsSource.onended = () => {
-      stopTtsPlayback();
-      // Nach Sprachausgabe automatisch wieder auf Empfang schalten!
-      if (voiceStatus && !voiceStatus.muted) {
-        setLiveState("listening");
-      } else if (activeRequestId === undefined && readiness?.status === "ready") {
-        setLiveState("ready");
+      isTtsPlaying = false;
+      activeTtsSource = undefined;
+      if (!stopRequested && readiness?.status === "ready" && activeRequestId === undefined) {
+        setLiveState(voiceStatus && !voiceStatus.muted ? "listening" : "ready");
       }
     };
-
     activeTtsSource.start();
   } catch (err) {
     stopTtsPlayback();
-    console.warn("TTS-Fehler:", err);
-    if (voiceStatus && !voiceStatus.muted) {
-      setLiveState("listening");
-    } else if (activeRequestId === undefined && readiness?.status === "ready") {
-      setLiveState("ready");
+    if (!stopRequested) {
+      addEntry("warning", `TTS-Fehler: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 }
@@ -476,6 +512,10 @@ const stageCameraViewEl = requiredElement<HTMLElement>(".stage-camera-view");
 const stageCameraVideoEl = requiredElement<HTMLVideoElement>(".stage-camera-video");
 const stageCameraCanvasEl = requiredElement<HTMLCanvasElement>(".stage-camera-canvas");
 
+const stageWebViewEl = optionalElement<HTMLElement>(".stage-web-view");
+const stageWebFrameEl = optionalElement<HTMLElement>("[data-web-frame]");
+const stageWebUrlInputEl = optionalElement<HTMLInputElement>("[data-web-url-input]");
+
 const stageScreenshotViewEl = requiredElement<HTMLElement>(".stage-screenshot-view");
 const stageScreenshotImgEl = requiredElement<HTMLImageElement>(".stage-screenshot-img");
 
@@ -495,13 +535,147 @@ const newsFeedGridEl = optionalElement<HTMLElement>("[data-news-feed-grid]");
 
 let activeCameraStream: MediaStream | null = null;
 
-function setStageView(view: "action" | "camera" | "screenshot" | "code" | "morning-brief" | "barehands" | null, data?: any): void {
+function normalizeWebUrl(raw: string): string {
+  const value = raw
+    .trim()
+    .replace(/[.!?,;:]+$/, "")
+    .replace(/^(?:die\s+)?(?:webseite|website|seite)\s+/i, "")
+    .replace(/\s+(?:punkt\s+)?(com|org|net|de|ch|io|ai)\b/gi, ".$1")
+    .replace(/\s+/g, "");
+  if (!value) return "";
+  if (/^https?:\/\//i.test(value)) return value;
+  const lower = value.toLowerCase();
+  const known: Record<string, string> = {
+    wikipedia: "https://www.wikipedia.org",
+    wiki: "https://www.wikipedia.org",
+    webstark: "https://webstark.org",
+    google: "https://www.google.com",
+    youtube: "https://www.youtube.com",
+  };
+  if (known[lower]) return known[lower];
+  if (/^[a-z0-9.-]+\.[a-z]{2,}(\/.*)?$/i.test(value)) return `https://${value}`;
+  return `https://www.google.com/search?q=${encodeURIComponent(value)}`;
+}
+
+function getDeterministicLocalAnswer(text: string): string | undefined {
+  const value = text.toLowerCase().replace(/[.!?]+$/, "").trim();
+  const now = new Date();
+  if (value.includes("wie spät") || value === "uhrzeit" || value === "wie viel uhr ist es") {
+    return `Es ist ${now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr.`;
+  }
+  if (value.includes("welcher tag ist heute") || value.includes("welches datum") || value === "datum") {
+    return `Heute ist ${now.toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}.`;
+  }
+  if (value.includes("welcher monat")) {
+    return `Wir haben ${now.toLocaleDateString("de-DE", { month: "long" })}.`;
+  }
+  if (value.includes("welches jahr")) {
+    return `Wir haben das Jahr ${now.getFullYear()}.`;
+  }
+  return undefined;
+}
+
+function parseDeterministicFolderCommand(text: string): string | undefined {
+  const match = text.match(/^(?:öffne|oeffne|open|zeige)\s+(?:(?:meinen|meine|mein|den|die|das)\s+)?(.+?)[.!?]*$/i);
+  if (!match?.[1]) return undefined;
+  const target = match[1].toLowerCase().trim();
+  if (target === "desktop") return "desktop";
+  if (target === "dokumente" || target === "documents") return "dokumente";
+  if (target === "downloads") return "downloads";
+  if (target === "bilder" || target === "pictures") return "bilder";
+  if (target === "videos") return "videos";
+  if (target === "musikordner" || target === "musik ordner" || target === "music folder") return "musik";
+  return undefined;
+}
+
+function parseDeterministicAppCommand(text: string): string | undefined {
+  const match = text.match(/^(?:öffne|oeffne|open|starte)\s+(?:den\s+|die\s+|das\s+)?(.+?)[.!?]*$/i);
+  if (!match?.[1]) return undefined;
+  const target = match[1].toLowerCase().trim();
+  if (/^(?:taschenrechner|rechner|calculator|calc)$/.test(target)) return "calc";
+  if (/^(?:editor|notepad|texteditor)$/.test(target)) return "notepad";
+  if (/^(?:paint|microsoft paint)$/.test(target)) return "paint";
+  if (/^(?:task-manager|taskmanager|task manager|taskmgr)$/.test(target)) return "taskmgr";
+  if (/^(?:explorer|dateimanager|datei-explorer|windows explorer)$/.test(target)) return "explorer";
+  if (target === "steam") return "steam";
+  if (/^(?:brave|brave browser)$/.test(target)) return "brave";
+  if (/^(?:chrome|google chrome)$/.test(target)) return "chrome";
+  if (/^(?:firefox|mozilla firefox)$/.test(target)) return "firefox";
+  if (/^(?:edge|microsoft edge)$/.test(target)) return "edge";
+  if (/^(?:opera|opera gx)$/.test(target)) return target;
+  if (/^(?:origin|ea|ea app)$/.test(target)) return target;
+  if (/^(?:antigravity|antigravity ide)$/.test(target)) return "antigravity";
+  if (/^(?:proton|proton mail)$/.test(target)) return "proton mail";
+  return undefined;
+}
+
+function parseDeterministicCloseAppCommand(text: string): string | undefined {
+  const match = text.match(/^(?:schließe|schliesse|beende)\s+(.+?)[.!?]*$/i);
+  if (!match?.[1]) return undefined;
+  const target = match[1].toLowerCase().trim();
+  const aliases: Record<string, string> = {
+    steam: "steam", brave: "brave", "brave browser": "brave", chrome: "chrome", "google chrome": "chrome",
+    firefox: "firefox", "mozilla firefox": "firefox", edge: "edge", "microsoft edge": "edge",
+    opera: "opera", "opera gx": "opera gx", origin: "origin", ea: "ea", "ea app": "ea app",
+    antigravity: "antigravity", "antigravity ide": "antigravity", proton: "proton mail", "proton mail": "proton mail",
+  };
+  return aliases[target];
+}
+
+function parseDeterministicMediaAction(text: string): string | undefined {
+  const value = text.toLowerCase().replace(/[.!?+]+$/, "").trim();
+  if (/^(?:pausiere|pause)\s+(?:die\s+)?(?:musik|spotify)$/.test(value)) return "pause";
+  if (/^(?:stoppe|stopp)\s+(?:die\s+)?(?:musik|spotify)$/.test(value)) return "stop";
+  if (/^(?:musik|wiedergabe)\s+fortsetzen$/.test(value) || value === "weiter abspielen") return "play";
+  if (/^(?:nächster|naechster)\s+(?:song|titel)$/.test(value) || value === "weiter") return "next";
+  if (/^(?:vorheriger|voriger)\s+(?:song|titel)$/.test(value) || value === "zurück") return "prev";
+  if (/^(?:lautstärke|lautstaerke)\s+hoch$/.test(value) || value === "ton lauter" || value === "lauter") return "volup";
+  if (/^(?:lautstärke|lautstaerke)\s+(?:runter|niedriger)$/.test(value) || value === "ton leiser" || value === "leiser") return "voldown";
+  if (value === "ton aus" || value === "stumm") return "mute";
+  return undefined;
+}
+
+function parseMainStageWebCommand(text: string): string | undefined {
+  const explicitStage = text.match(/(?:öffne|oeffne|open|lade|zeige)\s+(.+?)\s+(?:auf|in)\s+der\s+(?:haupt|haubt)bühne\b/i);
+  if (explicitStage?.[1]) {
+    const target = explicitStage[1].replace(/^(?:die\s+)?(?:webseite|website|seite)\s+/i, "").trim();
+    return target || undefined;
+  }
+
+  const simpleOpen = text.match(/^(?:öffne|oeffne|open|lade|zeige)\s+(.+?)[.!?]*$/i);
+  if (!simpleOpen?.[1]) return undefined;
+  const target = simpleOpen[1].replace(/^(?:die\s+)?(?:webseite|website|seite)\s+/i, "").trim();
+  const lower = target.toLowerCase();
+  const isKnownWebsite = /\b(?:webstark|wikipedia|wiki|google|youtube)\b/.test(lower);
+  const hasDomain = /[a-z0-9-]+\.(?:com|org|net|de|ch|io|ai)\b/i.test(target);
+  return isKnownWebsite || hasDomain ? target : undefined;
+}
+
+function coerceWebProposal(proposal: { capability: string; title?: string; description?: string; params?: Record<string, unknown> }): { capability: string; title?: string; description?: string; params?: Record<string, unknown> } {
+  if (proposal.capability !== "app.open_app" && proposal.capability !== "system.open_app") return proposal;
+  const target = String(proposal.params?.url ?? proposal.params?.link ?? proposal.params?.target ?? proposal.params?.name ?? "").trim();
+  const text = `${proposal.title ?? ""} ${proposal.description ?? ""} ${target}`.toLowerCase();
+  const looksLikeWeb = text.includes("webseite") || text.includes("hauptbühne") || text.includes("haubtbühne") || text.includes("browser") || text.includes("wikipedia") || /^[a-z0-9.-]+\.[a-z]{2,}/i.test(target);
+  if (!target || !looksLikeWeb) return proposal;
+  const url = normalizeWebUrl(target);
+  return {
+    capability: "app.open_url",
+    title: proposal.title || `${target} auf der Hauptbühne öffnen`,
+    description: "Öffnet die angeforderte Webseite in der Jarvis-Hauptbühne.",
+    params: { url },
+  };
+}
+
+let barehandsSystemCursorMode = false;
+
+function setStageView(view: "action" | "camera" | "screenshot" | "code" | "morning-brief" | "barehands" | "web" | null, data?: any): void {
   if (!view) {
     orbStageEl.dataset.stageMode = "hero";
     stageActionHudEl.hidden = true;
     stageCameraViewEl.hidden = true;
     stageScreenshotViewEl.hidden = true;
     stageCodeViewEl.hidden = true;
+    if (stageWebViewEl) stageWebViewEl.hidden = true;
     if (stageMorningBriefViewEl) stageMorningBriefViewEl.hidden = true;
     if (stageBarehandsViewEl) {
       stageBarehandsViewEl.hidden = true;
@@ -520,6 +694,7 @@ function setStageView(view: "action" | "camera" | "screenshot" | "code" | "morni
   stageCameraViewEl.hidden = view !== "camera";
   stageScreenshotViewEl.hidden = view !== "screenshot";
   stageCodeViewEl.hidden = view !== "code";
+  if (stageWebViewEl) stageWebViewEl.hidden = view !== "web";
   if (stageMorningBriefViewEl) stageMorningBriefViewEl.hidden = view !== "morning-brief";
   if (stageBarehandsViewEl) stageBarehandsViewEl.hidden = view !== "barehands";
 
@@ -528,10 +703,19 @@ function setStageView(view: "action" | "camera" | "screenshot" | "code" | "morni
   }
 
   if (view === "barehands" && stageBarehandsFrameEl) {
-    const barehandsUrl = "http://127.0.0.1:8794/stage.html";
-    if (stageBarehandsFrameEl.src !== barehandsUrl) {
-      stageBarehandsFrameEl.src = barehandsUrl;
-    }
+    stageBarehandsFrameEl.src = "about:blank";
+    setTimeout(() => {
+      if (stageBarehandsFrameEl) {
+        const suffix = barehandsSystemCursorMode ? "?systemCursor=1" : "";
+        stageBarehandsFrameEl.src = `http://127.0.0.1:8794/stage.html${suffix}`;
+      }
+    }, 100);
+  }
+
+  if (view === "web" && stageWebFrameEl) {
+    const url = normalizeWebUrl(typeof data === "string" && data.trim() ? data.trim() : "https://webstark.org");
+    stageWebFrameEl.setAttribute("src", url);
+    if (stageWebUrlInputEl) stageWebUrlInputEl.value = url;
   }
 
   if (view === "action" && data) {
@@ -551,6 +735,10 @@ function setStageView(view: "action" | "camera" | "screenshot" | "code" | "morni
   }
 
   if (view === "camera") {
+    if (activeCameraStream) {
+      activeCameraStream.getTracks().forEach((t) => t.stop());
+      activeCameraStream = null;
+    }
     navigator.mediaDevices
       .getUserMedia({ video: true, audio: false })
       .then((stream) => {
@@ -614,14 +802,21 @@ function getWeatherInfo(code: number) {
   return { icon: "🌤️", desc: "Wechselhaft" };
 }
 
-async function fetchWeatherForecast() {
-  if (!weather7DayGridEl)
-    return;
+let latestWeatherSummary = "";
+
+async function fetchWeatherForecast(): Promise<string | undefined> {
   try {
     const res = await fetch("https://api.open-meteo.com/v1/forecast?latitude=47.1368&longitude=7.2468&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&current_weather=true&timezone=Europe%2FZurich");
     const data = await res.json();
     if (!data || !data.daily)
-      return;
+      return undefined;
+    if (data.daily.weathercode?.[0] !== undefined && data.current_weather) {
+      const info = getWeatherInfo(data.daily.weathercode[0]);
+      const maxT = Math.round(data.daily.temperature_2m_max[0]);
+      const minT = Math.round(data.daily.temperature_2m_min[0]);
+      const rainProb = data.daily.precipitation_probability_max?.[0] ?? 0;
+      latestWeatherSummary = `In Biel sind es aktuell ${Math.round(data.current_weather.temperature)} Grad. ${info.desc}. Höchsttemperatur ${maxT} Grad, Tiefsttemperatur ${minT} Grad, Regenwahrscheinlichkeit ${rainProb} Prozent.`;
+    }
     if (weatherTodayTempEl && data.current_weather) {
       weatherTodayTempEl.textContent = `${Math.round(data.current_weather.temperature)}°C`;
     }
@@ -635,27 +830,31 @@ async function fetchWeatherForecast() {
       }
     }
     const dayNames = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
-    weather7DayGridEl.replaceChildren();
-    data.daily.time.slice(0, 7).forEach((timeStr: string, idx: number) => {
-      const date = new Date(timeStr);
-      const dayName = idx === 0 ? "Heute" : dayNames[date.getDay()];
-      const code = data.daily.weathercode[idx];
-      const maxT = Math.round(data.daily.temperature_2m_max[idx]);
-      const minT = Math.round(data.daily.temperature_2m_min[idx]);
-      const rainProb = data.daily.precipitation_probability_max?.[idx] ?? 0;
-      const info = getWeatherInfo(code);
-      const card = document.createElement("div");
-      card.className = "hud-weather-day";
-      card.innerHTML = `
-        <span class="hud-weather-day-name">${dayName}</span>
-        <span class="hud-weather-day-icon">${info.icon}</span>
-        <span class="hud-weather-day-temp">${maxT}° / ${minT}°</span>
-        <span class="hud-weather-day-rain">💧 ${rainProb}%</span>
-      `;
-      weather7DayGridEl.appendChild(card);
-    });
+    if (weather7DayGridEl) {
+      weather7DayGridEl.replaceChildren();
+      data.daily.time.slice(0, 7).forEach((timeStr: string, idx: number) => {
+        const date = new Date(timeStr);
+        const dayName = idx === 0 ? "Heute" : dayNames[date.getDay()];
+        const code = data.daily.weathercode[idx];
+        const maxT = Math.round(data.daily.temperature_2m_max[idx]);
+        const minT = Math.round(data.daily.temperature_2m_min[idx]);
+        const rainProb = data.daily.precipitation_probability_max?.[idx] ?? 0;
+        const info = getWeatherInfo(code);
+        const card = document.createElement("div");
+        card.className = "hud-weather-day";
+        card.innerHTML = `
+          <span class="hud-weather-day-name">${dayName}</span>
+          <span class="hud-weather-day-icon">${info.icon}</span>
+          <span class="hud-weather-day-temp">${maxT}° / ${minT}°</span>
+          <span class="hud-weather-day-rain">💧 ${rainProb}%</span>
+        `;
+        weather7DayGridEl.appendChild(card);
+      });
+    }
+    return latestWeatherSummary || undefined;
   } catch (err) {
     console.warn("Wetter konnte nicht geladen werden:", err);
+    return undefined;
   }
 }
 
@@ -705,7 +904,8 @@ async function speakMorningBriefing() {
     greeting = "Guten Morgen";
   else if (hour >= 18 || hour < 5)
     greeting = "Guten Abend";
-  const text = `${greeting} Ed. Das Wetter in Biel ist heute überwiegend sonnig. Dein Fokus liegt auf der HUD Integration und den ESP32 Sensoren. Systeme optimiert.`;
+  const weatherText = latestWeatherSummary || "Die aktuellen Wetterdaten konnten nicht geladen werden.";
+  const text = `${greeting} Master. ${weatherText} Dein Fokus liegt auf der HUD Integration und den ESP32 Sensoren. Systeme optimiert.`;
   await speakJarvisResponse(text);
   if (ttsIndicator) {
     const checkInterval = setInterval(() => {
@@ -736,17 +936,34 @@ document.querySelectorAll<HTMLButtonElement>("[data-toggle-barehands]").forEach(
   btn.addEventListener("click", async () => {
     const isBarehandsActive = stageBarehandsViewEl && !stageBarehandsViewEl.hidden;
     if (isBarehandsActive) {
-      setStageView(null);
-      await window.jarvisDesktop.stopBarehands();
-      if (stageBarehandsFrameEl) stageBarehandsFrameEl.src = "about:blank";
+      sendToBarehands("jarvis:release-camera");
+      if (stageBarehandsFrameEl) {
+        stageBarehandsFrameEl.src = "about:blank";
+      }
+      setTimeout(() => setStageView(null), 100);
       return;
     }
+    // Kamera-Berechtigung vor Barehands-Start prüfen und User informieren
+    // (besonders wichtig auf macOS: systemPreferences.askForMediaAccess wird
+    // vom Main Process ausgelöst, hier nur UX-Hinweis)
+    if (navigator.permissions) {
+      try {
+        const camPerm = await navigator.permissions.query({ name: "camera" as PermissionName });
+        if (camPerm.state === "denied") {
+          addEntry("warning", "Kameraberechtigung verweigert. Barehands funktioniert nur mit Kamerazugriff. Bitte in den Systemeinstellungen aktivieren.");
+        } else if (camPerm.state === "prompt") {
+          addEntry("info", "Barehands wird gleich nach Kamerazugriff fragen — bitte erlauben.");
+        }
+      } catch (permErr) {
+        console.warn("[barehands] permission check failed:", permErr);
+      }
+    }
+
     try {
       await window.jarvisDesktop.ensureBarehands();
     } catch {
       addEntry("warning", "Barehands service could not be started.");
     }
-    if (stageBarehandsFrameEl) stageBarehandsFrameEl.src = "http://127.0.0.1:8794/stage.html";
     setStageView("barehands");
   });
 });
@@ -754,15 +971,13 @@ document.querySelectorAll<HTMLButtonElement>("[data-toggle-barehands]").forEach(
 function sendToBarehands(type: string, payload: Record<string, unknown> = {}): void {
   const frame = document.querySelector<HTMLIFrameElement>("[data-barehands-frame]");
   if (frame?.contentWindow) {
-    frame.contentWindow.postMessage({ source: "jarvis-barehands-bridge", type, payload }, "*");
+    frame.contentWindow.postMessage({ source: "jarvis-barehands-bridge", type, payload }, "http://127.0.0.1:8794");
   }
 }
 
-function pushTranscriptToBarehands(text: string): void {
-  sendToBarehands("jarvis:transcript", { text });
-}
-
 window.addEventListener("message", async (event: MessageEvent) => {
+  const frame = document.querySelector<HTMLIFrameElement>("[data-barehands-frame]");
+  if (!frame?.contentWindow || event.source !== frame.contentWindow || event.origin !== "http://127.0.0.1:8794") return;
   const data = event.data;
   if (!data || data.source !== "jarvis-barehands-bridge") return;
 
@@ -780,12 +995,60 @@ window.addEventListener("message", async (event: MessageEvent) => {
     }
   } else if (type === "barehands:open-note") {
     sendToBarehands("note-opened", { file: payload.file, content: payload.content });
+  } else if (type === "barehands:cursor") {
+    const action = String(payload.action ?? "").trim();
+    if (action) void window.jarvisDesktop.barehandsCursor(action, payload);
   } else {
     await window.jarvisDesktop.barehandsPushEvent(type, payload);
   }
 });
 
-// Grok Vision Bild-Analyse Handhabung für Hauptbühnen-Medien
+document.querySelectorAll<HTMLButtonElement>("[data-stage-toggle]").forEach((btn) => {
+  btn.addEventListener("click", async () => {
+    const target = btn.dataset.stageToggle as "web" | "camera" | "screenshot" | "barehands";
+    const isSameActive = (target === "web" && stageWebViewEl && !stageWebViewEl.hidden)
+      || (target === "camera" && stageCameraViewEl && !stageCameraViewEl.hidden)
+      || (target === "screenshot" && stageScreenshotViewEl && !stageScreenshotViewEl.hidden)
+      || (target === "barehands" && stageBarehandsViewEl && !stageBarehandsViewEl.hidden);
+    if (isSameActive) {
+      setStageView(null);
+      document.querySelectorAll("[data-stage-toggle]").forEach(b => b.classList.remove("active"));
+    } else if (target === "web") {
+      setStageView("web");
+      document.querySelectorAll("[data-stage-toggle]").forEach(b => b.classList.toggle("active", b === btn));
+    } else if (target === "camera") {
+      setStageView("camera");
+      document.querySelectorAll("[data-stage-toggle]").forEach(b => b.classList.toggle("active", b === btn));
+    } else if (target === "screenshot") {
+      try {
+        const dataUrl = await window.jarvisDesktop.captureScreenshot();
+        if (dataUrl) setStageView("screenshot", dataUrl);
+        else addEntry("warning", "Screenshot konnte nicht erstellt werden.");
+      } catch (err) {
+        addEntry("warning", `Screenshot-Fehler: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      document.querySelectorAll("[data-stage-toggle]").forEach(b => b.classList.toggle("active", b === btn));
+    } else if (target === "barehands") {
+      setStageView("barehands");
+      document.querySelectorAll("[data-stage-toggle]").forEach(b => b.classList.toggle("active", b === btn));
+    }
+  });
+});
+
+// Web-Navigation
+document.querySelectorAll<HTMLFormElement>("[data-web-nav-form]").forEach((form) => {
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const input = form.querySelector<HTMLInputElement>("[data-web-url-input]");
+    if (input) {
+      let url = input.value.trim();
+      if (url && !url.startsWith("http")) url = "https://" + url;
+      if (url && stageWebFrameEl) {
+        stageWebFrameEl.setAttribute("src", normalizeWebUrl(url));
+      }
+    }
+  });
+});
 document.querySelectorAll<HTMLButtonElement>("[data-analyze-vision]").forEach((btn) => {
   btn.addEventListener("click", async () => {
     const type = btn.dataset.analyzeVision;
@@ -899,11 +1162,19 @@ async function handleActionDecision(intentId: string, decision: "approve" | "rej
   try {
     if (decision === "approve") setLiveState("executing-approved");
     const updated = await window.jarvisDesktop.decideAction(intentId, decision);
-    addEntry("system", `Action proposal '${updated.title}' ${decision === "approve" ? "APPROVED and executed" : "REJECTED"}.`);
+    if (updated.status === "failed") {
+      addEntry("warning", `Action '${updated.title}' fehlgeschlagen: ${updated.error ?? "Unbekannter Fehler"}`);
+    } else if (updated.status === "rejected" || decision === "reject") {
+      addEntry("system", `Action proposal '${updated.title}' REJECTED.`);
+    } else if (updated.status === "completed") {
+      addEntry("system", `Action proposal '${updated.title}' APPROVED and executed.`);
+    } else {
+      addEntry("system", `Action proposal '${updated.title}' Status: ${updated.status}.`);
+    }
     await refreshRuntimeStatus();
 
     // Spezial-Handhabung für Kamera & Screenshot Capabilities
-    if (decision === "approve") {
+    if (decision === "approve" && updated.status === "completed") {
       if (updated.capability === "system.take_screenshot" || updated.capability === "system.screenshot") {
         const dataUrl = await window.jarvisDesktop.captureScreenshot();
         setStageView("screenshot", dataUrl);
@@ -914,6 +1185,9 @@ async function handleActionDecision(intentId: string, decision: "approve" | "rej
           await window.jarvisDesktop.ensureBarehands();
         } catch {}
         setStageView("barehands");
+      } else if (updated.capability === "app.open_url" || updated.capability === "browser.open") {
+        const url = String(updated.params?.url ?? updated.params?.link ?? updated.params?.target ?? "");
+        if (url) setStageView("web", url);
       }
     }
   } catch (err) {
@@ -929,7 +1203,7 @@ function renderTranscript(): void {
   const filtered = entries.filter((item) => {
     if (item.kind === "action") return false; // Action Proposals werden NUR auf der Hauptbühne angezeigt!
     if (feedFilter === "chat") return item.kind === "user" || item.kind === "assistant";
-    if (feedFilter === "system") return item.kind === "system" || item.kind === "warning";
+    if (feedFilter === "system") return item.kind === "system" || item.kind === "warning" || item.kind === "info";
     return true;
   });
 
@@ -1165,6 +1439,25 @@ async function ensureMicrophoneActive(): Promise<void> {
 window.addEventListener("focus", () => { void ensureMicrophoneActive(); });
 window.addEventListener("click", () => { void ensureMicrophoneActive(); }, { once: true });
 
+async function setVoiceMuteState(muted: boolean): Promise<void> {
+  const next = await window.jarvisDesktop.setVoiceMute(muted);
+  voiceStatus = next;
+  if (!next.muted) {
+    await ensureMicrophoneActive();
+    setLiveState("listening");
+    addEntry("system", "Iron-Man-Modus aktiv: Mikrofon und dauerhafte Spracherkennung sind eingeschaltet.");
+  } else {
+    stopLocalAudioSeam();
+    if (activeAudioStream) {
+      activeAudioStream.getTracks().forEach((track) => track.stop());
+      activeAudioStream = undefined;
+    }
+    setLiveState(readiness?.status === "ready" ? "ready" : "idle");
+    addEntry("system", "Iron-Man-Modus deaktiviert: Hard-Mute ist aktiv.");
+  }
+  await refreshRuntimeStatus();
+}
+
 async function toggleVoiceMute(): Promise<void> {
   try {
     // Wenn KI gerade spricht oder denkt → Klick bricht sofort ab/stoppt Unterhaltung!
@@ -1174,21 +1467,7 @@ async function toggleVoiceMute(): Promise<void> {
     }
 
     const isMuted = voiceStatus?.muted ?? false;
-    const next = await window.jarvisDesktop.setVoiceMute(!isMuted);
-    voiceStatus = next;
-    if (!next.muted) {
-      await ensureMicrophoneActive();
-      setLiveState("listening");
-    } else {
-      stopLocalAudioSeam();
-      if (activeAudioStream) {
-        activeAudioStream.getTracks().forEach((track) => track.stop());
-        activeAudioStream = undefined;
-      }
-      setLiveState(readiness?.status === "ready" ? "ready" : "idle");
-      addEntry("system", "Microphone muted (hard mute active).");
-    }
-    await refreshRuntimeStatus();
+    await setVoiceMuteState(!isMuted);
   } catch (err) {
     addEntry("warning", `Failed to toggle voice mute: ${err instanceof Error ? err.message : String(err)}`);
   }
@@ -1204,32 +1483,518 @@ async function submitCurrentMessage(textParam?: string, imageDataParam?: string)
     return;
   }
 
-  // 1. Automatischer Kamera-Snapshot wenn Kamera auf der Hauptbühne aktiv ist
-  if (!imageDataParam && stageCameraViewEl && !stageCameraViewEl.hidden && stageCameraVideoEl && stageCameraVideoEl.videoWidth > 0) {
-    const lower = text.toLowerCase();
-    if (lower.includes("kamera") || lower.includes("webcam") || lower.includes("kamerafoto")) {
+  const lower = text.toLowerCase().replace(/[.!?+]+$/, "").trim();
+  if (
+    lower === "stop" ||
+    lower === "stopp" ||
+    lower === "abbrechen" ||
+    lower === "halt" ||
+    lower === "pause" ||
+    lower === "ruhe"
+  ) {
+    stopConversation();
+    return;
+  }
+
+  const visionTypeMatch = text.match(/^schreibe\s+(.+?)\s+in\s+(?:das\s+|den\s+|die\s+)?(.+?)[.!?]*$/i);
+  const visionClickMatch = text.match(/^klicke\s+auf\s+(?:das\s+|den\s+|die\s+)?(.+?)[.!?]*$/i);
+  if (visionTypeMatch || visionClickMatch) {
+    const target = (visionTypeMatch?.[2] ?? visionClickMatch?.[1] ?? "").trim();
+    const insertText = visionTypeMatch?.[1]?.trim();
+    addEntry("user", text);
+    try {
+      setLiveState("thinking");
+      const located = await window.jarvisDesktop.locateScreenTarget(target);
+      if (!located.found || located.x === undefined || located.y === undefined) {
+        addEntry("warning", `Vision-Ziel „${target}“ wurde nicht sicher gefunden: ${located.reason ?? "kein Treffer"}`);
+        return;
+      }
+      const capability = insertText ? "system.cursor_type" : "system.cursor_click";
+      const intent = await window.jarvisDesktop.proposeAction({
+        capability,
+        title: insertText ? `Text in „${target}“ einfügen` : `Auf „${target}“ klicken`,
+        description: `Grok Vision lokalisierte das Ziel bei (${Math.round(located.x)}, ${Math.round(located.y)}) mit ${Math.round((located.confidence ?? 0) * 100)}% Konfidenz. Ausführung erst nach manueller Freigabe.`,
+        params: { x: located.x, y: located.y, target, ...(insertText ? { text: insertText } : {}) },
+      });
+      addEntry("action", `Vision-Aktion bestätigen: ${intent.title}`, true, intent);
+    } catch (err) {
+      addEntry("warning", `Vision-Zielerkennung fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      if (readiness?.status === "ready" && activeRequestId === undefined) setLiveState("ready");
+    }
+    return;
+  }
+
+  const activateCursorMode = /^(?:aktiviere|starte|schalte)\s+(?:die\s+)?(?:cursorsteuerung|cursor-steuerung|maussteuerung)(?:\s+ein)?$/i.test(lower);
+  const deactivateCursorMode = /^(?:deaktiviere|beende|schalte)\s+(?:die\s+)?(?:cursorsteuerung|cursor-steuerung|maussteuerung)(?:\s+aus)?$/i.test(lower);
+  if (activateCursorMode || deactivateCursorMode) {
+    addEntry("user", text);
+    barehandsSystemCursorMode = activateCursorMode;
+    if (activateCursorMode) {
       try {
-        const ctx = stageCameraCanvasEl.getContext("2d");
-        stageCameraCanvasEl.width = stageCameraVideoEl.videoWidth || 640;
-        stageCameraCanvasEl.height = stageCameraVideoEl.videoHeight || 480;
-        ctx?.drawImage(stageCameraVideoEl, 0, 0);
-        imageDataParam = stageCameraCanvasEl.toDataURL("image/png");
+        await window.jarvisDesktop.ensureBarehands();
+        setStageView("barehands");
+        addEntry("assistant", "Cursorsteuerung aktiv. Bewege die Hand, um den Systemcursor zu führen. Kurzer Pinch: Linksklick. Pinch mindestens 0,9 Sekunden halten und lösen: Rechtsklick. Sage „Deaktiviere Cursorsteuerung“, um zur normalen Barehands-Bühne zurückzukehren.");
       } catch (err) {
-        console.warn("Auto Kamera Capture fehlgeschlagen:", err);
+        barehandsSystemCursorMode = false;
+        addEntry("warning", `Cursorsteuerung konnte nicht gestartet werden: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    } else {
+      setStageView("barehands");
+      addEntry("assistant", "Cursorsteuerung deaktiviert. Barehands bedient wieder nur die interne Bühne.");
+    }
+    return;
+  }
+
+  const activateIronMan = /^(?:aktiviere|starte|schalte)\s+(?:den\s+)?iron[- ]man[- ]modus(?:\s+ein)?$/i.test(lower);
+  const deactivateIronMan = /^(?:deaktiviere|beende|schalte)\s+(?:den\s+)?iron[- ]man[- ]modus(?:\s+aus)?$/i.test(lower);
+  if (activateIronMan || deactivateIronMan) {
+    addEntry("user", text);
+    try {
+      await setVoiceMuteState(deactivateIronMan);
+    } catch (err) {
+      addEntry("warning", `Iron-Man-Modus konnte nicht geändert werden: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return;
+  }
+
+  if (/^wie alt bin ich[.!?]*$/i.test(text)) {
+    addEntry("user", text);
+    try {
+      const candidates = await window.jarvisDesktop.getMemoryItems({ search: "geburt" });
+      const parsed = candidates
+        .map((item) => ({ item, match: item.value.match(/\b(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})\b/) }))
+        .filter((entry) => entry.match !== null);
+      if (parsed.length !== 1 || !parsed[0].match) {
+        addEntry("assistant", "Ich kann dein Alter erst berechnen, wenn genau ein Geburtsdatum im persistenten Speicher hinterlegt ist, zum Beispiel: Merke dir, dass mein Geburtsdatum 01.01.1980 ist.");
+      } else {
+        const [, dayText, monthText, yearText] = parsed[0].match;
+        const birth = new Date(Number(yearText), Number(monthText) - 1, Number(dayText));
+        const now = new Date();
+        let age = now.getFullYear() - birth.getFullYear();
+        if (now.getMonth() < birth.getMonth() || (now.getMonth() === birth.getMonth() && now.getDate() < birth.getDate())) age--;
+        const response = `Du bist ${age} Jahre alt.`;
+        addEntry("assistant", response);
+        void speakJarvisResponse(response);
+      }
+    } catch (err) {
+      addEntry("warning", `Alter konnte nicht berechnet werden: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return;
+  }
+
+  const rememberMatch = text.match(/^(?:merke dir|denk daran),?\s+dass\s+(.+?)[.!?]*$/i);
+  if (rememberMatch?.[1]) {
+    const value = rememberMatch[1].trim();
+    addEntry("user", text);
+    try {
+      const item = await window.jarvisDesktop.addMemoryItem({
+        category: "operator_preference",
+        key: `voice_memory_${Date.now()}`,
+        value,
+        provenance: "voice_command",
+      });
+      memoryItems.unshift(item);
+      const response = `Gespeichert: ${value}`;
+      addEntry("assistant", response);
+      void speakJarvisResponse(response);
+    } catch (err) {
+      addEntry("warning", `Erinnerung konnte nicht gespeichert werden: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return;
+  }
+
+  const forgetMatch = text.match(/^vergiss\s+(.+?)[.!?]*$/i);
+  if (forgetMatch?.[1]) {
+    const search = forgetMatch[1].trim();
+    addEntry("user", text);
+    try {
+      const matches = await window.jarvisDesktop.getMemoryItems({ search });
+      if (matches.length === 1) {
+        await window.jarvisDesktop.deleteMemoryItem(matches[0].id);
+        memoryItems = memoryItems.filter((item) => item.id !== matches[0].id);
+        addEntry("assistant", `Erinnerung entfernt: ${matches[0].value}`);
+      } else if (matches.length === 0) {
+        addEntry("assistant", `Keine passende Erinnerung für „${search}“ gefunden.`);
+      } else {
+        addEntry("warning", `Mehrere Erinnerungen passen zu „${search}“. Bitte im Memory-Panel gezielt auswählen.`);
+      }
+    } catch (err) {
+      addEntry("warning", `Erinnerung konnte nicht gelöscht werden: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return;
+  }
+
+  if (/^(?:was weißt du über mich|liste meinen speicher auf|zeige meinen speicher)[.!?]*$/i.test(text)) {
+    addEntry("user", text);
+    try {
+      const items = await window.jarvisDesktop.getMemoryItems();
+      memoryItems = items;
+      const response = items.length === 0
+        ? "Der persistente Speicher ist leer."
+        : items.map((item) => `${item.key}: ${item.value}`).join("\n");
+      addEntry("assistant", response);
+    } catch (err) {
+      addEntry("warning", `Speicher konnte nicht gelesen werden: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return;
+  }
+
+  if (/^(?:jarvis,?\s+an die arbeit|wir arbeiten|arbeitsmodus|starte (?:den )?arbeitsmodus)[.!?]*$/i.test(text)) {
+    addEntry("user", text);
+    try {
+      const result = await window.jarvisDesktop.runWorkflow("work-mode");
+      addEntry(result.success ? "assistant" : "warning", result.summary);
+      if (result.logs.length > 0) addEntry("info", result.logs.join("\n"));
+    } catch (err) {
+      addEntry("warning", `Arbeitsmodus konnte nicht gestartet werden: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return;
+  }
+
+  if (/^(?:batterie|ladezustand|wie voll ist (?:der )?akku|cpu|prozessorauslastung|ram|arbeitsspeicher|seit wann ist der pc an|systemstatus)[.!?]*$/i.test(text)) {
+    addEntry("user", text);
+    try {
+      const info = await window.jarvisDesktop.getSystemInfo();
+      const uptimeHours = Math.floor(info.uptimeSeconds / 3600);
+      const uptimeMinutes = Math.floor((info.uptimeSeconds % 3600) / 60);
+      const usedGiB = info.memory.usedBytes / 1024 ** 3;
+      const totalGiB = info.memory.totalBytes / 1024 ** 3;
+      let response: string;
+      if (/batterie|ladezustand|akku/i.test(text)) {
+        response = info.battery.available
+          ? `Der Akku steht bei ${info.battery.percent} Prozent und wird ${info.battery.charging ? "geladen" : "nicht geladen"}.`
+          : "Auf diesem PC wurde keine auslesbare Batterie gefunden.";
+      } else if (/cpu|prozessorauslastung/i.test(text)) {
+        response = `Die gesamte CPU-Auslastung liegt aktuell bei ${info.cpuPercent} Prozent.`;
+      } else if (/ram|arbeitsspeicher/i.test(text)) {
+        response = `Der PC verwendet ${usedGiB.toFixed(1)} von ${totalGiB.toFixed(1)} Gigabyte RAM, also ${info.memory.percent} Prozent.`;
+      } else if (/seit wann|uptime/i.test(text)) {
+        response = `Der PC läuft seit ${uptimeHours} Stunden und ${uptimeMinutes} Minuten.`;
+      } else {
+        const battery = info.battery.available ? ` Akku ${info.battery.percent} Prozent.` : " Keine Batterie erkannt.";
+        response = `CPU ${info.cpuPercent} Prozent. RAM ${info.memory.percent} Prozent. Uptime ${uptimeHours} Stunden und ${uptimeMinutes} Minuten.${battery}`;
+      }
+      addEntry("assistant", response);
+      void speakJarvisResponse(response);
+    } catch (err) {
+      addEntry("warning", `Systemstatus konnte nicht gelesen werden: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return;
+  }
+
+  if (/^(?:mache |erstelle |speichere )?(?:einen )?(?:screenshot|bildschirmaufnahme)[.!?]*$/i.test(text)) {
+    addEntry("user", text);
+    try {
+      const saved = await window.jarvisDesktop.saveScreenshot();
+      setStageView("screenshot", saved.dataUrl);
+      addEntry("assistant", `Screenshot gespeichert: ${saved.path}`);
+    } catch (err) {
+      addEntry("warning", `Screenshot konnte nicht gespeichert werden: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return;
+  }
+
+  if (/^(?:schalte|fahre)\s+(?:den\s+)?pc\s+(?:aus|herunter)|^herunterfahren[.!?]*$/i.test(text)) {
+    addEntry("user", text);
+    try {
+      const intent = await window.jarvisDesktop.proposeAction({
+        capability: "system.shutdown",
+        title: "PC herunterfahren",
+        description: "Plant nach ausdrücklicher Freigabe das Windows-Herunterfahren mit 30 Sekunden Verzögerung.",
+        params: {},
+      });
+      addEntry("action", "Bestätigung erforderlich: PC in 30 Sekunden herunterfahren?", true, intent);
+    } catch (err) {
+      addEntry("warning", `Herunterfahren konnte nicht vorgeschlagen werden: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return;
+  }
+
+  const googleDocMatch = text.match(/^erstelle\s+(?:ein\s+)?google\s+doc(?:ument)?(?:\s+(.+?))?[.!?]*$/i);
+  if (googleDocMatch) {
+    addEntry("user", text);
+    setStageView("web", "https://docs.new");
+    addEntry("assistant", `Neues Google-Dokument auf der Hauptbühne geöffnet${googleDocMatch[1] ? `. Gewünschter Titel: ${googleDocMatch[1].trim()}` : ""}.`);
+    return;
+  }
+
+  const googleSheetMatch = text.match(/^erstelle\s+(?:ein\s+)?google\s+sheet(?:\s+(.+?))?[.!?]*$/i);
+  if (googleSheetMatch) {
+    addEntry("user", text);
+    setStageView("web", "https://sheets.new");
+    addEntry("assistant", `Neue Google-Tabelle auf der Hauptbühne geöffnet${googleSheetMatch[1] ? `. Gewünschter Titel: ${googleSheetMatch[1].trim()}` : ""}.`);
+    return;
+  }
+
+  if (/^(?:lies|zeige|öffne)\s+(?:meine\s+)?e-?mails[.!?]*$/i.test(text)) {
+    addEntry("user", text);
+    setStageView("web", "https://mail.google.com/mail/u/0/#inbox");
+    addEntry("assistant", "Gmail-Posteingang auf der Hauptbühne geöffnet. Strukturiertes Vorlesen benötigt noch Google-OAuth.");
+    return;
+  }
+
+  if (/^(?:zeige|öffne)\s+(?:meinen\s+)?kalender[.!?]*$/i.test(text)) {
+    addEntry("user", text);
+    setStageView("web", "https://calendar.google.com/calendar/u/0/r");
+    addEntry("assistant", "Google Kalender auf der Hauptbühne geöffnet.");
+    return;
+  }
+
+  if (/^(?:gibt es|habe ich)\s+heute\s+geburtstage[.!?]*$/i.test(text)) {
+    addEntry("user", text);
+    setStageView("web", "https://calendar.google.com/calendar/u/0/r/day");
+    addEntry("assistant", "Heutige Kalenderansicht geöffnet. Eine automatische Geburtstagsauswertung benötigt Google-OAuth.");
+    return;
+  }
+
+  const sportMatch = text.match(/^(?:(?:zeige|suche)\s+)?(?:die\s+)?(ergebnisse|tabelle|live-ergebnisse)\s+(?:der\s+|von\s+)?(.+?)[.!?]*$/i);
+  if (sportMatch?.[2]) {
+    const subject = sportMatch[2].trim();
+    const kind = sportMatch[1].toLowerCase();
+    addEntry("user", text);
+    try {
+      const date = new Date().toLocaleDateString("de-CH");
+      const result = await window.jarvisDesktop.searchWeb(`${kind} ${subject} ${date}`, 5);
+      if (result.results.length === 0) {
+        addEntry("warning", `Keine aktuellen Sportquellen für „${subject}“ gefunden.`);
+      } else {
+        const summary = result.results.map((item, index) => `${index + 1}. ${item.title}\n${item.url}`).join("\n");
+        addEntry("assistant", `Aktuelle Quellen für ${kind} ${subject}:\n${summary}`);
+        setStageView("web", result.results[0].url);
+      }
+    } catch (err) {
+      addEntry("warning", `Sportrecherche fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return;
+  }
+
+  if (/^(?:wie ist das wetter|wie wird das wetter|wird es regnen|wie hoch ist die außentemperatur|wie hoch ist die aussentemperatur)(?:\s+(?:heute|in biel))?[.!?]*$/i.test(text)) {
+    addEntry("user", text);
+    const weather = await fetchWeatherForecast();
+    const response = weather ?? "Die aktuellen Wetterdaten für Biel konnten nicht geladen werden.";
+    addEntry(weather ? "assistant" : "warning", response);
+    if (weather) void speakJarvisResponse(response);
+    return;
+  }
+
+  const currencyMatch = text.match(/^(\d+(?:[.,]\d+)?)\s*(euro|eur|dollar|usd)\s+(?:in|zu)\s+(euro|eur|dollar|usd)[.!?]*$/i);
+  if (currencyMatch) {
+    const amount = Number(currencyMatch[1].replace(",", "."));
+    const source = /euro|eur/i.test(currencyMatch[2]) ? "EUR" : "USD";
+    const target = /euro|eur/i.test(currencyMatch[3]) ? "EUR" : "USD";
+    addEntry("user", text);
+    if (source === target) {
+      addEntry("assistant", `${amount.toLocaleString("de-DE")} ${source} entsprechen ${amount.toLocaleString("de-DE")} ${target}.`);
+      return;
+    }
+    try {
+      const response = await fetch(`https://api.frankfurter.app/latest?amount=${encodeURIComponent(String(amount))}&from=${source}&to=${target}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json() as { date?: string; rates?: Record<string, number> };
+      const converted = data.rates?.[target];
+      if (typeof converted !== "number") throw new Error("Kein Kurs geliefert.");
+      const answer = `${amount.toLocaleString("de-DE")} ${source} entsprechen ${converted.toLocaleString("de-DE", { maximumFractionDigits: 2 })} ${target}. Kursdatum: ${data.date ?? "unbekannt"}.`;
+      addEntry("assistant", answer);
+      void speakJarvisResponse(answer);
+    } catch (err) {
+      addEntry("warning", `Währungsumrechnung konnte nicht geladen werden: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return;
+  }
+
+  const deterministicResult = getDeterministicCalculation(text) ?? getDeterministicConversion(text) ?? getDeterministicTranslation(text);
+  if (deterministicResult) {
+    const userMessage: JarvisChatMessage = { role: "user", content: text };
+    const assistantMessage: JarvisChatMessage = { role: "assistant", content: deterministicResult };
+    messages.push(userMessage, assistantMessage);
+    addEntry("user", text);
+    addEntry("assistant", deterministicResult);
+    void speakJarvisResponse(deterministicResult);
+    return;
+  }
+
+  const localAnswer = getDeterministicLocalAnswer(text);
+  if (localAnswer) {
+    const userMessage: JarvisChatMessage = { role: "user", content: text };
+    const assistantMessage: JarvisChatMessage = { role: "assistant", content: localAnswer };
+    messages.push(userMessage, assistantMessage);
+    addEntry("user", text);
+    addEntry("assistant", localAnswer);
+    void speakJarvisResponse(localAnswer);
+    return;
+  }
+
+  // Deterministic desktop shortcut command. Spotify must always use the user's
+  // Desktop shortcut and must never enter the LLM tool loop or Microsoft Store.
+  if (/^(?:öffne|oeffne|open|starte)\s+spotify\b/i.test(text)) {
+    addEntry("user", text);
+    try {
+      const intent = await window.jarvisDesktop.proposeAction({
+        capability: "app.open_app",
+        title: "Spotify öffnen",
+        description: "Startet die Spotify-Web-App über die Desktop-Verknüpfung.",
+        params: { name: "Spotify" },
+      });
+      await handleActionDecision(intent.id, "approve");
+    } catch (err) {
+      addEntry("warning", `Spotify konnte nicht geöffnet werden: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return;
+  }
+
+  const deterministicFolder = parseDeterministicFolderCommand(text);
+  if (deterministicFolder) {
+    addEntry("user", text);
+    try {
+      const intent = await window.jarvisDesktop.proposeAction({
+        capability: "system.open_folder",
+        title: `${deterministicFolder} öffnen`,
+        description: "Öffnet einen sicheren Benutzerordner im Windows Explorer.",
+        params: { folder: deterministicFolder },
+      });
+      await handleActionDecision(intent.id, "approve");
+    } catch (err) {
+      addEntry("warning", `Ordner konnte nicht geöffnet werden: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return;
+  }
+
+  const deterministicCloseApp = parseDeterministicCloseAppCommand(text);
+  if (deterministicCloseApp) {
+    addEntry("user", text);
+    try {
+      const intent = await window.jarvisDesktop.proposeAction({
+        capability: "app.close",
+        title: `${deterministicCloseApp} beenden`,
+        description: "Beendet nach manueller Bestätigung ausschließlich Prozesse aus der festen Allowlist.",
+        params: { name: deterministicCloseApp },
+      });
+      addEntry("action", `Bestätigung erforderlich: ${deterministicCloseApp} beenden?`, true, intent);
+    } catch (err) {
+      addEntry("warning", `Anwendung konnte nicht zum Beenden vorgeschlagen werden: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return;
+  }
+
+  const deterministicApp = parseDeterministicAppCommand(text);
+  if (deterministicApp) {
+    addEntry("user", text);
+    try {
+      const intent = await window.jarvisDesktop.proposeAction({
+        capability: "app.open_app",
+        title: `${deterministicApp} öffnen`,
+        description: "Startet eine explizit erlaubte lokale Windows-Anwendung.",
+        params: { name: deterministicApp },
+      });
+      await handleActionDecision(intent.id, "approve");
+    } catch (err) {
+      addEntry("warning", `Anwendung konnte nicht geöffnet werden: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return;
+  }
+
+  const deterministicMediaAction = parseDeterministicMediaAction(text);
+  if (deterministicMediaAction) {
+    addEntry("user", text);
+    try {
+      const intent = await window.jarvisDesktop.proposeAction({
+        capability: "media.control",
+        title: `Spotify: ${deterministicMediaAction}`,
+        description: `Führt die Medienaktion '${deterministicMediaAction}' aus.`,
+        params: { action: deterministicMediaAction },
+      });
+      await handleActionDecision(intent.id, "approve");
+    } catch (err) {
+      addEntry("warning", `Mediensteuerung fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return;
+  }
+
+  const youtubeMatch = text.match(/^(?:starte|spiele|suche)\s+(.+?)\s+(?:auf|bei)\s+youtube[.!?]*$/i);
+  if (youtubeMatch?.[1]) {
+    const query = youtubeMatch[1].trim();
+    addEntry("user", text);
+    setStageView("web", `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`);
+    addEntry("assistant", `YouTube-Suche für „${query}“ auf der Hauptbühne geöffnet.`);
+    return;
+  }
+
+  // Deterministic Spotify song command. A concrete title/artist bypasses the
+  // LLM loop and is searched and played through the Spotify PWA controller.
+  const spotifySongMatch = text.match(/^(?:spiele|spiel|play|starte)\s+(.+?)[.!?]*$/i);
+  if (spotifySongMatch?.[1] && !/youtube/i.test(text)) {
+    const query = spotifySongMatch[1].replace(/\s+(?:auf|mit)\s+spotify$/i, "").trim();
+    if (query && !/^spotify$/i.test(query)) {
+      addEntry("user", text);
+      try {
+        const intent = await window.jarvisDesktop.proposeAction({
+          capability: "media.control",
+          title: `${query} auf Spotify abspielen`,
+          description: "Sucht den Titel in der Spotify-Web-App und startet die Wiedergabe.",
+          params: /^musik$/i.test(query) ? { action: "play" } : { action: "play", query },
+        });
+        await handleActionDecision(intent.id, "approve");
+      } catch (err) {
+        addEntry("warning", `Spotify-Wiedergabe fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      return;
+    }
+  }
+
+  // Deterministic main-stage browser command. This path intentionally bypasses
+  // the LLM and every action/tool loop to guarantee one in-app navigation only.
+  const mainStageTarget = parseMainStageWebCommand(text);
+  if (mainStageTarget) {
+    const url = normalizeWebUrl(mainStageTarget);
+    const userMessage: JarvisChatMessage = { role: "user", content: text };
+    const assistantMessage: JarvisChatMessage = { role: "assistant", content: `Öffne ${url} auf der Hauptbühne.` };
+    messages.push(userMessage, assistantMessage);
+    addEntry("user", text);
+    setStageView("web", url);
+    addEntry("assistant", `🌐 ${url} wurde auf der Hauptbühne geöffnet.`);
+    setLiveState(readiness?.status === "ready" ? "ready" : "idle");
+    return;
+  }
+
+  // 1. Kamera-Snapshot für explizite Kamera-/Outfit-/Objektfragen.
+  if (!imageDataParam) {
+    const camQuery = text.toLowerCase();
+    const cameraAnalysisIntent = /kamera|webcam|kamerafoto|schau mich an|analysiere mich|wie bin ich angezogen|was habe ich an|mein outfit|identifiziere (?:dieses|das) objekt|was ist das/.test(camQuery);
+    if (cameraAnalysisIntent) {
+      if (!stageCameraViewEl || stageCameraViewEl.hidden || !stageCameraVideoEl || stageCameraVideoEl.videoWidth <= 0) {
+        setStageView("camera");
+        for (let attempt = 0; attempt < 20 && stageCameraVideoEl.videoWidth <= 0; attempt++) {
+          await new Promise((resolve) => setTimeout(resolve, 150));
+        }
+      }
+      if (stageCameraVideoEl.videoWidth > 0) {
+        try {
+          const ctx = stageCameraCanvasEl.getContext("2d");
+          stageCameraCanvasEl.width = stageCameraVideoEl.videoWidth || 640;
+          stageCameraCanvasEl.height = stageCameraVideoEl.videoHeight || 480;
+          ctx?.drawImage(stageCameraVideoEl, 0, 0);
+          imageDataParam = stageCameraCanvasEl.toDataURL("image/png");
+        } catch (err) {
+          console.warn("Auto Kamera Capture fehlgeschlagen:", err);
+        }
+      } else {
+        addEntry("warning", "Für diese Bildfrage konnte kein Kameraframe aufgenommen werden. Es wird keine Bildbeschreibung erfunden.");
+        return;
       }
     }
   }
 
   // 2. Automatischer Bildschirm-Screenshot wenn Nutzer nach Screen, App-Inhalt, Bildschirm oder 'was siehst du' fragt
   if (!imageDataParam) {
-    const lower = text.toLowerCase();
+    const screenQuery = text.toLowerCase();
     if (
-      lower.includes("screen") ||
-      lower.includes("bildschirm") ||
-      lower.includes("in der app") ||
-      lower.includes("auf meinem screen") ||
-      lower.includes("auf dem bildschirm") ||
-      lower.includes("was siehst du")
+      screenQuery.includes("screen") ||
+      screenQuery.includes("bildschirm") ||
+      screenQuery.includes("in der app") ||
+      screenQuery.includes("auf meinem screen") ||
+      screenQuery.includes("auf dem bildschirm") ||
+      screenQuery.includes("was siehst du")
     ) {
       try {
         const dataUrl = await window.jarvisDesktop.captureScreenshot();
@@ -1328,13 +2093,19 @@ function handleChatEvent(event: JarvisChatStreamEvent): void {
     renderTranscript();
     clearChatState();
 
-    const codeBlockMatch = event.message.content.match(/```(?:action_proposal|action|json)?\s*([\s\S]*?)\s*```/i);
-    const inlineJsonMatch = event.message.content.match(/(\{\s*"capability"\s*:[\s\S]*?\})/i);
-    const rawJsonText = codeBlockMatch?.[1]?.trim() ?? inlineJsonMatch?.[1]?.trim();
+    const messageContent = event.message.content;
+    // Prioritize explicit action_proposal code blocks, then any fenced JSON,
+    // then a bare inline {"capability":...} object. Robust against the model
+    // emitting ```json``` instead of ```action_proposal```.
+    const proposalBlockMatch = messageContent.match(/```(?:action_proposal|action|json)\s*([\s\S]*?)```/i);
+    const inlineJsonMatch = messageContent.match(/\{[^{}]*"capability"\s*:\s*"app\.open_url"[^{}]*\}/i)
+      ?? messageContent.match(/\{[^{}]*"capability"\s*:[^{}]*\}/i);
+    const rawJsonText = (proposalBlockMatch?.[1] ?? inlineJsonMatch?.[0] ?? "").trim();
 
     if (rawJsonText) {
       try {
-        const proposal = JSON.parse(rawJsonText) as { capability: string; title: string; description: string; params?: Record<string, unknown> };
+        const parsedProposal = JSON.parse(rawJsonText) as { capability: string; title: string; description: string; params?: Record<string, unknown> };
+        const proposal = coerceWebProposal(parsedProposal);
         if (proposal.capability) {
           void window.jarvisDesktop.proposeAction({
             capability: proposal.capability,
@@ -1345,11 +2116,18 @@ function handleChatEvent(event: JarvisChatStreamEvent): void {
             addEntry("action", intent.title ?? `Aktion: ${intent.capability}`, false, intent);
             await refreshRuntimeStatus();
 
-            // Webseiten & Apps SOFORT automatisch öffnen — kein Bestätigungsklick nötig!
+            // Webseiten: direkt auf der Hauptbühne öffnen
             if (
               intent.capability === "app.open_url" ||
+              intent.capability === "browser.open"
+            ) {
+              const url = String(intent.params?.url ?? intent.params?.link ?? intent.params?.target ?? "");
+              if (url) {
+                setStageView("web", url);
+                addEntry("action", `🌐 "${url}" wird auf der Hauptbühne geöffnet.`);
+              }
+            } else if (
               intent.capability === "app.open_app" ||
-              intent.capability === "browser.open" ||
               intent.capability === "system.open_app"
             ) {
               await handleActionDecision(intent.id, "approve");
@@ -1363,7 +2141,6 @@ function handleChatEvent(event: JarvisChatStreamEvent): void {
 
     const spokenText = event.message.content.replace(/```action_proposal[\s\S]*?```/gi, "").trim();
     void speakJarvisResponse(spokenText || event.message.content);
-    pushTranscriptToBarehands(spokenText || event.message.content);
     return;
   }
   if (event.type === "chat.cancelled") {
@@ -2480,3 +3257,20 @@ addEntry("system", "Private Control Room initialized. Voice STT (Auto-Send) & Hi
 void loadSettings();
 applyOrbState("idle"); void refreshRuntimeStatus().then(() => addEntry(readiness?.status === "ready" ? "system" : "warning", readiness?.status === "ready" ? "Local Qwen3 8B chat is ready." : "Local model guidance is available; no download was started."));
 setInterval(() => void refreshRuntimeStatus(), 10_000);
+
+// App-Start: Kamera-Berechtigung aktiv anfordern (triggert den OS-Dialog).
+// Auf Windows/Linux ist getUserMedia der einzige Weg; auf macOS ergänzt
+// systemPreferences.askForMediaAccess (s. main.ts). Stream wird nach dem
+// Dialog sofort freigegeben — Barehands holt sich seinen eigenen Stream.
+async function requestCameraOnStartup(): Promise<void> {
+  if (!navigator.mediaDevices?.getUserMedia) return;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    stream.getTracks().forEach((t) => t.stop());
+    addEntry("system", "Kameraberechtigung erteilt — Barehands ist bereit.");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    addEntry("warning", `Kameraberechtigung fehlgeschlagen: ${msg} — Barehands benötigt Kamerazugriff (Systemeinstellungen prüfen).`);
+  }
+}
+void requestCameraOnStartup();

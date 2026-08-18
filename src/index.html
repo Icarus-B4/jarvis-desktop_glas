@@ -38,6 +38,7 @@
           </div>
         </div>
         <div class="stage-view-wrapper" data-stage-mode="hero">
+
           <!-- 1. Action Approval HUD (Große Freigabekarte auf der Hauptbühne) -->
           <div class="stage-view-item stage-action-hud" data-stage-view="action" hidden>
             <div class="stage-hud-card">
@@ -63,6 +64,19 @@
             </div>
             <video class="stage-camera-video" autoplay playsinline muted></video>
             <canvas class="stage-camera-canvas" hidden></canvas>
+          </div>
+
+          <!-- 2b. Web / Browser View -->
+          <div class="stage-view-item stage-web-view" data-stage-view="web" hidden>
+            <div class="stage-media-header">
+              <span>🌐 WEB</span>
+              <form class="stage-web-form" data-web-nav-form style="display: flex; gap: 6px; flex: 1; margin: 0 12px;">
+                <input type="text" class="stage-web-url" data-web-url-input placeholder="https://..." style="flex: 1; background: rgba(0,0,0,0.4); border: 1px solid rgba(0,229,255,0.3); color: #dcf5ee; padding: 6px 10px; border-radius: 6px; font-family: monospace; font-size: 13px;" />
+                <button type="submit" class="btn-primitive btn-cyan btn-xs">↵</button>
+              </form>
+              <button type="button" class="btn-primitive btn-ghost btn-xs" data-stage-close-media>✖ Schließen</button>
+            </div>
+            <webview class="stage-web-frame" data-web-frame src="about:blank" allowpopups style="width: 100%; height: calc(100% - 40px); border: none; background: #fff;"></webview>
           </div>
 
           <!-- 3. Screenshot View -->

@@ -3,116 +3,155 @@
   LOKALE BEFEHLE  (sofort, ohne Internet)
 ?????????????????????????????????????????????????????????
 
-[ Uhrzeit & Datum ]
-  Wie sp�t ist es?                     ? Aktuelle Uhrzeit
-  Welcher Tag ist heute? / Welches Datum?  ? Vollst�ndiges Datum
-  Welcher Monat? / Welches Jahr?       ? Monat / Jahr
-  Wie alt bin ich?                     ? Alter des Benutzers
+[ Uhrzeit & Datum — lokal implementiert ]
+  Wie spät ist es?                     → Aktuelle lokale Uhrzeit ohne LLM
+  Welcher Tag ist heute? / Welches Datum?  → Vollständiges lokales Datum ohne LLM
+  Welcher Monat? / Welches Jahr?       → Monat / Jahr ohne LLM
+  Wie alt bin ich?                     → Berechnet lokal aus genau einem persistent gespeicherten Geburtsdatum; sonst ehrlicher Hinweis
 
-[ PC-System ]
-  Batterie / Ladezustand               ? % Akku + Status
-  CPU / Prozessorauslastung            ? % CPU-Auslastung
-  RAM / Arbeitsspeicher                ? Genutzte GB / gesamt
-  Seit wann ist der PC an? / Uptime    ? Einschaltdauer des PCs
-  Lautst�rke hoch / Ton lauter         ? +5 Stufen Systemlautst�rke
-  Lautst�rke runter                    ? -5 Stufen
-  Ton aus / Stumm                      ? Mute
-  Screenshot / Bildschirmaufnahme      ? Speichert auf dem Desktop
-  Schalte den PC aus / Herunterfahren  ? Ausschalten in 5 Sekunden
+[ PC-System — systemweit implementiert ]
+  Batterie / Ladezustand               → Windows-Batteriestatus; Desktop-PC meldet „keine Batterie“
+  CPU / Prozessorauslastung            → Gesamtauslastung aller CPUs über Messintervall
+  RAM / Arbeitsspeicher                → Gesamter verwendeter und verfügbarer PC-RAM
+  Seit wann ist der PC an? / Uptime    → Windows-System-Uptime
+  Lautstärke hoch / Ton lauter         → Deterministische Medienaktion volup
+  Lautstärke runter                    → Deterministische Medienaktion voldown
+  Ton aus / Stumm                      → Deterministische Medienaktion mute
+  Screenshot / Bildschirmaufnahme      → Speichert PNG auf dem Desktop und zeigt es auf der Hauptbühne
+  Schalte den PC aus / Herunterfahren  → Sichtbarer Action-Vorschlag; nur nach manueller Freigabe, 30 Sekunden Verzögerung
 
-[ Musik � Spotify ]
-  Spiele Musik                         ? Startet deine Spotify-Playlist
-  Spiele Musik auf YouTube             ? �ffnet deine YouTube-URL
-  �ffne Spotify / Starte Spotify       ? �ffnet die App
-  Pause / Stoppe die Musik             ? Pause
-  Musik fortsetzen / Wiedergabe        ? Play
-  N�chster Song / Weiter               ? N�chster Titel
-  Vorheriger Song                      ? Vorheriger Titel
-  Lautst�rke hoch / Lauter             ? Spotify-Lautst�rke +4
-  Ton runter / Leiser                  ? Spotify-Lautst�rke -4
-  Spiele [K�nstler] / Spiele [Titel]   ? Suche auf Spotify
-  Starte [Titel] auf YouTube           ? Sucht und �ffnet im Vollbild
+[ Musik — Spotify Web-App ]
+  Öffne Spotify / Starte Spotify       → Startet C:\Users\ed\Desktop\Spotify.lnk
+  Spiele Musik                         → Play/Pause über die System-Medientaste
+  Musik fortsetzen / Wiedergabe        → Play/Pause
+  Pause / Pausiere die Musik           → Pause
+  Stoppe die Musik                     → Stop
+  Nächster Song / Weiter               → Nächster Titel
+  Vorheriger Song / Zurück             → Vorheriger Titel
+  Lautstärke hoch / Lauter             → Systemlautstärke erhöhen
+  Lautstärke runter / Leiser           → Systemlautstärke verringern
 
-[ Ordner ]
-  �ffne meinen Desktop / meine Dokumente / meine Downloads
-  �ffne meine Bilder / meine Videos / meine Musik
-  Ordne meine Ordner / Fenster-Mosaik  ? Kachelansicht der Fenster
+  Spiele [Titel]                       → Sucht den Titel in der Spotify-Web-App und spielt ihn ab
+  Spiele [Titel] auf Spotify           → Sucht den Titel in der Spotify-Web-App und spielt ihn ab
+  Spiele [Künstler]                    → Sucht Künstler/Top-Treffer und startet die Wiedergabe
+  Play [Titel]                         → Englische Variante des Spotify-Befehls
 
-[ Standard-Apps ]
-  �ffne / Starte den Taschenrechner
-  �ffne / Starte den Editor / Notepad
-  �ffne / Starte Paint
-  �ffne / Starte den Task-Manager
-  �ffne / Starte Brave Browser / den Explorer
+  Beispiele:
+    Spiele Don't Let It Go To Your Head
+    Spiele Brand Nubian auf Spotify
+    Play Don't Let It Go To Your Head
 
-[ Gaming-Apps & Browser ]
-  �ffne / Starte Steam / Origin / EA / EA App
-  �ffne / Starte Firefox / Edge / Microsoft Edge
-  �ffne / Starte Opera / Opera GX
-  Schlie�e / Beende [dieselben Apps]   ? Sauberes Beenden
+  Technischer Ablauf:
+    1. Spotify.lnk auf dem Desktop wird priorisiert (kein Microsoft Store).
+    2. Jarvis setzt das Spotify-Suchfeld über Windows UI Automation.
+    3. Jarvis löst den passenden „[Titel] wiedergeben“-Button aus.
+    4. Der Befehl läuft deterministisch und nicht über den LLM-Tool-Loop.
 
-[ Arbeitsmodus ]
+  Starte [Titel] auf YouTube           → Öffnet die YouTube-Suche intern auf der Hauptbühne; nicht Spotify
+
+[ Ordner — sichere Allowlist ]
+  Öffne meinen Desktop                  → Öffnet C:\Users\ed\Desktop
+  Öffne meine Dokumente                → Öffnet C:\Users\ed\Documents
+  Öffne meine Downloads                → Öffnet C:\Users\ed\Downloads
+  Öffne meine Bilder                   → Öffnet C:\Users\ed\Pictures
+  Öffne meine Videos                   → Öffnet C:\Users\ed\Videos
+  Öffne meinen Musikordner             → Öffnet C:\Users\ed\Music
+  Hinweis: Freie oder modellgenerierte Pfade werden nicht ausgeführt.
+
+[ Standard-Apps — direkte Allowlist ]
+  Öffne / Starte den Taschenrechner     → calc.exe
+  Öffne / Starte den Editor / Notepad  → notepad.exe
+  Öffne / Starte Paint                  → mspaint.exe
+  Öffne / Starte den Task-Manager       → taskmgr.exe
+  Öffne / Starte den Explorer           → explorer.exe
+  Hinweis: Unbekannte App-Namen werden abgelehnt statt über cmd.exe geraten.
+
+[ Gaming-Apps & Browser — exakte Allowlist ]
+  Öffne / Starte Steam / Brave / Chrome / Firefox / Edge / Opera / Origin / EA App
+  → Start nur über bestätigte Verknüpfung oder festen Installationspfad; nicht installierte Apps werden abgelehnt.
+  Schließe / Beende [App] → Sichtbarer Action-Vorschlag; taskkill nur für feste Prozess-Allowlist.
+  Auf diesem PC bestätigt gefunden: Steam, Brave, Chrome und Edge.
+
+[ Arbeitsmodus — deterministischer Workflow ]
   Jarvis, an die Arbeit! / Wir arbeiten / Arbeitsmodus
-  ? Startet Antigravity IDE + Proton mail + Brave Browser in Anordnung
-    + Spotify Web automatisch im Hintergrund
+  → Startet Antigravity IDE, Proton Mail, Brave und Spotify über exakte Allowlist.
+  Spotify wird nicht erneut geöffnet, wenn die PWA bereits läuft.
+  Fehlerhafte Schritte werden ehrlich als teilweise ausgeführt gemeldet.
 
-[ Mathematische Berechnungen ]
+[ Mathematische Berechnungen — lokal und deterministisch ]
   Berechne 12 mal 8 / Was ergibt 150 geteilt durch 3
   Quadratwurzel von 144 / 5 im Quadrat / 7 hoch 3
+  Unterstützt: plus, minus, mal, geteilt durch, Quadrat, Potenz und Dezimalkomma.
+  Division durch null und negative reelle Quadratwurzeln werden verständlich abgelehnt.
 
-[ Umrechnungen ]
+[ Umrechnungen — feste Einheiten lokal ]
   100 km in Meilen / 50 Meilen in km
   37 Grad Celsius in Fahrenheit (und umgekehrt)
-  100 Euro in Dollar (und umgekehrt)
+  100 Euro in Dollar / 100 USD in Euro → Aktueller Frankfurter/ECB-Tageskurs mit Kursdatum
 
-[ �bersetzungen (gebr�uchliche W�rter) ]
+[ Übersetzungen — gebräuchliche Wörter lokal ]
   Wie sagt man Hallo auf Englisch / Spanisch / Deutsch?
-  �bersetze Danke ins Spanische
+  Übersetze Danke ins Spanische
+  Lokales Wörterbuch: Hallo, Danke, Bitte, Tschüss, Guten Morgen/Abend, Ja, Nein.
+  Freie Sätze und unbekannte Wörter fallen an das konfigurierte Modell.
 
-?????????????????????????????????????????????????????????
-  KI-BEFEHLE  (Gemini ? Grok (xAi) ? Groq ? SerpAPI ? Ollama) / (User API KEY in Settings / Eintragen "moment fehlend") -erledigt
-?????????????????????????????????????????????????????????
+=========================================================
+  KI-BEFEHLE — aktuell: Grok/xAI Cloud und lokales Ollama/Qwen
+=========================================================
 
-[ Wetter ]
-  Wie ist das Wetter? / Vorhersage / Wird es regnen?
-  Au�entemperatur (Angezeigt auf der Hauptb�hne)
+[ Wetter — deterministisch für Biel/Bienne ]
+  Wie ist das Wetter? / Wie wird das Wetter heute? / Wird es regnen?
+  Wie hoch ist die Außentemperatur?
+  → Aktuelle Open-Meteo-Daten für Biel mit Temperatur, Wetterlage, Tagesmaximum/-minimum und Regenwahrscheinlichkeit.
+  Morning-Briefing verwendet dieselben Live-Daten; keine hart codierte Sonnenmeldung mehr.
 
-[ Sport ]
-  Ergebnisse Ligue 1 / Premier League / La Liga / Bundesliga
-  Ergebnisse Serie A / Champions League / [Team]
-  Tabelle der Ligue 1...
-  Live-Ergebnisse   ? Gemini + Google Search
+[ Sport — deterministische Webrecherche mit Quellen ]
+  Ergebnisse / Tabelle / Live-Ergebnisse [Liga oder Team]
+  → Ruft direkt die Websuche auf, zeigt bis zu fünf Quellen und öffnet den besten Treffer intern.
+  Keine erfundete Live-Antwort ohne Quelle.
 
-[ Google Workspace ]
-  Erstelle ein Google Doc [Titel]
-  Erstelle ein Google Sheet [Titel]
-  Lies meine E-Mails / Zeige meinen Kalender
-  Gibt es heute Geburtstage?
+[ Google Workspace — Websession integriert, API-Leserechte benötigen OAuth ]
+  Erstelle ein Google Doc [Titel]       → Öffnet docs.new intern
+  Erstelle ein Google Sheet [Titel]     → Öffnet sheets.new intern
+  Zeige/Lies meine E-Mails              → Öffnet Gmail-Posteingang intern
+  Zeige meinen Kalender                 → Öffnet Google Kalender intern
+  Gibt es heute Geburtstage?            → Öffnet heutige Kalenderansicht
+  Strukturiertes Lesen/Vorlesen von E-Mail- und Kalenderdaten bleibt bis zur Google-OAuth-Autorisierung gesperrt.
 
-[ Vision � Bildschirm ]
-  Schau auf meinen Bildschirm / Analysiere meinen Bildschirm
-  Klicke auf [Element]   ? Automatischer Klick per Vision
-  Schreibe [Text] in [Feld]  ? Automatisches Tippen
+[ Vision — Bildschirm — Cloud-Grok implementiert ]
+  Schau auf meinen Bildschirm / Analysiere meinen Bildschirm → Screenshot wird als Vision-Input an Grok übertragen.
+  Lokales Ollama/Qwen bleibt in diesem Build Text-only.
+  Barehands-Systemcursor:
+    Aktiviere Cursorsteuerung            → Startet Barehands im getrennten Systemcursor-Modus
+    Hand bewegen                         → Führt den Windows-Systemcursor
+    kurzer Pinch                         → Linksklick
+    Pinch mindestens 0,9 Sekunden        → Rechtsklick beim Loslassen
+    Deaktiviere Cursorsteuerung          → Zurück zur normalen internen Barehands-Bühne
+  Klicke auf [Element]                  → Grok Vision lokalisiert das Ziel; Klick erst nach sichtbarer Action-Freigabe
+  Schreibe [Text] in [Feld]             → Grok Vision lokalisiert das Feld; Klick und Clipboard-Einfügen erst nach Freigabe
 
-[ Vision � Kamera ] zum teil erledigt! untersuchen!
-  Starte die Kamera / �ffne die Kamera
-  Schau mich an / Analysiere mich / Mein Outfit
-  Wie bin ich angezogen? / Was ist das?
-  Identifiziere dieses Objekt / Was ist das?
+[ Vision — Kamera — Cloud-Grok implementiert ]
+  Starte die Kamera / Öffne die Kamera → Kameraansicht vorhanden.
+  Kamera-Snapshot wird als Vision-Input an Grok übertragen.
+  Keine Bildanalyse ohne tatsächlich mitgesendeten Snapshot.
 
-[ Personalisierter Speicher ]
-  Merke dir, dass [Info] / Denk daran, dass [Info]
-  Vergiss [Info]
-  Was wei�t du �ber mich? / Liste meinen Speicher auf
+[ Personalisierter Speicher — deterministisch über persistente Memory-API ]
+  Merke dir, dass [Info] / Denk daran, dass [Info] → Speichert dauerhaft mit provenance voice_command
+  Vergiss [Info] → Löscht nur bei genau einem eindeutigen Treffer
+  Was weißt du über mich? / Liste meinen Speicher auf → Liest den persistenten Speicher
+  Bei mehreren Löschtreffern wird nichts automatisch gelöscht.
 
-[ Iron-Man-Modus ]
-  Aktiviere den Iron-Man-Modus   ? KI immer im Zuh�rmodus
-  Deaktiviere den Iron-Man-Modus ? Zur�ck in den Standby
+[ Iron-Man-Modus — deterministisch implementiert ]
+  Aktiviere den Iron-Man-Modus          → Hard-Mute aus, Mikrofon und dauerhafte Spracherkennung aktiv
+  Deaktiviere den Iron-Man-Modus        → Hard-Mute an, Aufnahme-Streams werden beendet
+  Schalte den Iron-Man-Modus ein/aus    → Alternative Sprachform
+  Hinweis: Das bestehende Startverhalten der App bleibt unverändert.
 
 [ Konversation & Allgemeine Intelligenz ]
-  Jede Frage  ? Gemini + Google Search in Echtzeit
-  Automatischer Fallback: Grok (xAI) ? Groq (Llama) ? SerpAPI ? lokales Ollama
+  Cloud: Grok/xAI
+  Lokal: Ollama/Qwen
+  Gemini, Groq und SerpAPI sind im aktuellen Desktop nicht als verifizierte Fallback-Kette aktiv.
 
-?????????????????????????????????????????????????????????
-  webstark.org/jarvis/ ? Unterst�tze das Projekt auf Github
-?????????????????????????????????????????????????????????
+=========================================================
+  webstark.org/jarvis/ — Projektlink
+=========================================================
