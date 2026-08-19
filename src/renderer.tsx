@@ -2723,7 +2723,15 @@ document.querySelectorAll<HTMLButtonElement>("[data-toggle-lifeos-panel]").forEa
 });
 
 document.querySelectorAll<HTMLButtonElement>("[data-toggle-settings-panel]").forEach((btn) => {
-  btn.addEventListener("click", () => openDrawer("settings"));
+  btn.addEventListener("click", () => {
+    if (btn.dataset.stage === "active") {
+      setStageView(null); // back to home
+      delete btn.dataset.stage;
+    } else {
+      openDrawer("settings");
+      btn.dataset.stage = "active";
+    }
+  });
 });
 
 document.querySelectorAll<HTMLButtonElement>("[data-toggle-memory-panel]").forEach((btn) => {

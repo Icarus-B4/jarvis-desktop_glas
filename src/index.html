@@ -58,7 +58,7 @@
           <div class="shell-nav-group shell-nav-group--system">
             <span class="shell-nav-label">SYSTEM</span>
             <button type="button" class="shell-nav-item" data-toggle-diagnostics-panel><span>⌁</span><b>Telemetry</b></button>
-            <button type="button" class="shell-nav-item" data-toggle-settings-panel><span>⚙</span><b>Einstellungen</b></button>
+            <button type="button" class="shell-nav-item" data-toggle-settings-panel ><span>⚙</span><b>Einstellungen</b></button>
           </div>
         </nav>
         <div class="shell-sidebar-status"><i></i><span>Gateway ready</span></div>
@@ -271,7 +271,7 @@
             <div class="stage-view-item stage-settings-view" data-stage-view="settings" aria-label="settings-panel" hidden>
               <div class="panel-heading">
                 <span>⚙️ SYSTEM SETTINGS & CONFIGURATION</span>
-                <button type="button" class="collapse-toggle-btn" data-close-drawer>✖ Schließen</button>
+                <button type="button" class="collapse-toggle-btn" data-shell-home data-active="true">✖ Schließen</button>
               </div>
               <form class="settings-content" data-settings-form>
                 <div class="segmented-control" style="margin-bottom: 12px;">
@@ -390,7 +390,7 @@
                 <!-- Globaler Speichern-Footer für alle Tabs -->
                 <div class="settings-save-footer" style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--ui-stroke-tertiary); display: flex; flex-direction: column; gap: 8px;">
                   <button type="submit" class="btn-primitive btn-default btn-md" data-save-settings-btn style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; font-size: 0.9rem; padding: 10px 16px; background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(16, 185, 129, 0.25)); border: 1px solid var(--cyan); color: #fff; cursor: pointer;">
-                    💾 ALLE EINSTELLUNGEN PERMANENT SPEICHERN
+                    💾 SPEICHERN
                   </button>
                   <span class="settings-status-msg" data-settings-status-msg style="font-size: 0.8rem; color: #34d399; text-align: center; font-weight: 600; min-height: 1.2rem;"></span>
                 </div>
@@ -425,7 +425,7 @@
                 <span>+ PERSONAL KNOWLEDGE BASE (SECOND BRAIN)</span>
                 <div class="heading-right">
                   <input type="text" class="search-field memory-search-input" data-knowledge-search placeholder="Wissen durchsuchen…" aria-label="Knowledge Base durchsuchen" />
-                  <button type="button" class="collapse-toggle-btn" data-close-drawer>✖ Schließen</button>
+                  <button type="button" class="collapse-toggle-btn" data-shell-home data-active="true">✖ Schließen</button>
                 </div>
               </div>
               <div class="knowledge-content">
@@ -450,7 +450,7 @@
             <div class="stage-view-item stage-workflows-view" data-stage-view="workflows" aria-label="workflows-panel" hidden>
               <div class="panel-heading">
                 <span>+ WORKFLOW AUTOMATION & SINGLE-COMMAND ROUTINES</span>
-                <button type="button" class="collapse-toggle-btn" data-close-drawer>✖ Schließen</button>
+                <button type="button" class="collapse-toggle-btn" data-shell-home data-active="true">✖ Schließen</button>
               </div>
               <div class="workflows-content">
                 <div class="workflows-list" data-workflows-list></div>
@@ -461,7 +461,7 @@
             <div class="stage-view-item stage-agents-view" data-stage-view="agents" aria-label="agents-panel" hidden>
               <div class="panel-heading">
                 <span>+ SUB-AGENT COLLABORATION & MULTI-AGENT GOALS</span>
-                <button type="button" class="collapse-toggle-btn" data-close-drawer>✖ Schließen</button>
+                <button type="button" class="collapse-toggle-btn" data-shell-home data-active="true">✖ Schließen</button>
               </div>
               <div class="agents-content">
                 <div class="agents-grid">
@@ -496,7 +496,7 @@
                 <span>+ LONG-TERM MEMORY (PERSISTENCE)</span>
                 <div class="heading-right">
                   <input type="text" class="search-field memory-search-input" data-memory-search placeholder="Search memory…" aria-label="Search memory" />
-                  <button type="button" class="collapse-toggle-btn" data-close-drawer>✖ Schließen</button>
+                  <button type="button" class="collapse-toggle-btn" data-shell-home data-active="true">✖ Schließen</button>
                 </div>
               </div>
               <div class="memory-content" data-memory-content>
@@ -520,7 +520,7 @@
                 <span>+ FILE MANAGEMENT & DOCUMENT RAG</span>
                 <div class="heading-right">
                   <input type="text" class="search-field rag-search-input" data-rag-search placeholder="Search docs & code RAG…" aria-label="Search RAG" />
-                  <button type="button" class="collapse-toggle-btn" data-close-drawer>✖ Schließen</button>
+                  <button type="button" class="collapse-toggle-btn" data-shell-home data-active="true">✖ Schließen</button>
                 </div>
               </div>
               <div class="files-content" data-files-content>
@@ -548,12 +548,12 @@
             <div class="stage-view-item stage-browser-view" data-stage-view="browser" aria-label="browser-panel" hidden>
               <div class="panel-heading">
                 <span>+ BROWSER AUTOMATION & WEB GATHERING</span>
-                <button type="button" class="collapse-toggle-btn" data-close-drawer>✖ Schließen</button>
+                <button type="button" class="collapse-toggle-btn" data-shell-home data-active="true">✖ Schließen</button>
               </div>
               <div class="browser-content" data-browser-content>
                 <div class="browser-controls-row">
                   <form class="browser-form" data-web-search-form autocomplete="off">
-                    <input type="text" class="browser-input" data-web-search-input placeholder="Search live web (e.g. ESP32-S3 docs)…" aria-label="Web Search Input" />
+                    <input type="text" class="browser-input" data-web-search-input placeholder="Search live web (e.g.docs)…" aria-label="Web Search Input" />
                     <button type="submit" class="browser-action-btn">🔍 Search Web</button>
                   </form>
                   <form class="browser-form" data-web-fetch-form autocomplete="off">
