@@ -668,9 +668,12 @@ function coerceWebProposal(proposal: { capability: string; title?: string; descr
 
 let barehandsSystemCursorMode = false;
 
-function setStageView(view: "action" | "camera" | "screenshot" | "code" | "morning-brief" | "barehands" | "web" | null, data?: any): void {
+function setStageView(view: "action" | "camera" | "screenshot" | "code" | "morning-brief" | "barehands" | "web" | "lifeos" | "settings" | "knowledge" | "workflows" | "agents" | "memory" | "files" | "browser" | null, data?: any): void {
+  const allStageViews = Array.from(document.querySelectorAll<HTMLElement>("[data-stage-view]"));
+
   if (!view) {
     orbStageEl.dataset.stageMode = "hero";
+    allStageViews.forEach((el) => { el.hidden = true; });
     stageActionHudEl.hidden = true;
     stageCameraViewEl.hidden = true;
     stageScreenshotViewEl.hidden = true;
@@ -690,6 +693,7 @@ function setStageView(view: "action" | "camera" | "screenshot" | "code" | "morni
 
   // Orb in Mini-Modus unten rechts verschieben
   orbStageEl.dataset.stageMode = "mini";
+  allStageViews.forEach((el) => { el.hidden = el.dataset.stageView !== view; });
   stageActionHudEl.hidden = view !== "action";
   stageCameraViewEl.hidden = view !== "camera";
   stageScreenshotViewEl.hidden = view !== "screenshot";
@@ -2551,7 +2555,7 @@ const lifeosValuesEl = optionalElement<HTMLElement>("[data-lifeos-values]");
 const lifeosCurrentStateEl = optionalElement<HTMLElement>("[data-lifeos-current-state]");
 const refreshLifeosBtn = optionalElement<HTMLButtonElement>("[data-refresh-lifeos]");
 
-type DrawerTabKey = "lifeos" | "settings" | "memory" | "files" | "browser" | "agents" | "workflows" | "knowledge" | "diagnostics";
+type DrawerTabKey = "lifeos" | "settings" | "memory" | "files" | "browser" | "agents" | "workflows" | "knowledge";
 
 interface DrawerTarget {
   key: DrawerTabKey;
@@ -2602,28 +2606,14 @@ const drawerTabMap: Record<DrawerTabKey, DrawerTarget> = {
   agents: { key: "agents", title: "🤖 SUB-AGENT COLLABORATION TEAM", panel: agentsPanelBox },
   workflows: { key: "workflows", title: "⚡ WORKFLOW AUTOMATION & ROUTINES", panel: workflowsPanelBox, loadFn: loadWorkflows },
   knowledge: { key: "knowledge", title: "📚 SECOND BRAIN KNOWLEDGE BASE", panel: knowledgePanelBox, loadFn: () => loadKnowledgeItems("") },
-  diagnostics: { key: "diagnostics", title: "📊 REAL-TIME TELEMETRY & DIAGNOSTICS", panel: diagnosticsPanelBox, loadFn: refreshDiagnostics },
 };
 
 function openDrawer(tabKey: DrawerTabKey): void {
-  if (!hudDrawerEl) return;
   const target = drawerTabMap[tabKey];
   if (!target) return;
 
-  hudDrawerEl.hidden = false;
-  hudDrawerEl.dataset.activeTab = tabKey;
-  if (confirmModalEl) confirmModalEl.hidden = true;
-
-  if (drawerActiveTitleEl) {
-    drawerActiveTitleEl.textContent = target.title;
-  }
-
-  (Object.keys(drawerTabMap) as DrawerTabKey[]).forEach((key) => {
-    const item = drawerTabMap[key];
-    if (item && item.panel) {
-      item.panel.hidden = key !== tabKey;
-    }
-  });
+  // Tab panels now live in the central stage (like Core/Chat), not a side drawer.
+  setStageView(tabKey);
 
   if (tabKey === "settings") {
     document.querySelectorAll<HTMLButtonElement>("[data-settings-tab]").forEach((b) => {
@@ -2633,12 +2623,6 @@ function openDrawer(tabKey: DrawerTabKey): void {
       sec.hidden = sec.dataset.settingsSection !== "keys";
     });
   }
-
-  document.querySelectorAll<HTMLElement>("[data-drawer-tab]").forEach((btn) => {
-    btn.dataset.active = String(btn.dataset.drawerTab === tabKey);
-  });
-
-  syncPillStates(tabKey);
 
   if (target.loadFn) {
     void target.loadFn();
@@ -2654,12 +2638,20 @@ function forceCloseDrawer(): void {
 }
 
 function closeDrawer(): void {
-  if (!hudDrawerEl) return;
+  if (hudDrawerEl) {
+    if (hasUnsavedSettings) {
+      if (confirmModalEl) confirmModalEl.hidden = false;
+      return;
+    }
+    forceCloseDrawer();
+    return;
+  }
+  // No overlay drawer anymore — tab panels live in the central stage.
   if (hasUnsavedSettings) {
     if (confirmModalEl) confirmModalEl.hidden = false;
     return;
   }
-  forceCloseDrawer();
+  setStageView(null);
 }
 
 function syncPillStates(activeKey: DrawerTabKey | null): void {
@@ -2672,7 +2664,6 @@ function syncPillStates(activeKey: DrawerTabKey | null): void {
     agents: "[data-toggle-agents-panel]",
     workflows: "[data-toggle-workflows-panel]",
     knowledge: "[data-toggle-knowledge-panel]",
-    diagnostics: "[data-toggle-diagnostics-panel]",
   };
 
   const isDrawerOpen = hudDrawerEl !== null && !hudDrawerEl.hidden;
@@ -3053,7 +3044,7 @@ async function refreshDiagnostics(): Promise<void> {
 }
 
 document.querySelectorAll<HTMLButtonElement>("[data-toggle-diagnostics-panel]").forEach((btn) => {
-  btn.addEventListener("click", () => openDrawer("diagnostics"));
+  btn.addEventListener("click", () => showTelemetryPanel());
 });
 
 setInterval(() => void refreshDiagnostics(), 5_000);

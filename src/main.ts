@@ -447,7 +447,7 @@ async function startChat(sender: Electron.WebContents, request: JarvisChatReques
     activeChats.finish(sender.id, request.requestId);
   }
 }
-
+// AI-Aigent: DDONT TOUCH IT!!
 function createControlRoomWindow(): BrowserWindow {
   const distributionRoot = join(app.getAppPath(), "dist");
   const window = new BrowserWindow({
@@ -457,7 +457,7 @@ function createControlRoomWindow(): BrowserWindow {
     minWidth: 1448,
     minHeight: 860,
     backgroundColor: "#03060dff",
-    opacity: 0.95,
+    opacity: 0.97,
     icon: getAppIcon(),
     show: false,
     autoHideMenuBar: true,

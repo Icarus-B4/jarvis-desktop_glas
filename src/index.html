@@ -210,6 +210,360 @@
             </div>
             <iframe class="stage-barehands-frame" data-barehands-frame src="about:blank" allow="camera *; microphone *; autoplay *; display-capture *" style="width: 100%; height: 100%; border: none; background: #000;"></iframe>
           </div>
+            <div class="stage-view-item stage-lifeos-view" data-stage-view="lifeos" aria-label="lifeos-panel" hidden>
+              <div class="panel-heading">
+                <span>🎯 LIFEOS & TELOS GOVERNANCE DASHBOARD</span>
+                <button type="button" class="collapse-toggle-btn" data-close-drawer>✖ Schließen</button>
+              </div>
+              <div class="lifeos-content" style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+                <div class="lifeos-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 16fr)); gap: 14px;">
+                  
+                  <!-- Card 1: Mission & Primary Directives -->
+                  <div class="lifeos-card" style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--ui-stroke-tertiary); border-radius: 8px; padding: 14px;">
+                    <div style="color: var(--cyan); font-weight: 700; font-size: 0.85rem; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                      <span>🎯 OVERARCHING MISSION</span>
+                    </div>
+                    <div data-lifeos-mission style="font-size: 0.8rem; color: var(--ui-text-secondary); line-height: 1.5; white-space: pre-wrap;">
+                      Lade MISSION.md…
+                    </div>
+                  </div>
+
+                  <!-- Card 2: Core Values -->
+                  <div class="lifeos-card" style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--ui-stroke-tertiary); border-radius: 8px; padding: 14px;">
+                    <div style="color: var(--cyan); font-weight: 700; font-size: 0.85rem; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                      <span>💎 CORE VALUES & PRINCIPLES</span>
+                    </div>
+                    <div data-lifeos-values style="font-size: 0.8rem; color: var(--ui-text-secondary); line-height: 1.5; white-space: pre-wrap;">
+                      Lade VALUES.md…
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Card 3: Current State vs. Ideal State (ISA) -->
+                <div class="lifeos-card" style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--ui-stroke-tertiary); border-radius: 8px; padding: 14px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <span style="color: var(--cyan); font-weight: 700; font-size: 0.85rem;">📊 CURRENT VS. IDEAL STATE (ISA)</span>
+                    <button type="button" class="btn-primitive btn-cyan btn-xs" data-refresh-lifeos>↺ Status Aktualisieren</button>
+                  </div>
+                  <div data-lifeos-current-state style="font-size: 0.82rem; color: var(--ui-text-primary); margin-bottom: 12px; line-height: 1.5; white-space: pre-wrap;">
+                    Lade CURRENT_STATE.md…
+                  </div>
+                </div>
+
+                <!-- Card 4: 7-Phase Gap-Closing Monitor -->
+                <div class="lifeos-card" style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--cyan); border-radius: 8px; padding: 14px; box-shadow: 0 0 15px rgba(56, 189, 248, 0.15);">
+                  <div style="color: var(--cyan); font-weight: 700; font-size: 0.85rem; margin-bottom: 10px;">
+                    ⚡ 7-PHASE GAP-CLOSING ALGORITHM MONITOR
+                  </div>
+                  <div class="phase-steps" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 6px; font-size: 0.7rem; text-align: center;">
+                    <div class="phase-step phase-step--active" data-phase="1" style="background: rgba(56, 189, 248, 0.2); border: 1px solid var(--cyan); border-radius: 4px; padding: 6px 2px; color: #fff;">1. Signals</div>
+                    <div class="phase-step" data-phase="2" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ui-stroke-tertiary); border-radius: 4px; padding: 6px 2px; color: var(--ui-text-tertiary);">2. Current</div>
+                    <div class="phase-step" data-phase="3" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ui-stroke-tertiary); border-radius: 4px; padding: 6px 2px; color: var(--ui-text-tertiary);">3. ISA Gap</div>
+                    <div class="phase-step" data-phase="4" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ui-stroke-tertiary); border-radius: 4px; padding: 6px 2px; color: var(--ui-text-tertiary);">4. Plan</div>
+                    <div class="phase-step" data-phase="5" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ui-stroke-tertiary); border-radius: 4px; padding: 6px 2px; color: var(--ui-text-tertiary);">5. Execute</div>
+                    <div class="phase-step" data-phase="6" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ui-stroke-tertiary); border-radius: 4px; padding: 6px 2px; color: var(--ui-text-tertiary);">6. Verify</div>
+                    <div class="phase-step" data-phase="7" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ui-stroke-tertiary); border-radius: 4px; padding: 6px 2px; color: var(--ui-text-tertiary);">7. Anneal</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- App Settings HUD Panel -->
+            <div class="stage-view-item stage-settings-view" data-stage-view="settings" aria-label="settings-panel" hidden>
+              <div class="panel-heading">
+                <span>⚙️ SYSTEM SETTINGS & CONFIGURATION</span>
+                <button type="button" class="collapse-toggle-btn" data-close-drawer>✖ Schließen</button>
+              </div>
+              <form class="settings-content" data-settings-form>
+                <div class="segmented-control" style="margin-bottom: 12px;">
+                  <button type="button" class="segmented-tab settings-tab--active" data-settings-tab="keys">🔑 API Keys & Provider</button>
+                  <button type="button" class="segmented-tab" data-settings-tab="modules">📦 Modul-Sichtbarkeit</button>
+                  <button type="button" class="segmented-tab" data-settings-tab="voice">🎙️ Voice & Audio</button>
+                  <button type="button" class="segmented-tab" data-settings-tab="actions">⚡ System & Auto-Approve</button>
+                </div>
+
+                <!-- Tab 1: API Keys -->
+                <div class="settings-section" data-settings-section="keys">
+                  <div class="settings-field">
+                    <label>xAI Grok API-Key (Cloud Chat, STT & TTS)</label>
+                    <input type="password" class="settings-input" data-config-key="xaiApiKey" placeholder="xai-..." />
+                    <small class="settings-hint">Abrufbar unter https://console.x.ai</small>
+                  </div>
+                  <div class="settings-field">
+                    <label>Tavily Search API-Key (Echtzeit Web-Suche)</label>
+                    <input type="password" class="settings-input" data-config-key="tavilyApiKey" placeholder="tvly-..." />
+                    <small class="settings-hint">Optional. Bei leerem Key wird DuckDuckGo als Fallback genutzt.</small>
+                  </div>
+                  <div class="settings-field">
+                    <label>Ollama Base URL (Lokaler LLM Fallback)</label>
+                    <input type="text" class="settings-input" data-config-key="ollamaUrl" placeholder="http://127.0.0.1:11434" />
+                  </div>
+                </div>
+
+                <!-- Tab 2: Modul-Sichtbarkeit -->
+                <div class="settings-section" data-settings-section="modules" hidden>
+                  <p class="settings-section-desc">Blende HUD-Module aus, um die Benutzeroberfläche noch übersichtlicher zu halten:</p>
+                  <div class="settings-grid-toggles">
+                    <label class="settings-toggle"><input type="checkbox" data-config-module="memory" checked /> 🧠 Long-Term Memory</label>
+                    <label class="settings-toggle"><input type="checkbox" data-config-module="files" checked /> 📁 Files & Document RAG</label>
+                    <label class="settings-toggle"><input type="checkbox" data-config-module="browser" checked /> 🌐 Browser & Web Gathering</label>
+                    <label class="settings-toggle"><input type="checkbox" data-config-module="agents" checked /> 🤖 Sub-Agent Collaboration</label>
+                    <label class="settings-toggle"><input type="checkbox" data-config-module="workflows" checked /> ⚡ Workflow Routines</label>
+                    <label class="settings-toggle"><input type="checkbox" data-config-module="knowledge" checked /> 📚 Second Brain Knowledge</label>
+                    <label class="settings-toggle"><input type="checkbox" data-config-module="diagnostics" checked /> 📊 Real-Time Telemetry</label>
+                  </div>
+                </div>
+
+                <!-- Tab 3: Voice & Audio -->
+                <div class="settings-section" data-settings-section="voice" hidden>
+                  <div class="settings-field">
+                    <label>TTS Provider (Text-to-Speech Engine)</label>
+                    <select class="settings-select" data-config-key="ttsProvider">
+                      <option value="xai">xAI TTS (Grok Zenith / Eve)</option>
+                      <option value="fishaudio">Fish Audio S2-1 Pro (Zero-Shot Neural TTS)</option>
+                    </select>
+                  </div>
+                  <div class="settings-field">
+                    <label>Fish Audio API-Key</label>
+                    <input type="password" class="settings-input" data-config-key="fishAudioApiKey" placeholder="sk-fish-..." />
+                    <small class="settings-hint">Abrufbar unter https://fish.audio</small>
+                  </div>
+                  <div class="settings-field">
+                    <label>Fish Audio Modell / Reference ID</label>
+                    <input type="text" class="settings-input" data-config-key="fishAudioModelId" placeholder="5906764e120a4c608a524f351a5fe5be" />
+                    <small class="settings-hint">Standard: 5906764e120a4c608a524f351a5fe5be (Free S2-1 Pro API)</small>
+                  </div>
+                  <div class="settings-field">
+                    <label>xAI TTS Stimme (Text-to-Speech)</label>
+                    <select class="settings-select" data-config-key="ttsVoice">
+                      <option value="zenith">zenith (Autoritäre J.A.R.V.I.S. Stimme - Deutsch)</option>
+                      <option value="eve">eve (Freundliche Stimme)</option>
+                    </select>
+                  </div>
+                  <div class="settings-field">
+                    <label>Spracheingabe Sprache (STT)</label>
+                    <input type="text" class="settings-input" data-config-key="sttLanguage" value="de" placeholder="de" />
+                  </div>
+                  <div class="settings-field" style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--ui-stroke-tertiary);">
+                    <label style="color: var(--cyan); font-weight: 600;">🎙️ Diktier-Funktion (Dictation Mode)</label>
+                    <div style="font-size: 0.75rem; color: var(--ui-text-secondary); margin-bottom: 8px;">
+                      Tastenkombination zum Diktieren: <code style="background: rgba(56, 189, 248, 0.15); padding: 2px 6px; border-radius: 4px; color: #38bdf8;">Ctrl + Alt + D</code>
+                    </div>
+                    <label>Diktat-Zielort</label>
+                    <select class="settings-select" data-config-key="dictationTarget">
+                      <option value="clipboard">Direkt in die Zwischenablage (Clipboard) kopieren</option>
+                      <option value="chat_input">In das Chat-Eingabefeld einfügen</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Tab 4: Actions & General System Settings -->
+                <div class="settings-section" data-settings-section="actions" hidden>
+                  <label class="settings-toggle-large">
+                    <input type="checkbox" data-config-key="autoApproveActions" />
+                    <div>
+                      <strong>Automatische Freigabe für Browser & Apps (Auto-Approve)</strong>
+                      <span>Öffnet Webseiten und Windows-Programme sofort ohne manuelles Bestätigen im Chat.</span>
+                    </div>
+                  </label>
+
+                  <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--ui-stroke-tertiary);">
+                    <div style="color: var(--cyan); font-weight: 600; font-size: 0.82rem; margin-bottom: 10px;">📌 System-Tray & Fenster-Verhalten</div>
+                    
+                    <label class="settings-toggle-large" style="margin-bottom: 10px;">
+                      <input type="checkbox" data-config-key="minimizeToTray" checked />
+                      <div>
+                        <strong>Beim Minimieren in den System-Tray versetzen</strong>
+                        <span>Versteckt das Fenster im Windows-Benachrichtigungsbereich (System Tray) beim Minimieren.</span>
+                      </div>
+                    </label>
+
+                    <label class="settings-toggle-large">
+                      <input type="checkbox" data-config-key="closeToTray" checked />
+                      <div>
+                        <strong>Beim Schließen (X) im Hintergrund weiterlaufen lassen</strong>
+                        <span>Klick auf das Schließen-Kreuz (X) minimiert die App in den System-Tray statt sie zu beenden.</span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Globaler Speichern-Footer für alle Tabs -->
+                <div class="settings-save-footer" style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--ui-stroke-tertiary); display: flex; flex-direction: column; gap: 8px;">
+                  <button type="submit" class="btn-primitive btn-default btn-md" data-save-settings-btn style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; font-size: 0.9rem; padding: 10px 16px; background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(16, 185, 129, 0.25)); border: 1px solid var(--cyan); color: #fff; cursor: pointer;">
+                    💾 ALLE EINSTELLUNGEN PERMANENT SPEICHERN
+                  </button>
+                  <span class="settings-status-msg" data-settings-status-msg style="font-size: 0.8rem; color: #34d399; text-align: center; font-weight: 600; min-height: 1.2rem;"></span>
+                </div>
+              </form>
+            </div>
+
+            <!-- Unsaved Changes Modal -->
+            <div class="settings-confirm-overlay" data-settings-confirm-modal hidden style="position: fixed; inset: 0; z-index: 9999; background: rgba(2, 6, 16, 0.85); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; padding: 20px;">
+              <div style="background: rgba(10, 25, 47, 0.95); border: 1px solid var(--cyan); border-radius: 12px; max-width: 480px; width: 100%; padding: 24px; box-shadow: 0 0 30px rgba(56, 189, 248, 0.3); text-align: center;">
+                <div style="font-size: 2.2rem; margin-bottom: 8px;">⚠️</div>
+                <h3 style="color: var(--cyan); font-size: 1.1rem; font-weight: 700; margin-bottom: 8px;">Ungespeicherte Einstellungen!</h3>
+                <p style="font-size: 0.85rem; color: var(--ui-text-secondary); margin-bottom: 20px; line-height: 1.5;">
+                  Du hast Einstellungen geändert, aber noch nicht auf der Festplatte gespeichert. Möchtest du die Änderungen jetzt dauerhaft übernehmen?
+                </p>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                  <button type="button" class="btn-primitive btn-default btn-md" data-confirm-save-close style="width: 100%; font-weight: 700; background: rgba(16, 185, 129, 0.3); border-color: #10b981; color: #34d399;">
+                    💾 Speichern & Schließen
+                  </button>
+                  <button type="button" class="btn-primitive btn-ghost btn-md" data-confirm-discard-close style="width: 100%; color: #fca5a5; border-color: rgba(239, 68, 68, 0.4);">
+                    ✖ Ohne Speichern schließen
+                  </button>
+                  <button type="button" class="btn-primitive btn-ghost btn-sm" data-confirm-cancel style="width: 100%; margin-top: 4px;">
+                    ↩ Zurück zu den Einstellungen
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Personal Knowledge Base Panel -->
+            <div class="stage-view-item stage-knowledge-view" data-stage-view="knowledge" aria-label="knowledge-panel" hidden>
+              <div class="panel-heading">
+                <span>+ PERSONAL KNOWLEDGE BASE (SECOND BRAIN)</span>
+                <div class="heading-right">
+                  <input type="text" class="search-field memory-search-input" data-knowledge-search placeholder="Wissen durchsuchen…" aria-label="Knowledge Base durchsuchen" />
+                  <button type="button" class="collapse-toggle-btn" data-close-drawer>✖ Schließen</button>
+                </div>
+              </div>
+              <div class="knowledge-content">
+                <form class="knowledge-form" data-knowledge-form>
+                  <input type="text" class="knowledge-input" data-knowledge-title-input placeholder="Titel (z.B. 'ESP32 ST7789 Setup')" required />
+                  <select class="knowledge-select" data-knowledge-category-select>
+                    <option value="code">Code</option>
+                    <option value="architecture">Architecture</option>
+                    <option value="guide">Guide</option>
+                    <option value="snippet">Snippet</option>
+                    <option value="general">General</option>
+                  </select>
+                  <input type="text" class="knowledge-input" data-knowledge-tags-input placeholder="Tags (Komma-getrennt: esp32, hardware)" />
+                  <textarea class="knowledge-textarea" data-knowledge-content-input placeholder="Inhalt / Notiz..." required></textarea>
+                  <button type="submit" class="btn-primitive btn-default btn-sm" data-knowledge-submit>+ Ins Second Brain Speichern</button>
+                </form>
+                <div class="knowledge-list" data-knowledge-list></div>
+              </div>
+            </div>
+
+            <!-- Workflow Automation Panel -->
+            <div class="stage-view-item stage-workflows-view" data-stage-view="workflows" aria-label="workflows-panel" hidden>
+              <div class="panel-heading">
+                <span>+ WORKFLOW AUTOMATION & SINGLE-COMMAND ROUTINES</span>
+                <button type="button" class="collapse-toggle-btn" data-close-drawer>✖ Schließen</button>
+              </div>
+              <div class="workflows-content">
+                <div class="workflows-list" data-workflows-list></div>
+              </div>
+            </div>
+
+            <!-- Sub-Agent Collaboration Panel -->
+            <div class="stage-view-item stage-agents-view" data-stage-view="agents" aria-label="agents-panel" hidden>
+              <div class="panel-heading">
+                <span>+ SUB-AGENT COLLABORATION & MULTI-AGENT GOALS</span>
+                <button type="button" class="collapse-toggle-btn" data-close-drawer>✖ Schließen</button>
+              </div>
+              <div class="agents-content">
+                <div class="agents-grid">
+                  <div class="agent-card">
+                    <span class="agent-role">📋 PlannerAgent</span>
+                    <span class="agent-status" data-agent-status="planner">READY</span>
+                  </div>
+                  <div class="agent-card">
+                    <span class="agent-role">🔍 ResearcherAgent</span>
+                    <span class="agent-status" data-agent-status="researcher">READY</span>
+                  </div>
+                  <div class="agent-card">
+                    <span class="agent-role">💻 CoderAgent</span>
+                    <span class="agent-status" data-agent-status="coder">READY</span>
+                  </div>
+                  <div class="agent-card">
+                    <span class="agent-role">⚡ ReviewerAgent</span>
+                    <span class="agent-status" data-agent-status="reviewer">READY</span>
+                  </div>
+                </div>
+                <form class="agents-form" data-agents-form>
+                  <input type="text" class="agents-input" data-agents-goal-input placeholder="Schweres Ziel für Sub-Agenten Team eingeben..." />
+                  <button type="submit" class="btn-primitive btn-default btn-sm" data-agents-submit>🚀 Team Starten</button>
+                </form>
+                <ul class="agents-task-list" data-agents-task-list></ul>
+              </div>
+            </div>
+
+            <!-- Long-Term Memory Inspector -->
+            <div class="stage-view-item stage-memory-view" data-stage-view="memory" aria-label="memory-panel" hidden>
+              <div class="panel-heading">
+                <span>+ LONG-TERM MEMORY (PERSISTENCE)</span>
+                <div class="heading-right">
+                  <input type="text" class="search-field memory-search-input" data-memory-search placeholder="Search memory…" aria-label="Search memory" />
+                  <button type="button" class="collapse-toggle-btn" data-close-drawer>✖ Schließen</button>
+                </div>
+              </div>
+              <div class="memory-content" data-memory-content>
+                <ul class="memory-list" data-memory-list aria-label="Stored memory items"></ul>
+                <form class="memory-add-form" data-add-memory-form autocomplete="off">
+                  <select class="memory-category-select" data-memory-cat-input aria-label="Category">
+                    <option value="operator_preference">Präferenz</option>
+                    <option value="structured_fact">Fakt</option>
+                    <option value="semantic_document">Dokument</option>
+                  </select>
+                  <input type="text" class="memory-key-input" data-memory-key-input placeholder="Key (z.B. Name)" required aria-label="Memory Key" />
+                  <input type="text" class="memory-val-input" data-memory-val-input placeholder="Value (z.B. Ed)" required aria-label="Memory Value" />
+                  <button type="submit" class="btn-primitive btn-default btn-sm">+ Speichern</button>
+                </form>
+              </div>
+            </div>
+
+            <!-- File Management & Document RAG Panel -->
+            <div class="stage-view-item stage-files-view" data-stage-view="files" aria-label="files-panel" hidden>
+              <div class="panel-heading">
+                <span>+ FILE MANAGEMENT & DOCUMENT RAG</span>
+                <div class="heading-right">
+                  <input type="text" class="search-field rag-search-input" data-rag-search placeholder="Search docs & code RAG…" aria-label="Search RAG" />
+                  <button type="button" class="collapse-toggle-btn" data-close-drawer>✖ Schließen</button>
+                </div>
+              </div>
+              <div class="files-content" data-files-content>
+                <div class="files-split">
+                  <div class="files-tree-box">
+                    <div class="files-box-title">PROJECT FILES</div>
+                    <ul class="file-list" data-file-list aria-label="Project files"></ul>
+                  </div>
+                  <div class="rag-results-box">
+                    <div class="files-box-title">RAG RELEVANT CHUNKS</div>
+                    <div class="rag-results-list" data-rag-results aria-label="RAG search results"></div>
+                  </div>
+                </div>
+                <div class="file-preview-box" data-file-preview-box hidden>
+                  <div class="file-preview-header">
+                    <span data-file-preview-title>File Preview</span>
+                    <button type="button" class="icon-control" data-close-file-preview>✖ Close</button>
+                  </div>
+                  <pre class="file-preview-code" data-file-preview-code></pre>
+                </div>
+              </div>
+            </div>
+
+            <!-- Browser Automation & Web Gathering Panel -->
+            <div class="stage-view-item stage-browser-view" data-stage-view="browser" aria-label="browser-panel" hidden>
+              <div class="panel-heading">
+                <span>+ BROWSER AUTOMATION & WEB GATHERING</span>
+                <button type="button" class="collapse-toggle-btn" data-close-drawer>✖ Schließen</button>
+              </div>
+              <div class="browser-content" data-browser-content>
+                <div class="browser-controls-row">
+                  <form class="browser-form" data-web-search-form autocomplete="off">
+                    <input type="text" class="browser-input" data-web-search-input placeholder="Search live web (e.g. ESP32-S3 docs)…" aria-label="Web Search Input" />
+                    <button type="submit" class="browser-action-btn">🔍 Search Web</button>
+                  </form>
+                  <form class="browser-form" data-web-fetch-form autocomplete="off">
+                    <input type="text" class="browser-input" data-web-url-input placeholder="Scrape URL (https://…)" aria-label="Web URL Input" />
+                    <button type="submit" class="browser-action-btn">⚡ Extract Page</button>
+                  </form>
+                </div>
+                <div class="browser-results-box" data-browser-results aria-label="Web results"></div>
+              </div>
+            </div>
         </div>
 
         <div class="orb-composition" aria-hidden="true">
@@ -385,396 +739,6 @@
           </div>
           <div class="drawer-body">
             <!-- LifeOS & TELOS Governance Panel -->
-            <section class="hud-panel lifeos-panel" data-lifeos-panel aria-label="LifeOS & TELOS Governance" hidden>
-              <div class="panel-heading">
-                <span>🎯 LIFEOS & TELOS GOVERNANCE DASHBOARD</span>
-                <button type="button" class="collapse-toggle-btn" data-close-drawer>✖ Schließen</button>
-              </div>
-              <div class="lifeos-content" style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
-                <div class="lifeos-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 16fr)); gap: 14px;">
-                  
-                  <!-- Card 1: Mission & Primary Directives -->
-                  <div class="lifeos-card" style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--ui-stroke-tertiary); border-radius: 8px; padding: 14px;">
-                    <div style="color: var(--cyan); font-weight: 700; font-size: 0.85rem; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-                      <span>🎯 OVERARCHING MISSION</span>
-                    </div>
-                    <div data-lifeos-mission style="font-size: 0.8rem; color: var(--ui-text-secondary); line-height: 1.5; white-space: pre-wrap;">
-                      Lade MISSION.md…
-                    </div>
-                  </div>
-
-                  <!-- Card 2: Core Values -->
-                  <div class="lifeos-card" style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--ui-stroke-tertiary); border-radius: 8px; padding: 14px;">
-                    <div style="color: var(--cyan); font-weight: 700; font-size: 0.85rem; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-                      <span>💎 CORE VALUES & PRINCIPLES</span>
-                    </div>
-                    <div data-lifeos-values style="font-size: 0.8rem; color: var(--ui-text-secondary); line-height: 1.5; white-space: pre-wrap;">
-                      Lade VALUES.md…
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Card 3: Current State vs. Ideal State (ISA) -->
-                <div class="lifeos-card" style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--ui-stroke-tertiary); border-radius: 8px; padding: 14px;">
-                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <span style="color: var(--cyan); font-weight: 700; font-size: 0.85rem;">📊 CURRENT VS. IDEAL STATE (ISA)</span>
-                    <button type="button" class="btn-primitive btn-cyan btn-xs" data-refresh-lifeos>↺ Status Aktualisieren</button>
-                  </div>
-                  <div data-lifeos-current-state style="font-size: 0.82rem; color: var(--ui-text-primary); margin-bottom: 12px; line-height: 1.5; white-space: pre-wrap;">
-                    Lade CURRENT_STATE.md…
-                  </div>
-                </div>
-
-                <!-- Card 4: 7-Phase Gap-Closing Monitor -->
-                <div class="lifeos-card" style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--cyan); border-radius: 8px; padding: 14px; box-shadow: 0 0 15px rgba(56, 189, 248, 0.15);">
-                  <div style="color: var(--cyan); font-weight: 700; font-size: 0.85rem; margin-bottom: 10px;">
-                    ⚡ 7-PHASE GAP-CLOSING ALGORITHM MONITOR
-                  </div>
-                  <div class="phase-steps" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 6px; font-size: 0.7rem; text-align: center;">
-                    <div class="phase-step phase-step--active" data-phase="1" style="background: rgba(56, 189, 248, 0.2); border: 1px solid var(--cyan); border-radius: 4px; padding: 6px 2px; color: #fff;">1. Signals</div>
-                    <div class="phase-step" data-phase="2" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ui-stroke-tertiary); border-radius: 4px; padding: 6px 2px; color: var(--ui-text-tertiary);">2. Current</div>
-                    <div class="phase-step" data-phase="3" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ui-stroke-tertiary); border-radius: 4px; padding: 6px 2px; color: var(--ui-text-tertiary);">3. ISA Gap</div>
-                    <div class="phase-step" data-phase="4" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ui-stroke-tertiary); border-radius: 4px; padding: 6px 2px; color: var(--ui-text-tertiary);">4. Plan</div>
-                    <div class="phase-step" data-phase="5" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ui-stroke-tertiary); border-radius: 4px; padding: 6px 2px; color: var(--ui-text-tertiary);">5. Execute</div>
-                    <div class="phase-step" data-phase="6" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ui-stroke-tertiary); border-radius: 4px; padding: 6px 2px; color: var(--ui-text-tertiary);">6. Verify</div>
-                    <div class="phase-step" data-phase="7" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ui-stroke-tertiary); border-radius: 4px; padding: 6px 2px; color: var(--ui-text-tertiary);">7. Anneal</div>
-                  </div>
-                </div>
-              </div>
-            </section>
-            <!-- App Settings HUD Panel -->
-            <section class="hud-panel settings-panel" data-settings-panel aria-label="System Settings">
-              <div class="panel-heading">
-                <span>⚙️ SYSTEM SETTINGS & CONFIGURATION</span>
-                <button type="button" class="collapse-toggle-btn" data-close-drawer>✖ Schließen</button>
-              </div>
-              <form class="settings-content" data-settings-form>
-                <div class="segmented-control" style="margin-bottom: 12px;">
-                  <button type="button" class="segmented-tab settings-tab--active" data-settings-tab="keys">🔑 API Keys & Provider</button>
-                  <button type="button" class="segmented-tab" data-settings-tab="modules">📦 Modul-Sichtbarkeit</button>
-                  <button type="button" class="segmented-tab" data-settings-tab="voice">🎙️ Voice & Audio</button>
-                  <button type="button" class="segmented-tab" data-settings-tab="actions">⚡ System & Auto-Approve</button>
-                </div>
-
-                <!-- Tab 1: API Keys -->
-                <div class="settings-section" data-settings-section="keys">
-                  <div class="settings-field">
-                    <label>xAI Grok API-Key (Cloud Chat, STT & TTS)</label>
-                    <input type="password" class="settings-input" data-config-key="xaiApiKey" placeholder="xai-..." />
-                    <small class="settings-hint">Abrufbar unter https://console.x.ai</small>
-                  </div>
-                  <div class="settings-field">
-                    <label>Tavily Search API-Key (Echtzeit Web-Suche)</label>
-                    <input type="password" class="settings-input" data-config-key="tavilyApiKey" placeholder="tvly-..." />
-                    <small class="settings-hint">Optional. Bei leerem Key wird DuckDuckGo als Fallback genutzt.</small>
-                  </div>
-                  <div class="settings-field">
-                    <label>Ollama Base URL (Lokaler LLM Fallback)</label>
-                    <input type="text" class="settings-input" data-config-key="ollamaUrl" placeholder="http://127.0.0.1:11434" />
-                  </div>
-                </div>
-
-                <!-- Tab 2: Modul-Sichtbarkeit -->
-                <div class="settings-section" data-settings-section="modules" hidden>
-                  <p class="settings-section-desc">Blende HUD-Module aus, um die Benutzeroberfläche noch übersichtlicher zu halten:</p>
-                  <div class="settings-grid-toggles">
-                    <label class="settings-toggle"><input type="checkbox" data-config-module="memory" checked /> 🧠 Long-Term Memory</label>
-                    <label class="settings-toggle"><input type="checkbox" data-config-module="files" checked /> 📁 Files & Document RAG</label>
-                    <label class="settings-toggle"><input type="checkbox" data-config-module="browser" checked /> 🌐 Browser & Web Gathering</label>
-                    <label class="settings-toggle"><input type="checkbox" data-config-module="agents" checked /> 🤖 Sub-Agent Collaboration</label>
-                    <label class="settings-toggle"><input type="checkbox" data-config-module="workflows" checked /> ⚡ Workflow Routines</label>
-                    <label class="settings-toggle"><input type="checkbox" data-config-module="knowledge" checked /> 📚 Second Brain Knowledge</label>
-                    <label class="settings-toggle"><input type="checkbox" data-config-module="diagnostics" checked /> 📊 Real-Time Telemetry</label>
-                  </div>
-                </div>
-
-                <!-- Tab 3: Voice & Audio -->
-                <div class="settings-section" data-settings-section="voice" hidden>
-                  <div class="settings-field">
-                    <label>TTS Provider (Text-to-Speech Engine)</label>
-                    <select class="settings-select" data-config-key="ttsProvider">
-                      <option value="xai">xAI TTS (Grok Zenith / Eve)</option>
-                      <option value="fishaudio">Fish Audio S2-1 Pro (Zero-Shot Neural TTS)</option>
-                    </select>
-                  </div>
-                  <div class="settings-field">
-                    <label>Fish Audio API-Key</label>
-                    <input type="password" class="settings-input" data-config-key="fishAudioApiKey" placeholder="sk-fish-..." />
-                    <small class="settings-hint">Abrufbar unter https://fish.audio</small>
-                  </div>
-                  <div class="settings-field">
-                    <label>Fish Audio Modell / Reference ID</label>
-                    <input type="text" class="settings-input" data-config-key="fishAudioModelId" placeholder="5906764e120a4c608a524f351a5fe5be" />
-                    <small class="settings-hint">Standard: 5906764e120a4c608a524f351a5fe5be (Free S2-1 Pro API)</small>
-                  </div>
-                  <div class="settings-field">
-                    <label>xAI TTS Stimme (Text-to-Speech)</label>
-                    <select class="settings-select" data-config-key="ttsVoice">
-                      <option value="zenith">zenith (Autoritäre J.A.R.V.I.S. Stimme - Deutsch)</option>
-                      <option value="eve">eve (Freundliche Stimme)</option>
-                    </select>
-                  </div>
-                  <div class="settings-field">
-                    <label>Spracheingabe Sprache (STT)</label>
-                    <input type="text" class="settings-input" data-config-key="sttLanguage" value="de" placeholder="de" />
-                  </div>
-                  <div class="settings-field" style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--ui-stroke-tertiary);">
-                    <label style="color: var(--cyan); font-weight: 600;">🎙️ Diktier-Funktion (Dictation Mode)</label>
-                    <div style="font-size: 0.75rem; color: var(--ui-text-secondary); margin-bottom: 8px;">
-                      Tastenkombination zum Diktieren: <code style="background: rgba(56, 189, 248, 0.15); padding: 2px 6px; border-radius: 4px; color: #38bdf8;">Ctrl + Alt + D</code>
-                    </div>
-                    <label>Diktat-Zielort</label>
-                    <select class="settings-select" data-config-key="dictationTarget">
-                      <option value="clipboard">Direkt in die Zwischenablage (Clipboard) kopieren</option>
-                      <option value="chat_input">In das Chat-Eingabefeld einfügen</option>
-                    </select>
-                  </div>
-                </div>
-
-                <!-- Tab 4: Actions & General System Settings -->
-                <div class="settings-section" data-settings-section="actions" hidden>
-                  <label class="settings-toggle-large">
-                    <input type="checkbox" data-config-key="autoApproveActions" />
-                    <div>
-                      <strong>Automatische Freigabe für Browser & Apps (Auto-Approve)</strong>
-                      <span>Öffnet Webseiten und Windows-Programme sofort ohne manuelles Bestätigen im Chat.</span>
-                    </div>
-                  </label>
-
-                  <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--ui-stroke-tertiary);">
-                    <div style="color: var(--cyan); font-weight: 600; font-size: 0.82rem; margin-bottom: 10px;">📌 System-Tray & Fenster-Verhalten</div>
-                    
-                    <label class="settings-toggle-large" style="margin-bottom: 10px;">
-                      <input type="checkbox" data-config-key="minimizeToTray" checked />
-                      <div>
-                        <strong>Beim Minimieren in den System-Tray versetzen</strong>
-                        <span>Versteckt das Fenster im Windows-Benachrichtigungsbereich (System Tray) beim Minimieren.</span>
-                      </div>
-                    </label>
-
-                    <label class="settings-toggle-large">
-                      <input type="checkbox" data-config-key="closeToTray" checked />
-                      <div>
-                        <strong>Beim Schließen (X) im Hintergrund weiterlaufen lassen</strong>
-                        <span>Klick auf das Schließen-Kreuz (X) minimiert die App in den System-Tray statt sie zu beenden.</span>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-
-                <!-- Globaler Speichern-Footer für alle Tabs -->
-                <div class="settings-save-footer" style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--ui-stroke-tertiary); display: flex; flex-direction: column; gap: 8px;">
-                  <button type="submit" class="btn-primitive btn-default btn-md" data-save-settings-btn style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; font-size: 0.9rem; padding: 10px 16px; background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(16, 185, 129, 0.25)); border: 1px solid var(--cyan); color: #fff; cursor: pointer;">
-                    💾 ALLE EINSTELLUNGEN PERMANENT SPEICHERN
-                  </button>
-                  <span class="settings-status-msg" data-settings-status-msg style="font-size: 0.8rem; color: #34d399; text-align: center; font-weight: 600; min-height: 1.2rem;"></span>
-                </div>
-              </form>
-            </section>
-
-            <!-- Unsaved Changes Modal -->
-            <div class="settings-confirm-overlay" data-settings-confirm-modal hidden style="position: fixed; inset: 0; z-index: 9999; background: rgba(2, 6, 16, 0.85); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; padding: 20px;">
-              <div style="background: rgba(10, 25, 47, 0.95); border: 1px solid var(--cyan); border-radius: 12px; max-width: 480px; width: 100%; padding: 24px; box-shadow: 0 0 30px rgba(56, 189, 248, 0.3); text-align: center;">
-                <div style="font-size: 2.2rem; margin-bottom: 8px;">⚠️</div>
-                <h3 style="color: var(--cyan); font-size: 1.1rem; font-weight: 700; margin-bottom: 8px;">Ungespeicherte Einstellungen!</h3>
-                <p style="font-size: 0.85rem; color: var(--ui-text-secondary); margin-bottom: 20px; line-height: 1.5;">
-                  Du hast Einstellungen geändert, aber noch nicht auf der Festplatte gespeichert. Möchtest du die Änderungen jetzt dauerhaft übernehmen?
-                </p>
-                <div style="display: flex; flex-direction: column; gap: 10px;">
-                  <button type="button" class="btn-primitive btn-default btn-md" data-confirm-save-close style="width: 100%; font-weight: 700; background: rgba(16, 185, 129, 0.3); border-color: #10b981; color: #34d399;">
-                    💾 Speichern & Schließen
-                  </button>
-                  <button type="button" class="btn-primitive btn-ghost btn-md" data-confirm-discard-close style="width: 100%; color: #fca5a5; border-color: rgba(239, 68, 68, 0.4);">
-                    ✖ Ohne Speichern schließen
-                  </button>
-                  <button type="button" class="btn-primitive btn-ghost btn-sm" data-confirm-cancel style="width: 100%; margin-top: 4px;">
-                    ↩ Zurück zu den Einstellungen
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Real-Time Diagnostics Panel -->
-            <section class="hud-panel diagnostics-panel" data-diagnostics-panel aria-label="Real-Time Diagnostics" hidden>
-              <div class="panel-heading">
-                <span>+ REAL-TIME DIAGNOSTICS & TELEMETRY</span>
-                <button type="button" class="collapse-toggle-btn" data-close-drawer>✖ Schließen</button>
-              </div>
-              <div class="diagnostics-content">
-                <div class="diagnostics-grid">
-                  <div class="diag-card">
-                    <span class="diag-label">⚡ xAI API LATENCY</span>
-                    <span class="diag-value" data-diag-xai-latency>-- ms</span>
-                  </div>
-                  <div class="diag-card">
-                    <span class="diag-label">💾 RAM HEAP / RSS</span>
-                    <span class="diag-value" data-diag-ram>-- MB</span>
-                  </div>
-                  <div class="diag-card">
-                    <span class="diag-label">⏱ SERVICE UPTIME</span>
-                    <span class="diag-value" data-diag-uptime>--s</span>
-                  </div>
-                  <div class="diag-card">
-                    <span class="diag-label">🧠 STORED MEMORIES</span>
-                    <span class="diag-value" data-diag-memories>--</span>
-                  </div>
-                  <div class="diag-card">
-                    <span class="diag-label">📚 SECOND BRAIN ITEMS</span>
-                    <span class="diag-value" data-diag-knowledge>--</span>
-                  </div>
-                  <div class="diag-card">
-                    <span class="diag-label">⚡ WORKFLOW ROUTINES</span>
-                    <span class="diag-value" data-diag-workflows>--</span>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <!-- Personal Knowledge Base Panel -->
-            <section class="hud-panel knowledge-panel" data-knowledge-panel aria-label="Personal Knowledge Base" hidden>
-              <div class="panel-heading">
-                <span>+ PERSONAL KNOWLEDGE BASE (SECOND BRAIN)</span>
-                <div class="heading-right">
-                  <input type="text" class="search-field memory-search-input" data-knowledge-search placeholder="Wissen durchsuchen…" aria-label="Knowledge Base durchsuchen" />
-                  <button type="button" class="collapse-toggle-btn" data-close-drawer>✖ Schließen</button>
-                </div>
-              </div>
-              <div class="knowledge-content">
-                <form class="knowledge-form" data-knowledge-form>
-                  <input type="text" class="knowledge-input" data-knowledge-title-input placeholder="Titel (z.B. 'ESP32 ST7789 Setup')" required />
-                  <select class="knowledge-select" data-knowledge-category-select>
-                    <option value="code">Code</option>
-                    <option value="architecture">Architecture</option>
-                    <option value="guide">Guide</option>
-                    <option value="snippet">Snippet</option>
-                    <option value="general">General</option>
-                  </select>
-                  <input type="text" class="knowledge-input" data-knowledge-tags-input placeholder="Tags (Komma-getrennt: esp32, hardware)" />
-                  <textarea class="knowledge-textarea" data-knowledge-content-input placeholder="Inhalt / Notiz..." required></textarea>
-                  <button type="submit" class="btn-primitive btn-default btn-sm" data-knowledge-submit>+ Ins Second Brain Speichern</button>
-                </form>
-                <div class="knowledge-list" data-knowledge-list></div>
-              </div>
-            </section>
-
-            <!-- Workflow Automation Panel -->
-            <section class="hud-panel workflows-panel" data-workflows-panel aria-label="Workflow Automation" hidden>
-              <div class="panel-heading">
-                <span>+ WORKFLOW AUTOMATION & SINGLE-COMMAND ROUTINES</span>
-                <button type="button" class="collapse-toggle-btn" data-close-drawer>✖ Schließen</button>
-              </div>
-              <div class="workflows-content">
-                <div class="workflows-list" data-workflows-list></div>
-              </div>
-            </section>
-
-            <!-- Sub-Agent Collaboration Panel -->
-            <section class="hud-panel agents-panel" data-agents-panel aria-label="Sub-Agent Collaboration" hidden>
-              <div class="panel-heading">
-                <span>+ SUB-AGENT COLLABORATION & MULTI-AGENT GOALS</span>
-                <button type="button" class="collapse-toggle-btn" data-close-drawer>✖ Schließen</button>
-              </div>
-              <div class="agents-content">
-                <div class="agents-grid">
-                  <div class="agent-card">
-                    <span class="agent-role">📋 PlannerAgent</span>
-                    <span class="agent-status" data-agent-status="planner">READY</span>
-                  </div>
-                  <div class="agent-card">
-                    <span class="agent-role">🔍 ResearcherAgent</span>
-                    <span class="agent-status" data-agent-status="researcher">READY</span>
-                  </div>
-                  <div class="agent-card">
-                    <span class="agent-role">💻 CoderAgent</span>
-                    <span class="agent-status" data-agent-status="coder">READY</span>
-                  </div>
-                  <div class="agent-card">
-                    <span class="agent-role">⚡ ReviewerAgent</span>
-                    <span class="agent-status" data-agent-status="reviewer">READY</span>
-                  </div>
-                </div>
-                <form class="agents-form" data-agents-form>
-                  <input type="text" class="agents-input" data-agents-goal-input placeholder="Schweres Ziel für Sub-Agenten Team eingeben..." />
-                  <button type="submit" class="btn-primitive btn-default btn-sm" data-agents-submit>🚀 Team Starten</button>
-                </form>
-                <ul class="agents-task-list" data-agents-task-list></ul>
-              </div>
-            </section>
-
-            <!-- Long-Term Memory Inspector -->
-            <section class="hud-panel memory-panel" data-memory-panel aria-label="Long-Term Memory Inspector" hidden>
-              <div class="panel-heading">
-                <span>+ LONG-TERM MEMORY (PERSISTENCE)</span>
-                <div class="heading-right">
-                  <input type="text" class="search-field memory-search-input" data-memory-search placeholder="Search memory…" aria-label="Search memory" />
-                  <button type="button" class="collapse-toggle-btn" data-close-drawer>✖ Schließen</button>
-                </div>
-              </div>
-              <div class="memory-content" data-memory-content>
-                <ul class="memory-list" data-memory-list aria-label="Stored memory items"></ul>
-                <form class="memory-add-form" data-add-memory-form autocomplete="off">
-                  <select class="memory-category-select" data-memory-cat-input aria-label="Category">
-                    <option value="operator_preference">Präferenz</option>
-                    <option value="structured_fact">Fakt</option>
-                    <option value="semantic_document">Dokument</option>
-                  </select>
-                  <input type="text" class="memory-key-input" data-memory-key-input placeholder="Key (z.B. Name)" required aria-label="Memory Key" />
-                  <input type="text" class="memory-val-input" data-memory-val-input placeholder="Value (z.B. Ed)" required aria-label="Memory Value" />
-                  <button type="submit" class="btn-primitive btn-default btn-sm">+ Speichern</button>
-                </form>
-              </div>
-            </section>
-
-            <!-- File Management & Document RAG Panel -->
-            <section class="hud-panel files-panel" data-files-panel aria-label="File Management & RAG" hidden>
-              <div class="panel-heading">
-                <span>+ FILE MANAGEMENT & DOCUMENT RAG</span>
-                <div class="heading-right">
-                  <input type="text" class="search-field rag-search-input" data-rag-search placeholder="Search docs & code RAG…" aria-label="Search RAG" />
-                  <button type="button" class="collapse-toggle-btn" data-close-drawer>✖ Schließen</button>
-                </div>
-              </div>
-              <div class="files-content" data-files-content>
-                <div class="files-split">
-                  <div class="files-tree-box">
-                    <div class="files-box-title">PROJECT FILES</div>
-                    <ul class="file-list" data-file-list aria-label="Project files"></ul>
-                  </div>
-                  <div class="rag-results-box">
-                    <div class="files-box-title">RAG RELEVANT CHUNKS</div>
-                    <div class="rag-results-list" data-rag-results aria-label="RAG search results"></div>
-                  </div>
-                </div>
-                <div class="file-preview-box" data-file-preview-box hidden>
-                  <div class="file-preview-header">
-                    <span data-file-preview-title>File Preview</span>
-                    <button type="button" class="icon-control" data-close-file-preview>✖ Close</button>
-                  </div>
-                  <pre class="file-preview-code" data-file-preview-code></pre>
-                </div>
-              </div>
-            </section>
-
-            <!-- Browser Automation & Web Gathering Panel -->
-            <section class="hud-panel browser-panel" data-browser-panel aria-label="Browser Automation & Web Gathering" hidden>
-              <div class="panel-heading">
-                <span>+ BROWSER AUTOMATION & WEB GATHERING</span>
-                <button type="button" class="collapse-toggle-btn" data-close-drawer>✖ Schließen</button>
-              </div>
-              <div class="browser-content" data-browser-content>
-                <div class="browser-controls-row">
-                  <form class="browser-form" data-web-search-form autocomplete="off">
-                    <input type="text" class="browser-input" data-web-search-input placeholder="Search live web (e.g. ESP32-S3 docs)…" aria-label="Web Search Input" />
-                    <button type="submit" class="browser-action-btn">🔍 Search Web</button>
-                  </form>
-                  <form class="browser-form" data-web-fetch-form autocomplete="off">
-                    <input type="text" class="browser-input" data-web-url-input placeholder="Scrape URL (https://…)" aria-label="Web URL Input" />
-                    <button type="submit" class="browser-action-btn">⚡ Extract Page</button>
-                  </form>
-                </div>
-                <div class="browser-results-box" data-browser-results aria-label="Web results"></div>
-              </div>
-            </section>
           </div>
         </div>
 

@@ -1,8 +1,8 @@
 [
   {
     "id": "mem-default-1",
-    "createdAt": "2026-08-19T12:53:03.533Z",
-    "updatedAt": "2026-08-19T12:53:03.533Z",
+    "createdAt": "2026-08-19T20:24:27.571Z",
+    "updatedAt": "2026-08-19T20:24:27.571Z",
     "category": "operator_preference",
     "key": "Operator Name",
     "value": "Ed",
@@ -10,8 +10,8 @@
   },
   {
     "id": "mem-default-2",
-    "createdAt": "2026-08-19T12:53:03.533Z",
-    "updatedAt": "2026-08-19T12:53:03.533Z",
+    "createdAt": "2026-08-19T20:24:27.571Z",
+    "updatedAt": "2026-08-19T20:24:27.571Z",
     "category": "operator_preference",
     "key": "Sprache",
     "value": "Deutsch",
@@ -19,8 +19,8 @@
   },
   {
     "id": "mem-default-3",
-    "createdAt": "2026-08-19T12:53:03.533Z",
-    "updatedAt": "2026-08-19T12:53:03.533Z",
+    "createdAt": "2026-08-19T20:24:27.571Z",
+    "updatedAt": "2026-08-19T20:24:27.571Z",
     "category": "structured_fact",
     "key": "Betriebssystem",
     "value": "Windows",
@@ -28,8 +28,8 @@
   },
   {
     "id": "mem-default-4",
-    "createdAt": "2026-08-19T12:53:03.533Z",
-    "updatedAt": "2026-08-19T12:53:03.533Z",
+    "createdAt": "2026-08-19T20:24:27.571Z",
+    "updatedAt": "2026-08-19T20:24:27.571Z",
     "category": "operator_preference",
     "key": "Entwicklungs-Fokus",
     "value": "Python KI, Webdesign (Rich Aesthetics), Android & ESP32 Microcontroller",
@@ -37,8 +37,8 @@
   },
   {
     "id": "mem-default-5",
-    "createdAt": "2026-08-19T12:53:03.533Z",
-    "updatedAt": "2026-08-19T12:53:03.533Z",
+    "createdAt": "2026-08-19T20:24:27.571Z",
+    "updatedAt": "2026-08-19T20:24:27.571Z",
     "category": "operator_preference",
     "key": "Code-Stil",
     "value": "Clean Code, modular, Vanilla CSS, Deutsch in Kommentaren",

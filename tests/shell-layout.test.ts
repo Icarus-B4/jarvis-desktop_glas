@@ -42,12 +42,17 @@ describe("Hermes-style JARVIS shell invariants", () => {
     expect(css).toContain("--shell-titlebar-height: 38px");
   });
 
-  test("renders route destinations as workspace pages instead of sticky modal cards", () => {
-    expect(css).toContain("Route destinations occupy the workspace like normal desktop pages");
-    expect(css).toContain("right: calc(var(--sidebar-width, 350px) + 24px)");
-    expect(css).toContain("border-radius: 0");
-    expect(css).toContain("box-shadow: none");
-    expect(css).toContain(".conversation-panel");
-    expect(css).toContain(".command-dock");
+  test("renders route destinations as central stage pages, not side-overlay cards", () => {
+    // Tab panels live inside the central stage-view-wrapper as stage-view-item.
+    expect(html).toContain('data-stage-view="lifeos"');
+    expect(html).toContain('data-stage-view="settings"');
+    expect(html).toContain('data-stage-view="memory"');
+    expect(html).toContain('data-stage-view="files"');
+    expect(html).toContain('data-stage-view="knowledge"');
+    expect(html).toContain('data-stage-view="browser"');
+    expect(html).toContain('data-stage-view="agents"');
+    expect(html).toContain('data-stage-view="workflows"');
+    // Exactly one stage-view-wrapper and no leftover drawer overlay around the tabs.
+    expect(occurrences(html, "stage-view-wrapper")).toBe(1);
   });
 });
