@@ -1960,11 +1960,11 @@ html[data-orb-state="disconnected"] .orb-composition { --status-accent: #5f6e78;
   height: 100%;
   min-height: 0;
   margin: 0;
-  padding: 16px;
+  padding: 20px;
   display: grid;
-  grid-template-columns: 210px minmax(0, 1fr);
+  grid-template-columns: 220px minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr) auto;
-  gap: 14px 20px;
+  gap: 18px 24px;
 }
 .settings-content > .segmented-control {
   grid-column: 1;
@@ -2087,7 +2087,6 @@ body {
 .command-input { color: var(--ui-text-primary); font-size: .78rem; }
 .command-input::placeholder { color: #687280; }
 
-/* Route destinations occupy the workspace like normal desktop pages. */
 .hud-drawer-overlay,
 .shell-body[data-nav-collapsed="true"] .hud-drawer-overlay,
 .hud-drawer-overlay[data-active-tab] {
@@ -2191,6 +2190,19 @@ body {
   box-shadow: none !important;
 }
 .settings-save-footer button:hover { background: #202b38 !important; }
+.settings-confirm-overlay {
+  background: rgba(6, 10, 16, .82);
+  backdrop-filter: blur(10px);
+}
+.settings-confirm-overlay > div {
+  background: #0b1017;
+  border: 1px solid var(--ui-stroke-tertiary);
+  border-radius: 8px;
+  color: var(--ui-text-primary);
+  box-shadow: none;
+}
+.settings-confirm-overlay h3,
+.settings-confirm-overlay > div > div:first-child { color: var(--cyan-soft); }
 
 @media (max-width: 1220px) {
   .hud-drawer-overlay,

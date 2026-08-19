@@ -2199,6 +2199,7 @@ const panelResizer = optionalElement<HTMLElement>("[data-panel-resizer]");
 const savedShellNavState = localStorage.getItem("jarvis_shell_nav_collapsed");
 if (shellBody) shellBody.dataset.navCollapsed = savedShellNavState === "true" ? "true" : "false";
 let lastSurfaceNav = optionalElement<HTMLElement>("[data-shell-home]");
+let lastDrawerKey: DrawerTabKey | null = null;
 
 function selectShellSurface(item: HTMLElement): void {
   document.querySelectorAll<HTMLElement>(".shell-nav-item").forEach((navItem) => {
@@ -2644,6 +2645,14 @@ function syncPillStates(activeKey: DrawerTabKey | null): void {
     knowledge: "[data-toggle-knowledge-panel]",
     diagnostics: "[data-toggle-diagnostics-panel]",
   };
+
+  const isDrawerOpen = hudDrawerEl !== null && !hudDrawerEl.hidden;
+  const isSameKey = activeKey === lastDrawerKey;
+  if (isDrawerOpen && isSameKey && activeKey !== null) {
+    forceCloseDrawer();
+    return;
+  }
+  if (activeKey !== null) lastDrawerKey = activeKey;
 
   document.querySelectorAll<HTMLElement>(".shell-nav-item").forEach((item) => {
     item.dataset.active = "false";
