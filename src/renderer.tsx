@@ -1361,7 +1361,9 @@ async function refreshRuntimeStatus(): Promise<void> {
       }
       if (voiceMuteBtn) {
         voiceMuteBtn.dataset.muted = String(voiceStatus.muted);
-        voiceMuteBtn.textContent = voiceStatus.muted ? "🎙️ Mic Muted" : "🎙️ Mic Active";
+        const isTitlebarControl = voiceMuteBtn.classList.contains("titlebar-voice-action");
+        voiceMuteBtn.textContent = isTitlebarControl ? (voiceStatus.muted ? "○" : "●") : (voiceStatus.muted ? "🎙️ Mic Muted" : "🎙️ Mic Active");
+        voiceMuteBtn.setAttribute("aria-label", voiceStatus.muted ? "Mikrofon aktivieren" : "Mikrofon stummschalten");
       }
 
       if (!voiceStatus.muted) {
@@ -2189,9 +2191,51 @@ toggleLegendBtn?.addEventListener("click", () => {
   if (toggleLegendBtn) toggleLegendBtn.textContent = !isCollapsed ? "⇱ Ausklappen" : "⇲ Einklappen";
 });
 
+const shellBody = optionalElement<HTMLElement>("[data-shell-body]");
 const controlGrid = optionalElement<HTMLElement>(".control-grid");
 const sidebarExpandBtn = optionalElement<HTMLButtonElement>(".sidebar-expand-btn");
 const panelResizer = optionalElement<HTMLElement>("[data-panel-resizer]");
+
+const savedShellNavState = localStorage.getItem("jarvis_shell_nav_collapsed");
+if (shellBody) shellBody.dataset.navCollapsed = savedShellNavState === "true" ? "true" : "false";
+let lastSurfaceNav = optionalElement<HTMLElement>("[data-shell-home]");
+
+function selectShellSurface(item: HTMLElement): void {
+  document.querySelectorAll<HTMLElement>(".shell-nav-item").forEach((navItem) => {
+    navItem.dataset.active = String(navItem === item);
+  });
+  lastSurfaceNav = item;
+}
+
+document.querySelectorAll<HTMLButtonElement>("[data-toggle-shell-nav]").forEach((button) => {
+  button.addEventListener("click", () => {
+    if (!shellBody) return;
+    const nextCollapsed = shellBody.dataset.navCollapsed !== "true";
+    shellBody.dataset.navCollapsed = String(nextCollapsed);
+    localStorage.setItem("jarvis_shell_nav_collapsed", String(nextCollapsed));
+  });
+});
+
+document.querySelectorAll<HTMLButtonElement>("[data-shell-home]").forEach((button) => {
+  button.addEventListener("click", () => {
+    selectShellSurface(button);
+    closeDrawer();
+    setStageView(null);
+  });
+});
+
+document.querySelectorAll<HTMLButtonElement>("[data-shell-chat]").forEach((button) => {
+  button.addEventListener("click", () => {
+    selectShellSurface(button);
+    closeDrawer();
+    input?.focus();
+    feed?.scrollTo({ top: feed.scrollHeight, behavior: "smooth" });
+  });
+});
+
+document.querySelectorAll<HTMLButtonElement>("[data-toggle-morning-brief], [data-toggle-barehands]").forEach((button) => {
+  button.addEventListener("click", () => selectShellSurface(button));
+});
 
 // Vorherige Sidebar-Breite aus Speicher laden
 const savedSidebarWidth = localStorage.getItem("jarvis_sidebar_width");
@@ -2537,6 +2581,7 @@ function openDrawer(tabKey: DrawerTabKey): void {
   if (!target) return;
 
   hudDrawerEl.hidden = false;
+  hudDrawerEl.dataset.activeTab = tabKey;
   if (confirmModalEl) confirmModalEl.hidden = true;
 
   if (drawerActiveTitleEl) {
@@ -2574,6 +2619,7 @@ function forceCloseDrawer(): void {
   if (!hudDrawerEl) return;
   if (confirmModalEl) confirmModalEl.hidden = true;
   hudDrawerEl.hidden = true;
+  delete hudDrawerEl.dataset.activeTab;
   syncPillStates(null);
 }
 
@@ -2599,6 +2645,10 @@ function syncPillStates(activeKey: DrawerTabKey | null): void {
     diagnostics: "[data-toggle-diagnostics-panel]",
   };
 
+  document.querySelectorAll<HTMLElement>(".shell-nav-item").forEach((item) => {
+    item.dataset.active = "false";
+  });
+
   (Object.keys(selectorMap) as DrawerTabKey[]).forEach((key) => {
     const sel = selectorMap[key];
     const isCurrentActive = activeKey !== null && activeKey === key && hudDrawerEl !== null && !hudDrawerEl.hidden;
@@ -2606,6 +2656,10 @@ function syncPillStates(activeKey: DrawerTabKey | null): void {
       el.dataset.active = String(isCurrentActive);
     });
   });
+
+  if (activeKey === null && lastSurfaceNav) {
+    lastSurfaceNav.dataset.active = "true";
+  }
 }
 
 document.querySelectorAll<HTMLButtonElement>("[data-close-drawer]").forEach((btn) => {

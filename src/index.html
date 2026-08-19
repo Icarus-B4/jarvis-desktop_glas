@@ -16,18 +16,56 @@
     <div class="scan-overlay" aria-hidden="true"><span class="scan-beam"></span><span class="scan-lines"></span></div>
 
     <header class="control-header">
-      <div class="brand-lockup">
+      <div class="titlebar-leading">
+        <button type="button" class="titlebar-action" data-toggle-shell-nav aria-label="Navigation ein- oder ausklappen">☰</button>
+        <div class="brand-lockup">
         <span class="brand-mark" aria-hidden="true"><i></i><b></b></span>
-        <span><strong>J.A.R.V.I.S.</strong><small>PRIVATE CONTROL ROOM / FOUNDATION 01</small></span>
+          <span><strong>J.A.R.V.I.S.</strong><small>PRIVATE CONTROL ROOM</small></span>
+        </div>
       </div>
+      <div class="titlebar-context"><span>CORE</span><b>Identity workspace</b></div>
       <div class="header-telemetry">
-        <span><i></i>LOCAL AUTHORITY / RESTRICTED</span>
+        <span><i></i>LOCAL</span>
         <span data-telemetry-voice>VOICE / MUTED (HARD)</span>
-        <span data-telemetry-actions>ACTIONS / HUMAN-IN-LOOP</span>
+        <span data-telemetry-actions hidden>ACTIONS / HUMAN-IN-LOOP</span>
+        <button type="button" class="titlebar-action titlebar-voice-action" data-toggle-voice-mute aria-label="Mikrofon umschalten">◉</button>
       </div>
     </header>
 
+    <div class="shell-body" data-shell-body>
+      <aside class="shell-sidebar" aria-label="JARVIS Navigation">
+        <nav class="shell-nav">
+          <div class="shell-nav-group">
+            <span class="shell-nav-label">HOME</span>
+            <button type="button" class="shell-nav-item" data-shell-home data-active="true"><span>◈</span><b>Core</b></button>
+            <button type="button" class="shell-nav-item" data-shell-chat><span>◫</span><b>Chat</b></button>
+            <button type="button" class="shell-nav-item" data-toggle-morning-brief><span>☀</span><b>Briefing</b></button>
+            <button type="button" class="shell-nav-item" data-toggle-barehands><span>✋</span><b>Hands</b></button>
+            <button type="button" class="shell-nav-item" data-toggle-lifeos-panel><span>◎</span><b>LifeOS</b></button>
+          </div>
+          <div class="shell-nav-group">
+            <span class="shell-nav-label">WORKSPACE</span>
+            <button type="button" class="shell-nav-item" data-toggle-memory-panel><span>◇</span><b>Memory</b></button>
+            <button type="button" class="shell-nav-item" data-toggle-files-panel><span>▱</span><b>Files & RAG</b></button>
+            <button type="button" class="shell-nav-item" data-toggle-knowledge-panel><span>▤</span><b>Knowledge</b></button>
+          </div>
+          <div class="shell-nav-group">
+            <span class="shell-nav-label">AUTOMATION</span>
+            <button type="button" class="shell-nav-item" data-toggle-browser-panel><span>◎</span><b>Browser</b></button>
+            <button type="button" class="shell-nav-item" data-toggle-agents-panel><span>⌘</span><b>Agents</b></button>
+            <button type="button" class="shell-nav-item" data-toggle-workflows-panel><span>ϟ</span><b>Workflows</b></button>
+          </div>
+          <div class="shell-nav-group shell-nav-group--system">
+            <span class="shell-nav-label">SYSTEM</span>
+            <button type="button" class="shell-nav-item" data-toggle-diagnostics-panel><span>⌁</span><b>Telemetry</b></button>
+            <button type="button" class="shell-nav-item" data-toggle-settings-panel><span>⚙</span><b>Settings</b></button>
+          </div>
+        </nav>
+        <div class="shell-sidebar-status"><i></i><span>Gateway ready</span></div>
+      </aside>
+
     <main class="control-grid">
+      <div class="workspace-stack">
       <section class="orb-stage hud-panel" aria-labelledby="core-heading">
         <div class="panel-corners" aria-hidden="true"></div>
         <div class="panel-heading">
@@ -214,6 +252,27 @@
         </div>
       </section>
 
+      <!-- Hermes-style composer: conversation history lives in the right context rail. -->
+      <section class="command-dock" aria-label="JARVIS command bar">
+        <form class="command-form" data-command-form autocomplete="off" novalidate>
+          <div class="command-input-row">
+            <button type="button" class="icon-control mic-control" data-mic-toggle aria-label="Mikrofon und Spracheingabe umschalten">🎙</button>
+            <input
+              type="text"
+              class="command-input"
+              data-command-input
+              placeholder="Ask J.A.R.V.I.S. or type › command…"
+              aria-label="Chat input"
+              spellcheck="false"
+              autocomplete="off"
+            />
+            <button type="submit" class="icon-control send-control" data-send-chat aria-label="Nachricht senden">⏎ Send</button>
+            <button type="button" class="icon-control cancel-control" data-cancel-chat aria-label="Antwort stoppen" hidden>✖ Cancel</button>
+          </div>
+        </form>
+      </section>
+      </div>
+
       <div class="panel-resizer" data-panel-resizer title="Ziehen zum Anpassen der Spaltenbreite (Doppelklick zum Zurücksetzen)" aria-label="Resize Sidebar Panel">
         <span class="resizer-handle"></span>
       </div>
@@ -248,7 +307,6 @@
         <section class="hud-panel capabilities-panel" aria-label="System Capabilities">
           <div class="panel-heading">
             <span>+ CAPABILITIES & MODULES</span>
-            <button type="button" class="sidebar-toggle-btn" data-toggle-settings-panel title="App-Einstellungen öffnen">⚙️ Settings</button>
           </div>
           <dl class="capability-list">
             <div><dt>VOICE / STT</dt><dd data-cap-voice>—</dd></div>
@@ -265,71 +323,31 @@
               <span class="model-copy-status" data-model-copy-status></span>
             </div>
           </div>
-          <div class="module-controls-bar">
-            <div class="module-status-header">
-              <span class="status-badge" data-model-status>CHECKING</span>
-              <div class="header-action-group">
-                <button type="button" class="icon-control mic-control" data-toggle-voice-mute title="Toggle Microphone Mute">🎙 MIC</button>
-                <button type="button" class="icon-control" data-toggle-settings-panel title="App-Einstellungen & Keys">⚙️ SETTINGS</button>
-                <button type="button" class="icon-control" data-refresh-status title="Refresh service status">↺</button>
-              </div>
-            </div>
-            
-            <div class="module-group-container">
-              <div class="module-group">
-                <span class="module-group-label">WORKSPACE</span>
-                <div class="module-pills">
-                  <button type="button" class="module-pill" data-toggle-morning-brief title="Morning Briefing & Daily Digest auf der Hauptbühne">🌅 Briefing</button>
-                  <button type="button" class="module-pill" data-toggle-barehands title="Barehands Hand-Tracking Interface">🖐️ Hands</button>
-                  <button type="button" class="module-pill" data-toggle-settings-panel title="App-Einstellungen & Keys">⚙️ Settings</button>
-                  <button type="button" class="module-pill" data-toggle-lifeos-panel title="LifeOS & TELOS Governance">🎯 LifeOS</button>
-                  <button type="button" class="module-pill" data-toggle-memory-panel title="Memory Inspector">🧠 Memory</button>
-                  <button type="button" class="module-pill" data-toggle-files-panel title="File RAG">📁 Files & RAG</button>
-                  <button type="button" class="module-pill" data-toggle-knowledge-panel title="Second Brain">📚 Knowledge</button>
-                </div>
-              </div>
+        </section>
 
-              <div class="module-group">
-                <span class="module-group-label">AUTOMATION</span>
-                <div class="module-pills">
-                  <button type="button" class="module-pill" data-toggle-browser-panel title="Browser Gathering">🌐 Browser</button>
-                  <button type="button" class="module-pill" data-toggle-agents-panel title="Sub-Agents Team">🤖 Agents</button>
-                  <button type="button" class="module-pill" data-toggle-workflows-panel title="Routines">⚡ Workflows</button>
-                </div>
-              </div>
-
-              <div class="module-group">
-                <span class="module-group-label">SYSTEM</span>
-                <div class="module-pills">
-                  <button type="button" class="module-pill" data-toggle-diagnostics-panel title="Real-Time Telemetry">📊 Telemetry</button>
-                </div>
-              </div>
+        <!-- Conversation transcript belongs to the right context rail. -->
+        <section class="hud-panel conversation-panel" aria-labelledby="chat-heading">
+          <div class="panel-heading">
+            <span id="chat-heading">+ CONVERSATION</span>
+            <div class="feed-tabs">
+              <button type="button" class="feed-tab feed-tab--active" data-feed-filter="all">ALL</button>
+              <button type="button" class="feed-tab" data-feed-filter="chat">CHAT</button>
+              <button type="button" class="feed-tab" data-feed-filter="system">SYSTEM</button>
             </div>
           </div>
+          <ol class="activity-feed" data-activity-feed aria-live="polite" aria-label="Conversation history"></ol>
         </section>
 
         <!-- Unified Control Center HUD Drawer Overlay -->
         <div class="hud-drawer-overlay" data-hud-drawer hidden>
           <div class="drawer-header">
             <div class="drawer-title-group">
-              <span class="drawer-brand">✦ JARVIS CONTROL CENTER</span>
-              <span class="drawer-active-label" data-drawer-active-title">⚙️ SYSTEM SETTINGS & CONFIGURATION</span>
+              <span class="drawer-active-label" data-drawer-active-title>⚙️ SYSTEM SETTINGS & CONFIGURATION</span>
             </div>
             <div class="drawer-actions">
-              <button type="button" class="drawer-close-btn" data-close-drawer title="Close Control Center (ESC)">✖ SCHLIESSEN</button>
+              <button type="button" class="drawer-close-btn" data-close-drawer aria-label="Control Center schließen">×</button>
             </div>
           </div>
-          <nav class="drawer-tabs">
-            <button type="button" class="drawer-tab" data-drawer-tab="lifeos">🎯 LifeOS</button>
-            <button type="button" class="drawer-tab" data-drawer-tab="settings">⚙️ Settings</button>
-            <button type="button" class="drawer-tab" data-drawer-tab="memory">🧠 Memory</button>
-            <button type="button" class="drawer-tab" data-drawer-tab="files">📁 Files & RAG</button>
-            <button type="button" class="drawer-tab" data-drawer-tab="browser">🌐 Browser</button>
-            <button type="button" class="drawer-tab" data-drawer-tab="agents">🤖 Agents</button>
-            <button type="button" class="drawer-tab" data-drawer-tab="workflows">⚡ Workflows</button>
-            <button type="button" class="drawer-tab" data-drawer-tab="knowledge">📚 Knowledge</button>
-            <button type="button" class="drawer-tab" data-drawer-tab="diagnostics">📊 Telemetry</button>
-          </nav>
           <div class="drawer-body">
             <!-- LifeOS & TELOS Governance Panel -->
             <section class="hud-panel lifeos-panel" data-lifeos-panel aria-label="LifeOS & TELOS Governance" hidden>
@@ -725,36 +743,9 @@
           </div>
         </div>
 
-        <!-- Chat / Activity Feed -->
-        <section class="hud-panel chat-panel" aria-labelledby="chat-heading">
-          <div class="panel-heading">
-            <span id="chat-heading">+ ACTIVITY FEED</span>
-            <div class="feed-tabs">
-              <button type="button" class="feed-tab feed-tab--active" data-feed-filter="all">ALL</button>
-              <button type="button" class="feed-tab" data-feed-filter="chat">CHAT</button>
-              <button type="button" class="feed-tab" data-feed-filter="system">SYSTEM</button>
-            </div>
-          </div>
-          <ol class="activity-feed" data-activity-feed aria-live="polite" aria-label="Activity feed"></ol>
-          <form class="command-form" data-command-form autocomplete="off" novalidate>
-            <div class="command-input-row">
-              <button type="button" class="icon-control mic-control" data-mic-toggle title="Toggle Microphone / Voice Input">🎙</button>
-              <input
-                type="text"
-                class="command-input"
-                data-command-input
-                placeholder="Ask J.A.R.V.I.S. or type › command…"
-                aria-label="Chat input"
-                spellcheck="false"
-                autocomplete="off"
-              />
-              <button type="submit" class="icon-control send-control" data-send-chat title="Send message">⏎ Send</button>
-              <button type="button" class="icon-control cancel-control" data-cancel-chat title="Cancel response" hidden>✖ Cancel</button>
-            </div>
-          </form>
-        </section>
       </div>
     </main>
+    </div>
 
     <footer class="control-footer"><span>DESKTOP SHELL / ELECTRON</span><span>CONTRACTS / TYPED</span><span>AUTHORITY / NONE GRANTED</span><span>BUILD / FOUNDATION 01</span></footer>
   </body>

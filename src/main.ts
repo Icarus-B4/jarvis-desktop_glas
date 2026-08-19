@@ -457,10 +457,15 @@ function createControlRoomWindow(): BrowserWindow {
     minWidth: 1448,
     minHeight: 860,
     backgroundColor: "#03060dff",
-    opacity: 0.95,
     icon: getAppIcon(),
     show: false,
-    autoHideMenuBar: false,
+    autoHideMenuBar: true,
+    titleBarStyle: "hidden",
+    titleBarOverlay: {
+      color: "#050910",
+      symbolColor: "#94a3b8",
+      height: 38,
+    },
     webPreferences: {
       preload: join(distributionRoot, "preload.cjs"),
       nodeIntegration: false,
