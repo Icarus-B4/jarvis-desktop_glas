@@ -1,284 +1,343 @@
 <!doctype html>
 <html lang="en" data-orb-state="idle">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:* https://api.open-meteo.com; object-src 'none'; frame-src 'self' http://127.0.0.1:8794; base-uri 'none'; form-action 'none'"
-    />
-    <title>J.A.R.V.I.S. — Private Control Room</title>
-    <link rel="stylesheet" href="./renderer.css" />
-    <script type="module" src="./renderer.js"></script>
-  </head>
-  <body>
-    <div class="grid-overlay" aria-hidden="true"></div>
-    <div class="scan-overlay" aria-hidden="true"><span class="scan-beam"></span><span class="scan-lines"></span></div>
 
-    <header class="control-header">
-      <div class="titlebar-leading">
-        <button type="button" class="titlebar-action" data-toggle-shell-nav aria-label="Navigation ein- oder ausklappen">☰</button>
-        <div class="brand-lockup">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:* https://api.open-meteo.com; object-src 'none'; frame-src 'self' http://127.0.0.1:8794; base-uri 'none'; form-action 'none'" />
+  <title>J.A.R.V.I.S. — Private Control Room</title>
+  <link rel="stylesheet" href="./renderer.css" />
+  <script type="module" src="./renderer.js"></script>
+</head>
+
+<body>
+  <div class="grid-overlay" aria-hidden="true"></div>
+  <div class="scan-overlay" aria-hidden="true"><span class="scan-beam"></span><span class="scan-lines"></span></div>
+
+  <header class="control-header">
+    <div class="titlebar-leading">
+      <button type="button" class="titlebar-action" data-toggle-shell-nav
+        aria-label="Navigation ein- oder ausklappen">☰</button>
+      <div class="brand-lockup">
         <span class="brand-mark" aria-hidden="true"><i></i><b></b></span>
-          <span><strong>👌🏽J.A.R.V.I.S.</strong><small>PRIVATE CONTROL ROOM</small></span>
-        </div>
+        <span><strong>👌🏽J.A.R.V.I.S.</strong><small>PRIVATE CONTROL ROOM</small></span>
       </div>
-      <div class="titlebar-context"><span>CORE</span><b>Identity workspace</b></div>
-      <div class="header-telemetry">
-        <span><i></i>LOCAL</span>
-        <span data-telemetry-voice>VOICE / MUTED (HARD)</span>
-        <span data-telemetry-actions hidden>ACTIONS / HUMAN-IN-LOOP</span>
-        <button type="button" class="titlebar-action titlebar-voice-action" data-toggle-voice-mute aria-label="Mikrofon umschalten">◉</button>
-      </div>
-    </header>
+    </div>
+    <div class="titlebar-context"><span>CORE</span><b>Identity workspace</b></div>
+    <div class="header-telemetry">
+      <span><i></i>LOCAL</span>
+      <span data-telemetry-voice>VOICE / MUTED (HARD)</span>
+      <span data-telemetry-actions hidden>ACTIONS / HUMAN-IN-LOOP</span>
+      <button type="button" class="titlebar-action titlebar-voice-action" data-toggle-voice-mute
+        aria-label="Mikrofon umschalten">◉</button>
+    </div>
+  </header>
 
-    <div class="shell-body" data-shell-body>
-      <aside class="shell-sidebar" aria-label="JARVIS Navigation">
-        <nav class="shell-nav">
-          <div class="shell-nav-group">
-            <span class="shell-nav-label">HOME</span>
-            <button type="button" class="shell-nav-item" data-shell-home data-active="true"><span>◈</span><b>Core</b></button>
-            <button type="button" class="shell-nav-item" data-shell-chat><span>◫</span><b>Chat</b></button>
-            <button type="button" class="shell-nav-item" data-toggle-morning-brief><span>☀</span><b>Briefing</b></button>
-            <button type="button" class="shell-nav-item" data-toggle-barehands><span>✋</span><b>Hands</b></button>
-            <button type="button" class="shell-nav-item" data-toggle-lifeos-panel><span>◎</span><b>LifeOS</b></button>
-          </div>
-          <div class="shell-nav-group">
-            <span class="shell-nav-label">WORKSPACE</span>
-            <button type="button" class="shell-nav-item" data-toggle-memory-panel><span>◇</span><b>Memory</b></button>
-            <button type="button" class="shell-nav-item" data-toggle-files-panel><span>▱</span><b>Files & RAG</b></button>
-            <button type="button" class="shell-nav-item" data-toggle-knowledge-panel><span>▤</span><b>Knowledge</b></button>
-          </div>
-          <div class="shell-nav-group">
-            <span class="shell-nav-label">AUTOMATION</span>
-            <button type="button" class="shell-nav-item" data-toggle-browser-panel><span>◎</span><b>Browser</b></button>
-            <button type="button" class="shell-nav-item" data-toggle-agents-panel><span>⌘</span><b>Agents</b></button>
-            <button type="button" class="shell-nav-item" data-toggle-workflows-panel><span>ϟ</span><b>Workflows</b></button>
-          </div>
-          <div class="shell-nav-group shell-nav-group--system">
-            <span class="shell-nav-label">SYSTEM</span>
-            <button type="button" class="shell-nav-item" data-toggle-diagnostics-panel><span>⌁</span><b>Telemetry</b></button>
-            <button type="button" class="shell-nav-item" data-toggle-settings-panel ><span>⚙</span><b>Einstellungen</b></button>
-          </div>
-        </nav>
-        <div class="shell-sidebar-status"><i></i><span>Gateway ready</span></div>
-      </aside>
+  <div class="shell-body" data-shell-body>
+    <aside class="shell-sidebar" aria-label="JARVIS Navigation">
+      <nav class="shell-nav">
+        <div class="shell-nav-group">
+          <span class="shell-nav-label">HOME</span>
+          <button type="button" class="shell-nav-item" data-shell-home
+            data-active="true"><span>◈</span><b>Core</b></button>
+          <button type="button" class="shell-nav-item" data-shell-chat><span>◫</span><b>Chat</b></button>
+          <button type="button" class="shell-nav-item" data-toggle-morning-brief><span>☀</span><b>Briefing</b></button>
+          <button type="button" class="shell-nav-item" data-toggle-barehands><span>✋</span><b>Hands</b></button>
+          <button type="button" class="shell-nav-item" data-toggle-lifeos-panel><span>◎</span><b>LifeOS</b></button>
+        </div>
+        <div class="shell-nav-group">
+          <span class="shell-nav-label">WORKSPACE</span>
+          <button type="button" class="shell-nav-item" data-toggle-memory-panel><span>◇</span><b>Memory</b></button>
+          <button type="button" class="shell-nav-item" data-toggle-files-panel><span>▱</span><b>Files & RAG</b></button>
+          <button type="button" class="shell-nav-item"
+            data-toggle-knowledge-panel><span>▤</span><b>Knowledge</b></button>
+        </div>
+        <div class="shell-nav-group">
+          <span class="shell-nav-label">AUTOMATION</span>
+          <button type="button" class="shell-nav-item" data-toggle-browser-panel><span>◎</span><b>Browser</b></button>
+          <button type="button" class="shell-nav-item" data-toggle-agents-panel><span>⌘</span><b>Agents</b></button>
+          <button type="button" class="shell-nav-item"
+            data-toggle-workflows-panel><span>ϟ</span><b>Workflows</b></button>
+        </div>
+        <div class="shell-nav-group shell-nav-group--system">
+          <span class="shell-nav-label">SYSTEM</span>
+          <button type="button" class="shell-nav-item"
+            data-toggle-diagnostics-panel><span>⌁</span><b>Telemetry</b></button>
+          <button type="button" class="shell-nav-item"
+            data-toggle-settings-panel><span>⚙</span><b>Einstellungen</b></button>
+        </div>
+      </nav>
+      <div class="shell-sidebar-status"><i></i><span>Gateway ready</span></div>
+    </aside>
 
     <main class="control-grid">
       <div class="workspace-stack">
-      <section class="orb-stage hud-panel" aria-labelledby="core-heading">
-        <div class="panel-corners" aria-hidden="true"></div>
-        <div class="panel-heading">
-          <span>+ CORE STATE</span>
-          <div class="heading-right">
-            <b>VISUAL CONTRACT / V1</b>
-            <button type="button" class="sidebar-expand-btn" data-toggle-sidebar title="Expand Right Panel" hidden>⇱ Open Panel</button>
-          </div>
-        </div>
-        <div class="stage-view-wrapper" data-stage-mode="hero">
-
-          <!-- 1. Action Approval HUD (Große Freigabekarte auf der Hauptbühne) -->
-          <div class="stage-view-item stage-action-hud" data-stage-view="action" hidden>
-            <div class="stage-hud-card">
-              <div class="stage-hud-badge">⚡ SYSTEM ACTION PROPOSAL</div>
-              <h2 class="stage-hud-title" data-stage-action-title>Aktion ausführen</h2>
-              <p class="stage-hud-desc" data-stage-action-desc>Beschreibung der Aktion</p>
-              <div class="stage-hud-params" data-stage-action-params></div>
-              <div class="stage-hud-actions">
-                <button type="button" class="btn-primitive btn-default btn-lg" data-stage-approve>▶ BESTÄTIGEN (APPROVE)</button>
-                <button type="button" class="btn-primitive btn-ghost btn-lg" data-stage-reject>✖ ABLEHNEN (REJECT)</button>
-              </div>
+        <section class="orb-stage hud-panel" aria-labelledby="core-heading">
+          <div class="panel-corners" aria-hidden="true"></div>
+          <div class="panel-heading">
+            <span>+ CORE STATE</span>
+            <div class="heading-right">
+              <b>VISUAL CONTRACT / V1</b>
+              <button type="button" class="sidebar-expand-btn" data-toggle-sidebar title="Expand Right Panel" hidden>⇱
+                Open Panel</button>
             </div>
           </div>
+          <div class="stage-view-wrapper" data-stage-mode="hero">
 
-          <!-- 2. Kamera View / Photo Feed -->
-          <div class="stage-view-item stage-camera-view" data-stage-view="camera" hidden>
-            <div class="stage-media-header">
-              <span>📸 LIVE KAMERA FEED</span>
-              <div style="display: flex; gap: 8px;">
-                <button type="button" class="btn-primitive btn-cyan btn-xs" data-analyze-vision="camera">🧠 VON JARVIS ANALYSIEREN LASSEN</button>
+            <!-- 1. Action Approval HUD (Große Freigabekarte auf der Hauptbühne) -->
+            <div class="stage-view-item stage-action-hud" data-stage-view="action" hidden>
+              <div class="stage-hud-card">
+                <div class="stage-hud-badge">⚡ SYSTEM ACTION PROPOSAL</div>
+                <h2 class="stage-hud-title" data-stage-action-title>Aktion ausführen</h2>
+                <p class="stage-hud-desc" data-stage-action-desc>Beschreibung der Aktion</p>
+                <div class="stage-hud-params" data-stage-action-params></div>
+                <div class="stage-hud-actions">
+                  <button type="button" class="btn-primitive btn-default btn-lg" data-stage-approve>▶ BESTÄTIGEN
+                    (APPROVE)</button>
+                  <button type="button" class="btn-primitive btn-ghost btn-lg" data-stage-reject>✖ ABLEHNEN
+                    (REJECT)</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. Kamera View / Photo Feed -->
+            <div class="stage-view-item stage-camera-view" data-stage-view="camera" hidden>
+              <div class="stage-media-header">
+                <span>📸 LIVE KAMERA FEED</span>
+                <div style="display: flex; gap: 8px;">
+                  <button type="button" class="btn-primitive btn-cyan btn-xs" data-analyze-vision="camera">🧠 VON JARVIS
+                    ANALYSIEREN LASSEN</button>
+                  <button type="button" class="btn-primitive btn-ghost btn-xs" data-stage-close-media>✖
+                    Schließen</button>
+                </div>
+              </div>
+              <video class="stage-camera-video" autoplay playsinline muted></video>
+              <canvas class="stage-camera-canvas" hidden></canvas>
+            </div>
+
+            <!-- 2b. Web / Browser View -->
+            <div class="stage-view-item stage-web-view" data-stage-view="web" hidden>
+              <div class="stage-media-header">
+                <span>🌐 WEB</span>
+                <form class="stage-web-form" data-web-nav-form
+                  style="display: flex; gap: 6px; flex: 1; margin: 0 12px;">
+                  <input type="text" class="stage-web-url" data-web-url-input placeholder="https://..."
+                    style="flex: 1; background: rgba(0,0,0,0.4); border: 1px solid rgba(0,229,255,0.3); color: #dcf5ee; padding: 6px 10px; border-radius: 6px; font-family: monospace; font-size: 13px;" />
+                  <button type="submit" class="btn-primitive btn-cyan btn-xs">↵</button>
+                </form>
                 <button type="button" class="btn-primitive btn-ghost btn-xs" data-stage-close-media>✖ Schließen</button>
               </div>
+              <webview class="stage-web-frame" data-web-frame src="about:blank" allowpopups
+                style="width: 100%; height: calc(100% - 40px); border: none; background: #fff;"></webview>
             </div>
-            <video class="stage-camera-video" autoplay playsinline muted></video>
-            <canvas class="stage-camera-canvas" hidden></canvas>
-          </div>
 
-          <!-- 2b. Web / Browser View -->
-          <div class="stage-view-item stage-web-view" data-stage-view="web" hidden>
-            <div class="stage-media-header">
-              <span>🌐 WEB</span>
-              <form class="stage-web-form" data-web-nav-form style="display: flex; gap: 6px; flex: 1; margin: 0 12px;">
-                <input type="text" class="stage-web-url" data-web-url-input placeholder="https://..." style="flex: 1; background: rgba(0,0,0,0.4); border: 1px solid rgba(0,229,255,0.3); color: #dcf5ee; padding: 6px 10px; border-radius: 6px; font-family: monospace; font-size: 13px;" />
-                <button type="submit" class="btn-primitive btn-cyan btn-xs">↵</button>
-              </form>
-              <button type="button" class="btn-primitive btn-ghost btn-xs" data-stage-close-media>✖ Schließen</button>
+            <!-- 3. Screenshot View -->
+            <div class="stage-view-item stage-screenshot-view" data-stage-view="screenshot" hidden>
+              <div class="stage-media-header">
+                <span>🖼️ DESKTOP SCREENSHOT</span>
+                <div style="display: flex; gap: 8px;">
+                  <button type="button" class="btn-primitive btn-cyan btn-xs" data-analyze-vision="screenshot">🧠 VON
+                    JARVIS ANALYSIEREN LASSEN</button>
+                  <button type="button" class="btn-primitive btn-ghost btn-xs" data-stage-close-media>✖
+                    Schließen</button>
+                </div>
+              </div>
+              <img class="stage-screenshot-img" alt="Desktop Screenshot" />
             </div>
-            <webview class="stage-web-frame" data-web-frame src="about:blank" allowpopups style="width: 100%; height: calc(100% - 40px); border: none; background: #fff;"></webview>
-          </div>
 
-          <!-- 3. Screenshot View -->
-          <div class="stage-view-item stage-screenshot-view" data-stage-view="screenshot" hidden>
-            <div class="stage-media-header">
-              <span>🖼️ DESKTOP SCREENSHOT</span>
-              <div style="display: flex; gap: 8px;">
-                <button type="button" class="btn-primitive btn-cyan btn-xs" data-analyze-vision="screenshot">🧠 VON JARVIS ANALYSIEREN LASSEN</button>
+            <!-- 4. Code & Artifact Viewer -->
+            <div class="stage-view-item stage-code-view" data-stage-view="code" hidden>
+              <div class="stage-media-header">
+                <span>💻 GENERIERTER CODE / ARTIFAKT</span>
                 <button type="button" class="btn-primitive btn-ghost btn-xs" data-stage-close-media>✖ Schließen</button>
               </div>
+              <pre class="stage-code-pre"><code class="stage-code-content"></code></pre>
             </div>
-            <img class="stage-screenshot-img" alt="Desktop Screenshot" />
-          </div>
 
-          <!-- 4. Code & Artifact Viewer -->
-          <div class="stage-view-item stage-code-view" data-stage-view="code" hidden>
-            <div class="stage-media-header">
-              <span>💻 GENERIERTER CODE / ARTIFAKT</span>
-              <button type="button" class="btn-primitive btn-ghost btn-xs" data-stage-close-media>✖ Schließen</button>
-            </div>
-            <pre class="stage-code-pre"><code class="stage-code-content"></code></pre>
-          </div>
+            <!-- 5. Morning Briefing HUD View -->
+            <div class="stage-view-item stage-morning-brief-view" data-stage-view="morning-brief" hidden>
+              <div class="hud-dashboard">
 
-          <!-- 5. Morning Briefing HUD View -->
-          <div class="stage-view-item stage-morning-brief-view" data-stage-view="morning-brief" hidden>
-            <div class="hud-dashboard">
-              
-              <!-- HUD Header -->
-              <div class="hud-header">
-                <div class="hud-title-group">
-                  <span class="hud-title">MORNING DIGEST</span>
-                  <span class="hud-tts-indicator" data-tts-indicator>🔊 AWAITING</span>
+                <!-- HUD Header -->
+                <div class="hud-header">
+                  <div class="hud-title-group">
+                    <span class="hud-title">MORNING DIGEST</span>
+                    <span class="hud-tts-indicator" data-tts-indicator>🔊 AWAITING</span>
+                  </div>
+                  <div class="hud-actions">
+                    <button type="button" class="btn-hud-icon" data-refresh-morning-brief
+                      title="Aktualisieren">↺</button>
+                    <button type="button" class="btn-hud-icon" data-stage-close-media title="Schließen">✖</button>
+                  </div>
                 </div>
-                <div class="hud-actions">
-                  <button type="button" class="btn-hud-icon" data-refresh-morning-brief title="Aktualisieren">↺</button>
-                  <button type="button" class="btn-hud-icon" data-stage-close-media title="Schließen">✖</button>
-                </div>
-              </div>
 
-              <!-- HUD Layout 2-Spalten -->
-              <div class="hud-grid">
-                
-                <!-- Links: Wetter -->
-                <div class="hud-col hud-col-weather">
-                  <div class="hud-weather-today">
-                    <div class="hud-weather-today-main">
-                      <span class="hud-weather-icon" data-weather-today-icon>--</span>
-                      <span class="hud-weather-temp" data-weather-today-temp>--°C</span>
+                <!-- HUD Layout 2-Spalten -->
+                <div class="hud-grid">
+
+                  <!-- Links: Wetter -->
+                  <div class="hud-col hud-col-weather">
+                    <div class="hud-weather-today">
+                      <div class="hud-weather-today-main">
+                        <span class="hud-weather-icon" data-weather-today-icon>--</span>
+                        <span class="hud-weather-temp" data-weather-today-temp>--°C</span>
+                      </div>
+                      <div class="hud-weather-today-info">
+                        <span class="hud-weather-city">Biel / Bienne, CH</span>
+                        <span class="hud-weather-desc" data-weather-today-desc>Lade Wetterdaten...</span>
+                      </div>
                     </div>
-                    <div class="hud-weather-today-info">
-                      <span class="hud-weather-city">Biel / Bienne, CH</span>
-                      <span class="hud-weather-desc" data-weather-today-desc>Lade Wetterdaten...</span>
-                    </div>
-                  </div>
-                  
-                  <div class="hud-weather-forecast-row" data-weather-7day-grid>
-                    <!-- HUD Weather Cards werden hier per JS eingefügt -->
-                  </div>
-                </div>
 
-                <!-- Rechts: Tasks & News -->
-                <div class="hud-col hud-col-feed">
-                  
-                  <!-- Tasks & Suggestions -->
-                  <div class="hud-feed-section">
-                    <span class="hud-section-label">SYSTEM TASKS & ZIELE</span>
-                    <ul class="hud-task-list" data-morning-task-list>
-                      <li class="hud-item-loading">Synchronisiere LifeOS...</li>
-                    </ul>
-                    <div class="hud-ai-suggestions" data-morning-ai-suggestions></div>
-                  </div>
-
-                  <!-- News Feed -->
-                  <div class="hud-feed-section">
-                    <span class="hud-section-label">AKTUELLE NACHRICHTEN</span>
-                    <div class="hud-news-list" data-news-feed-grid>
-                      <div class="hud-item-loading">Lade Feeds (SRF / Welt / Biel)...</div>
+                    <div class="hud-weather-forecast-row" data-weather-7day-grid>
+                      <!-- HUD Weather Cards werden hier per JS eingefügt -->
                     </div>
                   </div>
 
+                  <!-- Rechts: Tasks & News -->
+                  <div class="hud-col hud-col-feed">
+
+                    <!-- Tasks & Suggestions -->
+                    <div class="hud-feed-section">
+                      <span class="hud-section-label">SYSTEM TASKS & ZIELE</span>
+                      <ul class="hud-task-list" data-morning-task-list>
+                        <li class="hud-item-loading">Synchronisiere LifeOS...</li>
+                      </ul>
+                      <div class="hud-ai-suggestions" data-morning-ai-suggestions></div>
+                    </div>
+
+                    <!-- News Feed -->
+                    <div class="hud-feed-section">
+                      <span class="hud-section-label">AKTUELLE NACHRICHTEN</span>
+                      <div class="hud-news-list" data-news-feed-grid>
+                        <div class="hud-item-loading">Lade Feeds (SRF / Welt / Biel)...</div>
+                      </div>
+                    </div>
+
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- 6. Barehands Stage View -->
-          <div class="stage-view-item stage-barehands-view" data-stage-view="barehands" hidden>
-            <div class="stage-media-header">
-              <span>🖐️ BAREHANDS INTERFACE</span>
-              <div style="display: flex; gap: 8px;">
-                <button type="button" class="btn-primitive btn-ghost btn-xs" data-stage-close-media>✖ Schließen</button>
+            <!-- 6. Barehands Stage View -->
+            <div class="stage-view-item stage-barehands-view" data-stage-view="barehands" hidden>
+              <div class="stage-media-header">
+                <span>🖐️ BAREHANDS INTERFACE</span>
+                <div style="display: flex; gap: 8px;">
+                  <button type="button" class="btn-primitive btn-ghost btn-xs" data-stage-close-media>✖
+                    Schließen</button>
+                </div>
               </div>
+              <iframe class="stage-barehands-frame" data-barehands-frame src="about:blank"
+                allow="camera *; microphone *; autoplay *; display-capture *"
+                style="width: 100%; height: 100%; border: none; background: #000;"></iframe>
             </div>
-            <iframe class="stage-barehands-frame" data-barehands-frame src="about:blank" allow="camera *; microphone *; autoplay *; display-capture *" style="width: 100%; height: 100%; border: none; background: #000;"></iframe>
-          </div>
+            <!-- LifeOS Panel -->
             <div class="stage-view-item stage-lifeos-view" data-stage-view="lifeos" aria-label="lifeos-panel" hidden>
               <div class="panel-heading">
                 <span>🎯 LIFEOS & TELOS GOVERNANCE DASHBOARD</span>
                 <button type="button" class="collapse-toggle-btn" data-close-drawer>✖ Schließen</button>
               </div>
               <div class="lifeos-content" style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
-                <div class="lifeos-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 16fr)); gap: 14px;">
-                  
+                <div class="lifeos-grid"
+                  style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 16fr)); gap: 14px;">
+
                   <!-- Card 1: Mission & Primary Directives -->
-                  <div class="lifeos-card" style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--ui-stroke-tertiary); border-radius: 8px; padding: 14px;">
-                    <div style="color: var(--cyan); font-weight: 700; font-size: 0.85rem; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                  <div class="lifeos-card"
+                    style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--ui-stroke-tertiary); border-radius: 8px; padding: 14px;">
+                    <div
+                      style="color: var(--cyan); font-weight: 700; font-size: 0.85rem; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
                       <span>🎯 OVERARCHING MISSION</span>
                     </div>
-                    <div data-lifeos-mission style="font-size: 0.8rem; color: var(--ui-text-secondary); line-height: 1.5; white-space: pre-wrap;">
+                    <div data-lifeos-mission
+                      style="font-size: 0.8rem; color: var(--ui-text-secondary); line-height: 1.5; white-space: pre-wrap;">
                       Lade MISSION.md…
                     </div>
                   </div>
 
                   <!-- Card 2: Core Values -->
-                  <div class="lifeos-card" style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--ui-stroke-tertiary); border-radius: 8px; padding: 14px;">
-                    <div style="color: var(--cyan); font-weight: 700; font-size: 0.85rem; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                  <div class="lifeos-card"
+                    style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--ui-stroke-tertiary); border-radius: 8px; padding: 14px;">
+                    <div
+                      style="color: var(--cyan); font-weight: 700; font-size: 0.85rem; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
                       <span>💎 CORE VALUES & PRINCIPLES</span>
                     </div>
-                    <div data-lifeos-values style="font-size: 0.8rem; color: var(--ui-text-secondary); line-height: 1.5; white-space: pre-wrap;">
+                    <div data-lifeos-values
+                      style="font-size: 0.8rem; color: var(--ui-text-secondary); line-height: 1.5; white-space: pre-wrap;">
                       Lade VALUES.md…
                     </div>
                   </div>
                 </div>
 
                 <!-- Card 3: Current State vs. Ideal State (ISA) -->
-                <div class="lifeos-card" style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--ui-stroke-tertiary); border-radius: 8px; padding: 14px;">
+                <div class="lifeos-card"
+                  style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--ui-stroke-tertiary); border-radius: 8px; padding: 14px;">
                   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <span style="color: var(--cyan); font-weight: 700; font-size: 0.85rem;">📊 CURRENT VS. IDEAL STATE (ISA)</span>
-                    <button type="button" class="btn-primitive btn-cyan btn-xs" data-refresh-lifeos>↺ Status Aktualisieren</button>
+                    <span style="color: var(--cyan); font-weight: 700; font-size: 0.85rem;">📊 CURRENT VS. IDEAL STATE
+                      (ISA)</span>
+                    <button type="button" class="btn-primitive btn-cyan btn-xs" data-refresh-lifeos>↺ Status
+                      Aktualisieren</button>
                   </div>
-                  <div data-lifeos-current-state style="font-size: 0.82rem; color: var(--ui-text-primary); margin-bottom: 12px; line-height: 1.5; white-space: pre-wrap;">
+                  <div data-lifeos-current-state
+                    style="font-size: 0.82rem; color: var(--ui-text-primary); margin-bottom: 12px; line-height: 1.5; white-space: pre-wrap;">
                     Lade CURRENT_STATE.md…
                   </div>
                 </div>
 
                 <!-- Card 4: 7-Phase Gap-Closing Monitor -->
-                <div class="lifeos-card" style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--cyan); border-radius: 8px; padding: 14px; box-shadow: 0 0 15px rgba(56, 189, 248, 0.15);">
+                <div class="lifeos-card"
+                  style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--cyan); border-radius: 8px; padding: 14px; box-shadow: 0 0 15px rgba(56, 189, 248, 0.15);">
                   <div style="color: var(--cyan); font-weight: 700; font-size: 0.85rem; margin-bottom: 10px;">
                     ⚡ 7-PHASE GAP-CLOSING ALGORITHM MONITOR
                   </div>
-                  <div class="phase-steps" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 6px; font-size: 0.7rem; text-align: center;">
-                    <div class="phase-step phase-step--active" data-phase="1" style="background: rgba(56, 189, 248, 0.2); border: 1px solid var(--cyan); border-radius: 4px; padding: 6px 2px; color: #fff;">1. Signals</div>
-                    <div class="phase-step" data-phase="2" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ui-stroke-tertiary); border-radius: 4px; padding: 6px 2px; color: var(--ui-text-tertiary);">2. Current</div>
-                    <div class="phase-step" data-phase="3" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ui-stroke-tertiary); border-radius: 4px; padding: 6px 2px; color: var(--ui-text-tertiary);">3. ISA Gap</div>
-                    <div class="phase-step" data-phase="4" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ui-stroke-tertiary); border-radius: 4px; padding: 6px 2px; color: var(--ui-text-tertiary);">4. Plan</div>
-                    <div class="phase-step" data-phase="5" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ui-stroke-tertiary); border-radius: 4px; padding: 6px 2px; color: var(--ui-text-tertiary);">5. Execute</div>
-                    <div class="phase-step" data-phase="6" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ui-stroke-tertiary); border-radius: 4px; padding: 6px 2px; color: var(--ui-text-tertiary);">6. Verify</div>
-                    <div class="phase-step" data-phase="7" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ui-stroke-tertiary); border-radius: 4px; padding: 6px 2px; color: var(--ui-text-tertiary);">7. Anneal</div>
+                  <div class="phase-steps"
+                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 6px; font-size: 0.7rem; text-align: center;">
+                    <div class="phase-step phase-step--active" data-phase="1"
+                      style="background: rgba(56, 189, 248, 0.2); border: 1px solid var(--cyan); border-radius: 4px; padding: 6px 2px; color: #fff;">
+                      1. Signals</div>
+                    <div class="phase-step" data-phase="2"
+                      style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ui-stroke-tertiary); border-radius: 4px; padding: 6px 2px; color: var(--ui-text-tertiary);">
+                      2. Current</div>
+                    <div class="phase-step" data-phase="3"
+                      style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ui-stroke-tertiary); border-radius: 4px; padding: 6px 2px; color: var(--ui-text-tertiary);">
+                      3. ISA Gap</div>
+                    <div class="phase-step" data-phase="4"
+                      style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ui-stroke-tertiary); border-radius: 4px; padding: 6px 2px; color: var(--ui-text-tertiary);">
+                      4. Plan</div>
+                    <div class="phase-step" data-phase="5"
+                      style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ui-stroke-tertiary); border-radius: 4px; padding: 6px 2px; color: var(--ui-text-tertiary);">
+                      5. Execute</div>
+                    <div class="phase-step" data-phase="6"
+                      style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ui-stroke-tertiary); border-radius: 4px; padding: 6px 2px; color: var(--ui-text-tertiary);">
+                      6. Verify</div>
+                    <div class="phase-step" data-phase="7"
+                      style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ui-stroke-tertiary); border-radius: 4px; padding: 6px 2px; color: var(--ui-text-tertiary);">
+                      7. Anneal</div>
                   </div>
                 </div>
               </div>
             </div>
             <!-- App Settings HUD Panel -->
-            <div class="stage-view-item stage-settings-view" data-stage-view="settings" aria-label="settings-panel" hidden>
+            <div class="stage-view-item stage-settings-view " data-stage-view="settings" aria-label="settings-panel"hidden>
               <div class="panel-heading">
                 <span>⚙️ SYSTEM SETTINGS & CONFIGURATION</span>
-                <button type="button" class="collapse-toggle-btn" data-shell-home data-active="true">✖ Schließen</button>
+                <button type="button" class="collapse-toggle-btn" data-shell-home data-active="true">✖
+                  Schließen</button>
+                  <!-- Globaler Speichern-Footer für alle Tabs -->
+                  <button type="submit" class="btn-primitive btn-default btn-md"
+                  data-save-settings-btn
+                  style="width: 50%; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; font-size: 0.6rem; padding: 10px 16px; background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(16, 185, 129, 0.25)); border: 1px solid var(--cyan); color: #fff; cursor: pointer;">
+                  💾 SPEICHERN
+                </button>
+                <!-- Globaler Speichern-Footer für alle Tabs -->
               </div>
               <form class="settings-content" data-settings-form>
                 <div class="segmented-control" style="margin-bottom: 12px;">
-                  <button type="button" class="segmented-tab settings-tab--active" data-settings-tab="keys">🔑 API Keys & Provider</button>
+                  <button type="button" class="segmented-tab settings-tab--active" data-settings-tab="keys">🔑 API Keys
+                    & Provider</button>
                   <button type="button" class="segmented-tab" data-settings-tab="modules">📦 Modul-Sichtbarkeit</button>
                   <button type="button" class="segmented-tab" data-settings-tab="voice">🎙️ Voice & Audio</button>
-                  <button type="button" class="segmented-tab" data-settings-tab="actions">⚡ System & Auto-Approve</button>
+                  <button type="button" class="segmented-tab" data-settings-tab="actions">⚡ System &
+                    Auto-Approve</button>
                 </div>
 
                 <!-- Tab 1: API Keys -->
@@ -290,26 +349,36 @@
                   </div>
                   <div class="settings-field">
                     <label>Tavily Search API-Key (Echtzeit Web-Suche)</label>
-                    <input type="password" class="settings-input" data-config-key="tavilyApiKey" placeholder="tvly-..." />
+                    <input type="password" class="settings-input" data-config-key="tavilyApiKey"
+                      placeholder="tvly-..." />
                     <small class="settings-hint">Optional. Bei leerem Key wird DuckDuckGo als Fallback genutzt.</small>
                   </div>
                   <div class="settings-field">
                     <label>Ollama Base URL (Lokaler LLM Fallback)</label>
-                    <input type="text" class="settings-input" data-config-key="ollamaUrl" placeholder="http://127.0.0.1:11434" />
+                    <input type="text" class="settings-input" data-config-key="ollamaUrl"
+                      placeholder="http://127.0.0.1:11434" />
                   </div>
                 </div>
 
                 <!-- Tab 2: Modul-Sichtbarkeit -->
                 <div class="settings-section" data-settings-section="modules" hidden>
-                  <p class="settings-section-desc">Blende HUD-Module aus, um die Benutzeroberfläche noch übersichtlicher zu halten:</p>
+                  <p class="settings-section-desc">Blende HUD-Module aus, um die Benutzeroberfläche noch übersichtlicher
+                    zu halten:</p>
                   <div class="settings-grid-toggles">
-                    <label class="settings-toggle"><input type="checkbox" data-config-module="memory" checked /> 🧠 Long-Term Memory</label>
-                    <label class="settings-toggle"><input type="checkbox" data-config-module="files" checked /> 📁 Files & Document RAG</label>
-                    <label class="settings-toggle"><input type="checkbox" data-config-module="browser" checked /> 🌐 Browser & Web Gathering</label>
-                    <label class="settings-toggle"><input type="checkbox" data-config-module="agents" checked /> 🤖 Sub-Agent Collaboration</label>
-                    <label class="settings-toggle"><input type="checkbox" data-config-module="workflows" checked /> ⚡ Workflow Routines</label>
-                    <label class="settings-toggle"><input type="checkbox" data-config-module="knowledge" checked /> 📚 Second Brain Knowledge</label>
-                    <label class="settings-toggle"><input type="checkbox" data-config-module="diagnostics" checked /> 📊 Real-Time Telemetry</label>
+                    <label class="settings-toggle"><input type="checkbox" data-config-module="memory" checked /> 🧠
+                      Long-Term Memory</label>
+                    <label class="settings-toggle"><input type="checkbox" data-config-module="files" checked /> 📁 Files
+                      & Document RAG</label>
+                    <label class="settings-toggle"><input type="checkbox" data-config-module="browser" checked /> 🌐
+                      Browser & Web Gathering</label>
+                    <label class="settings-toggle"><input type="checkbox" data-config-module="agents" checked /> 🤖
+                      Sub-Agent Collaboration</label>
+                    <label class="settings-toggle"><input type="checkbox" data-config-module="workflows" checked /> ⚡
+                      Workflow Routines</label>
+                    <label class="settings-toggle"><input type="checkbox" data-config-module="knowledge" checked /> 📚
+                      Second Brain Knowledge</label>
+                    <label class="settings-toggle"><input type="checkbox" data-config-module="diagnostics" checked /> 📊
+                      Real-Time Telemetry</label>
                   </div>
                 </div>
 
@@ -324,12 +393,14 @@
                   </div>
                   <div class="settings-field">
                     <label>Fish Audio API-Key</label>
-                    <input type="password" class="settings-input" data-config-key="fishAudioApiKey" placeholder="sk-fish-..." />
+                    <input type="password" class="settings-input" data-config-key="fishAudioApiKey"
+                      placeholder="sk-fish-..." />
                     <small class="settings-hint">Abrufbar unter https://fish.audio</small>
                   </div>
                   <div class="settings-field">
                     <label>Fish Audio Modell / Reference ID</label>
-                    <input type="text" class="settings-input" data-config-key="fishAudioModelId" placeholder="5906764e120a4c608a524f351a5fe5be" />
+                    <input type="text" class="settings-input" data-config-key="fishAudioModelId"
+                      placeholder="5906764e120a4c608a524f351a5fe5be" />
                     <small class="settings-hint">Standard: 5906764e120a4c608a524f351a5fe5be (Free S2-1 Pro API)</small>
                   </div>
                   <div class="settings-field">
@@ -341,12 +412,15 @@
                   </div>
                   <div class="settings-field">
                     <label>Spracheingabe Sprache (STT)</label>
-                    <input type="text" class="settings-input" data-config-key="sttLanguage" value="de" placeholder="de" />
+                    <input type="text" class="settings-input" data-config-key="sttLanguage" value="de"
+                      placeholder="de" />
                   </div>
-                  <div class="settings-field" style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--ui-stroke-tertiary);">
+                  <div class="settings-field"
+                    style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--ui-stroke-tertiary);">
                     <label style="color: var(--cyan); font-weight: 600;">🎙️ Diktier-Funktion (Dictation Mode)</label>
                     <div style="font-size: 0.75rem; color: var(--ui-text-secondary); margin-bottom: 8px;">
-                      Tastenkombination zum Diktieren: <code style="background: rgba(56, 189, 248, 0.15); padding: 2px 6px; border-radius: 4px; color: #38bdf8;">Ctrl + Alt + D</code>
+                      Tastenkombination zum Diktieren: <code
+                        style="background: rgba(56, 189, 248, 0.15); padding: 2px 6px; border-radius: 4px; color: #38bdf8;">Ctrl + Alt + D</code>
                     </div>
                     <label>Diktat-Zielort</label>
                     <select class="settings-select" data-config-key="dictationTarget">
@@ -367,13 +441,15 @@
                   </label>
 
                   <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--ui-stroke-tertiary);">
-                    <div style="color: var(--cyan); font-weight: 600; font-size: 0.82rem; margin-bottom: 10px;">📌 System-Tray & Fenster-Verhalten</div>
-                    
+                    <div style="color: var(--cyan); font-weight: 600; font-size: 0.82rem; margin-bottom: 10px;">📌
+                      System-Tray & Fenster-Verhalten</div>
+
                     <label class="settings-toggle-large" style="margin-bottom: 10px;">
                       <input type="checkbox" data-config-key="minimizeToTray" checked />
                       <div>
                         <strong>Beim Minimieren in den System-Tray versetzen</strong>
-                        <span>Versteckt das Fenster im Windows-Benachrichtigungsbereich (System Tray) beim Minimieren.</span>
+                        <span>Versteckt das Fenster im Windows-Benachrichtigungsbereich (System Tray) beim
+                          Minimieren.</span>
                       </div>
                     </label>
 
@@ -381,38 +457,38 @@
                       <input type="checkbox" data-config-key="closeToTray" checked />
                       <div>
                         <strong>Beim Schließen (X) im Hintergrund weiterlaufen lassen</strong>
-                        <span>Klick auf das Schließen-Kreuz (X) minimiert die App in den System-Tray statt sie zu beenden.</span>
+                        <span>Klick auf das Schließen-Kreuz (X) minimiert die App in den System-Tray statt sie zu
+                          beenden.</span>
                       </div>
                     </label>
                   </div>
-                </div>
-
-                <!-- Globaler Speichern-Footer für alle Tabs -->
-                <div class="settings-save-footer" style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--ui-stroke-tertiary); display: flex; flex-direction: column; gap: 8px;">
-                  <button type="submit" class="btn-primitive btn-default btn-md" data-save-settings-btn style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; font-size: 0.9rem; padding: 10px 16px; background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(16, 185, 129, 0.25)); border: 1px solid var(--cyan); color: #fff; cursor: pointer;">
-                    💾 SPEICHERN
-                  </button>
-                  <span class="settings-status-msg" data-settings-status-msg style="font-size: 0.8rem; color: #34d399; text-align: center; font-weight: 600; min-height: 1.2rem;"></span>
                 </div>
               </form>
             </div>
 
             <!-- Unsaved Changes Modal -->
-            <div class="settings-confirm-overlay" data-settings-confirm-modal hidden style="position: fixed; inset: 0; z-index: 9999; background: rgba(2, 6, 16, 0.85); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; padding: 20px;">
-              <div style="background: rgba(10, 25, 47, 0.95); border: 1px solid var(--cyan); border-radius: 12px; max-width: 480px; width: 100%; padding: 24px; box-shadow: 0 0 30px rgba(56, 189, 248, 0.3); text-align: center;">
+            <div class="settings-confirm-overlay" data-settings-confirm-modal hidden
+              style="position: fixed; inset: 0; z-index: 9999; background: rgba(2, 6, 16, 0.85); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; padding: 20px;">
+              <div
+                style="background: rgba(10, 25, 47, 0.95); border: 1px solid var(--cyan); border-radius: 12px; max-width: 480px; width: 100%; padding: 24px; box-shadow: 0 0 30px rgba(56, 189, 248, 0.3); text-align: center;">
                 <div style="font-size: 2.2rem; margin-bottom: 8px;">⚠️</div>
-                <h3 style="color: var(--cyan); font-size: 1.1rem; font-weight: 700; margin-bottom: 8px;">Ungespeicherte Einstellungen!</h3>
+                <h3 style="color: var(--cyan); font-size: 1.1rem; font-weight: 700; margin-bottom: 8px;">Ungespeicherte
+                  Einstellungen!</h3>
                 <p style="font-size: 0.85rem; color: var(--ui-text-secondary); margin-bottom: 20px; line-height: 1.5;">
-                  Du hast Einstellungen geändert, aber noch nicht auf der Festplatte gespeichert. Möchtest du die Änderungen jetzt dauerhaft übernehmen?
+                  Du hast Einstellungen geändert, aber noch nicht auf der Festplatte gespeichert. Möchtest du die
+                  Änderungen jetzt dauerhaft übernehmen?
                 </p>
                 <div style="display: flex; flex-direction: column; gap: 10px;">
-                  <button type="button" class="btn-primitive btn-default btn-md" data-confirm-save-close style="width: 100%; font-weight: 700; background: rgba(16, 185, 129, 0.3); border-color: #10b981; color: #34d399;">
+                  <button type="button" class="btn-primitive btn-default btn-md" data-confirm-save-close
+                    style="width: 100%; font-weight: 700; background: rgba(16, 185, 129, 0.3); border-color: #10b981; color: #34d399;">
                     💾 Speichern & Schließen
                   </button>
-                  <button type="button" class="btn-primitive btn-ghost btn-md" data-confirm-discard-close style="width: 100%; color: #fca5a5; border-color: rgba(239, 68, 68, 0.4);">
+                  <button type="button" class="btn-primitive btn-ghost btn-md" data-confirm-discard-close
+                    style="width: 100%; color: #fca5a5; border-color: rgba(239, 68, 68, 0.4);">
                     ✖ Ohne Speichern schließen
                   </button>
-                  <button type="button" class="btn-primitive btn-ghost btn-sm" data-confirm-cancel style="width: 100%; margin-top: 4px;">
+                  <button type="button" class="btn-primitive btn-ghost btn-sm" data-confirm-cancel
+                    style="width: 100%; margin-top: 4px;">
                     ↩ Zurück zu den Einstellungen
                   </button>
                 </div>
@@ -420,17 +496,21 @@
             </div>
 
             <!-- Personal Knowledge Base Panel -->
-            <div class="stage-view-item stage-knowledge-view" data-stage-view="knowledge" aria-label="knowledge-panel" hidden>
+            <div class="stage-view-item stage-knowledge-view" data-stage-view="knowledge" aria-label="knowledge-panel"
+              hidden>
               <div class="panel-heading">
                 <span>+ PERSONAL KNOWLEDGE BASE (SECOND BRAIN)</span>
                 <div class="heading-right">
-                  <input type="text" class="search-field memory-search-input" data-knowledge-search placeholder="Wissen durchsuchen…" aria-label="Knowledge Base durchsuchen" />
-                  <button type="button" class="collapse-toggle-btn" data-shell-home data-active="true">✖ Schließen</button>
+                  <input type="text" class="search-field memory-search-input" data-knowledge-search
+                    placeholder="Wissen durchsuchen…" aria-label="Knowledge Base durchsuchen" />
+                  <button type="button" class="collapse-toggle-btn" data-shell-home data-active="true">✖
+                    Schließen</button>
                 </div>
               </div>
               <div class="knowledge-content">
                 <form class="knowledge-form" data-knowledge-form>
-                  <input type="text" class="knowledge-input" data-knowledge-title-input placeholder="Titel (z.B. 'ESP32 ST7789 Setup')" required />
+                  <input type="text" class="knowledge-input" data-knowledge-title-input
+                    placeholder="Titel (z.B. 'ESP32 ST7789 Setup')" required />
                   <select class="knowledge-select" data-knowledge-category-select>
                     <option value="code">Code</option>
                     <option value="architecture">Architecture</option>
@@ -438,19 +518,24 @@
                     <option value="snippet">Snippet</option>
                     <option value="general">General</option>
                   </select>
-                  <input type="text" class="knowledge-input" data-knowledge-tags-input placeholder="Tags (Komma-getrennt: esp32, hardware)" />
-                  <textarea class="knowledge-textarea" data-knowledge-content-input placeholder="Inhalt / Notiz..." required></textarea>
-                  <button type="submit" class="btn-primitive btn-default btn-sm" data-knowledge-submit>+ Ins Second Brain Speichern</button>
+                  <input type="text" class="knowledge-input" data-knowledge-tags-input
+                    placeholder="Tags (Komma-getrennt: esp32, hardware)" />
+                  <textarea class="knowledge-textarea" data-knowledge-content-input placeholder="Inhalt / Notiz..."
+                    required></textarea>
+                  <button type="submit" class="btn-primitive btn-default btn-sm" data-knowledge-submit>+ Ins Second
+                    Brain Speichern</button>
                 </form>
                 <div class="knowledge-list" data-knowledge-list></div>
               </div>
             </div>
 
             <!-- Workflow Automation Panel -->
-            <div class="stage-view-item stage-workflows-view" data-stage-view="workflows" aria-label="workflows-panel" hidden>
+            <div class="stage-view-item stage-workflows-view" data-stage-view="workflows" aria-label="workflows-panel"
+              hidden>
               <div class="panel-heading">
                 <span>+ WORKFLOW AUTOMATION & SINGLE-COMMAND ROUTINES</span>
-                <button type="button" class="collapse-toggle-btn" data-shell-home data-active="true">✖ Schließen</button>
+                <button type="button" class="collapse-toggle-btn" data-shell-home data-active="true">✖
+                  Schließen</button>
               </div>
               <div class="workflows-content">
                 <div class="workflows-list" data-workflows-list></div>
@@ -461,7 +546,8 @@
             <div class="stage-view-item stage-agents-view" data-stage-view="agents" aria-label="agents-panel" hidden>
               <div class="panel-heading">
                 <span>+ SUB-AGENT COLLABORATION & MULTI-AGENT GOALS</span>
-                <button type="button" class="collapse-toggle-btn" data-shell-home data-active="true">✖ Schließen</button>
+                <button type="button" class="collapse-toggle-btn" data-shell-home data-active="true">✖
+                  Schließen</button>
               </div>
               <div class="agents-content">
                 <div class="agents-grid">
@@ -483,8 +569,10 @@
                   </div>
                 </div>
                 <form class="agents-form" data-agents-form>
-                  <input type="text" class="agents-input" data-agents-goal-input placeholder="Schweres Ziel für Sub-Agenten Team eingeben..." />
-                  <button type="submit" class="btn-primitive btn-default btn-sm" data-agents-submit>🚀 Team Starten</button>
+                  <input type="text" class="agents-input" data-agents-goal-input
+                    placeholder="Schweres Ziel für Sub-Agenten Team eingeben..." />
+                  <button type="submit" class="btn-primitive btn-default btn-sm" data-agents-submit>🚀 Team
+                    Starten</button>
                 </form>
                 <ul class="agents-task-list" data-agents-task-list></ul>
               </div>
@@ -495,8 +583,10 @@
               <div class="panel-heading">
                 <span>+ LONG-TERM MEMORY (PERSISTENCE)</span>
                 <div class="heading-right">
-                  <input type="text" class="search-field memory-search-input" data-memory-search placeholder="Search memory…" aria-label="Search memory" />
-                  <button type="button" class="collapse-toggle-btn" data-shell-home data-active="true">✖ Schließen</button>
+                  <input type="text" class="search-field memory-search-input" data-memory-search
+                    placeholder="Search memory…" aria-label="Search memory" />
+                  <button type="button" class="collapse-toggle-btn" data-shell-home data-active="true">✖
+                    Schließen</button>
                 </div>
               </div>
               <div class="memory-content" data-memory-content>
@@ -507,8 +597,10 @@
                     <option value="structured_fact">Fakt</option>
                     <option value="semantic_document">Dokument</option>
                   </select>
-                  <input type="text" class="memory-key-input" data-memory-key-input placeholder="Key (z.B. Name)" required aria-label="Memory Key" />
-                  <input type="text" class="memory-val-input" data-memory-val-input placeholder="Value (z.B. Ed)" required aria-label="Memory Value" />
+                  <input type="text" class="memory-key-input" data-memory-key-input placeholder="Key (z.B. Name)"
+                    required aria-label="Memory Key" />
+                  <input type="text" class="memory-val-input" data-memory-val-input placeholder="Value (z.B. Ed)"
+                    required aria-label="Memory Value" />
                   <button type="submit" class="btn-primitive btn-default btn-sm">+ Speichern</button>
                 </form>
               </div>
@@ -519,8 +611,10 @@
               <div class="panel-heading">
                 <span>+ FILE MANAGEMENT & DOCUMENT RAG</span>
                 <div class="heading-right">
-                  <input type="text" class="search-field rag-search-input" data-rag-search placeholder="Search docs & code RAG…" aria-label="Search RAG" />
-                  <button type="button" class="collapse-toggle-btn" data-shell-home data-active="true">✖ Schließen</button>
+                  <input type="text" class="search-field rag-search-input" data-rag-search
+                    placeholder="Search docs & code RAG…" aria-label="Search RAG" />
+                  <button type="button" class="collapse-toggle-btn" data-shell-home data-active="true">✖
+                    Schließen</button>
                 </div>
               </div>
               <div class="files-content" data-files-content>
@@ -548,86 +642,88 @@
             <div class="stage-view-item stage-browser-view" data-stage-view="browser" aria-label="browser-panel" hidden>
               <div class="panel-heading">
                 <span>+ BROWSER AUTOMATION & WEB GATHERING</span>
-                <button type="button" class="collapse-toggle-btn" data-shell-home data-active="true">✖ Schließen</button>
+                <button type="button" class="collapse-toggle-btn" data-shell-home data-active="true">✖
+                  Schließen</button>
               </div>
               <div class="browser-content" data-browser-content>
                 <div class="browser-controls-row">
                   <form class="browser-form" data-web-search-form autocomplete="off">
-                    <input type="text" class="browser-input" data-web-search-input placeholder="Search live web (e.g.docs)…" aria-label="Web Search Input" />
+                    <input type="text" class="browser-input" data-web-search-input
+                      placeholder="Search live web (e.g.docs)…" aria-label="Web Search Input" />
                     <button type="submit" class="browser-action-btn">🔍 Search Web</button>
                   </form>
                   <form class="browser-form" data-web-fetch-form autocomplete="off">
-                    <input type="text" class="browser-input" data-web-url-input placeholder="Scrape URL (https://…)" aria-label="Web URL Input" />
+                    <input type="text" class="browser-input" data-web-url-input placeholder="Scrape URL (https://…)"
+                      aria-label="Web URL Input" />
                     <button type="submit" class="browser-action-btn">⚡ Extract Page</button>
                   </form>
                 </div>
                 <div class="browser-results-box" data-browser-results aria-label="Web results"></div>
               </div>
             </div>
-        </div>
+          </div>
 
-        <div class="orb-composition" aria-hidden="true">
-          <span class="status-orbit status-orbit--outer"></span>
-          <span class="status-orbit status-orbit--middle"></span>
-          <span class="status-orbit status-orbit--inner"></span>
-          <span class="status-ticks"></span>
-          <span class="status-scan"></span>
-          <span class="status-node status-node--one"></span>
-          <span class="status-node status-node--two"></span>
-          <span class="status-node status-node--three"></span>
-          <div class="identity-orb" data-landing-orb></div>
-        </div>
-        <div class="orb-readout">
-          <span>MY ORB / IDENTITY CORE</span>
-          <h1 id="core-heading" data-orb-state-label>Idle</h1>
-          <p data-orb-state-detail>Core initialized; awaiting a service probe.</p>
-        </div>
-        <div class="state-preview" aria-label="Orb state visual mapping preview" data-collapsed="false">
-          <div class="state-preview-header">
-            <div class="state-preview-title">
-              <span>STATE CONTROLS / LEGEND</span>
-              <b class="state-preview-badge">UI-Alpha 0.05.10</b>
-            </div>
-            <button type="button" class="collapse-toggle-btn" data-toggle-legend title="Toggle State Controls Legend">⇲ Einklappen</button>
+          <div class="orb-composition" aria-hidden="true">
+            <span class="status-orbit status-orbit--outer"></span>
+            <span class="status-orbit status-orbit--middle"></span>
+            <span class="status-orbit status-orbit--inner"></span>
+            <span class="status-ticks"></span>
+            <span class="status-scan"></span>
+            <span class="status-node status-node--one"></span>
+            <span class="status-node status-node--two"></span>
+            <span class="status-node status-node--three"></span>
+            <div class="identity-orb" data-landing-orb></div>
           </div>
-          <div class="state-preview-content" data-legend-content>
-            <div class="state-buttons">
-              <button type="button" data-state-preview="idle">Idle</button>
-              <button type="button" data-state-preview="ready">Ready</button>
-              <button type="button" data-state-preview="listening">Listening</button>
-              <button type="button" data-state-preview="thinking">Thinking</button>
-              <button type="button" data-state-preview="responding">Responding</button>
-              <button type="button" data-state-preview="executing-approved">Approved execute</button>
-              <button type="button" data-state-preview="error">Error</button>
-              <button type="button" data-state-preview="disconnected">Disconnected</button>
-            </div>
-            <button class="text-control" type="button" data-return-live>Return to live state</button>
+          <div class="orb-readout">
+            <span>MY ORB / IDENTITY CORE</span>
+            <h1 id="core-heading" data-orb-state-label>Idle</h1>
+            <p data-orb-state-detail>Core initialized; awaiting a service probe.</p>
           </div>
-        </div>
-      </section>
+          <div class="state-preview" aria-label="Orb state visual mapping preview" data-collapsed="false">
+            <div class="state-preview-header">
+              <div class="state-preview-title">
+                <span>STATE CONTROLS / LEGEND</span>
+                <b class="state-preview-badge">JARVIS DESKTOP v0.01.50</b>
+              </div>
+              <button type="button" class="collapse-toggle-btn" data-toggle-legend
+                title="Toggle State Controls Legend">⇲ Einklappen</button>
+            </div>
+            <div class="state-preview-content" data-legend-content>
+              <div class="state-buttons">
+                <button type="button" data-state-preview="idle">Idle</button>
+                <button type="button" data-state-preview="ready">Ready</button>
+                <button type="button" data-state-preview="listening">Listening</button>
+                <button type="button" data-state-preview="thinking">Thinking</button>
+                <button type="button" data-state-preview="responding">Responding</button>
+                <button type="button" data-state-preview="executing-approved">Approved execute</button>
+                <button type="button" data-state-preview="error">Error</button>
+                <button type="button" data-state-preview="disconnected">Disconnected</button>
+              </div>
+              <button class="text-control" type="button" data-return-live>Return to live state</button>
+            </div>
+          </div>
+        </section>
 
-      <!-- Hermes-style composer: conversation history lives in the right context rail. -->
-      <section class="command-dock" aria-label="JARVIS command bar">
-        <form class="command-form" data-command-form autocomplete="off" novalidate>
-          <div class="command-input-row">
-            <button type="button" class="icon-control mic-control" data-mic-toggle aria-label="Mikrofon und Spracheingabe umschalten">🎙</button>
-            <input
-              type="text"
-              class="command-input"
-              data-command-input
-              placeholder="Ask J.A.R.V.I.S. or type › command…"
-              aria-label="Chat input"
-              spellcheck="false"
-              autocomplete="off"
-            />
-            <button type="submit" class="icon-control send-control" data-send-chat aria-label="Nachricht senden">⏎ Send</button>
-            <button type="button" class="icon-control cancel-control" data-cancel-chat aria-label="Antwort stoppen" hidden>✖ Cancel</button>
-          </div>
-        </form>
-      </section>
+        <!-- Hermes-style composer: conversation history lives in the right context rail. -->
+        <section class="command-dock" aria-label="JARVIS command bar">
+          <form class="command-form" data-command-form autocomplete="off" novalidate>
+            <div class="command-input-row">
+              <button type="button" class="icon-control mic-control" data-mic-toggle
+                aria-label="Mikrofon und Spracheingabe umschalten">🎙</button>
+              <input type="text" class="command-input" data-command-input
+                placeholder="Ask J.A.R.V.I.S. or type › command…" aria-label="Chat input" spellcheck="false"
+                autocomplete="off" />
+              <button type="submit" class="icon-control send-control" data-send-chat aria-label="Nachricht senden">⏎
+                Send</button>
+              <button type="button" class="icon-control cancel-control" data-cancel-chat aria-label="Antwort stoppen"
+                hidden>✖ Cancel</button>
+            </div>
+          </form>
+        </section>
       </div>
 
-      <div class="panel-resizer" data-panel-resizer title="Ziehen zum Anpassen der Spaltenbreite (Doppelklick zum Zurücksetzen)" aria-label="Resize Sidebar Panel">
+      <div class="panel-resizer" data-panel-resizer
+        title="Ziehen zum Anpassen der Spaltenbreite (Doppelklick zum Zurücksetzen)" aria-label="Resize Sidebar Panel">
         <span class="resizer-handle"></span>
       </div>
 
@@ -637,33 +733,49 @@
             <span>+ LOCAL SERVICE</span>
             <div class="heading-right">
               <b>LOOPBACK ONLY</b>
-              <button type="button" class="sidebar-toggle-btn" data-toggle-sidebar title="Collapse Right Panel to Right">⇲ Collapse</button>
+              <button type="button" class="sidebar-toggle-btn" data-toggle-sidebar
+                title="Collapse Right Panel to Right">⇲ Collapse</button>
             </div>
           </div>
           <div class="service-summary">
-            <div><span class="status-badge" data-service-badge data-status="checking">Checking link</span><h2 id="service-heading" data-service-endpoint>127.0.0.1:4317</h2></div>
+            <div><span class="status-badge" data-service-badge data-status="checking">Checking link</span>
+              <h2 id="service-heading" data-service-endpoint>127.0.0.1:4317</h2>
+            </div>
             <div class="service-controls">
-              <button type="button" class="mode-switch-btn" data-toggle-model-mode title="Zwischen Cloud (xAI Grok) und Local (Ollama Qwen) wechseln">
+              <button type="button" class="mode-switch-btn" data-toggle-model-mode
+                title="Zwischen Cloud (xAI Grok) und Local (Ollama Qwen) wechseln">
                 <span class="mode-switch-icon" data-model-mode-icon>🌐</span>
                 <span class="mode-switch-text" data-model-mode-text>CLOUD (GROK)</span>
               </button>
-              <button class="icon-control power-control" type="button" data-toggle-service data-service-power="on" title="Turn App Service ON / OFF or Restart App">⏽ ON</button>
+              <button class="icon-control power-control" type="button" data-toggle-service data-service-power="on"
+                title="Turn App Service ON / OFF or Restart App">⏽ ON</button>
             </div>
           </div>
           <dl class="service-metrics">
-            <div><dt>UPTIME</dt><dd data-service-uptime>—</dd></div>
-            <div><dt>TRANSPORT</dt><dd>HTTP / V1</dd></div>
-            <div><dt>PAIRING</dt><dd>SEAM READY</dd></div>
+            <div>
+              <dt>UPTIME</dt>
+              <dd data-service-uptime>—</dd>
+            </div>
+            <div>
+              <dt>TRANSPORT</dt>
+              <dd>HTTP / V1</dd>
+            </div>
+            <div>
+              <dt>PAIRING</dt>
+              <dd>SEAM READY</dd>
+            </div>
           </dl>
         </section>
 
         <!-- Telemetrie / Diagnose-Status (erscheint wenn "Telemetry" in der linken Seitenleiste geklickt wird) -->
-        <section class="hud-panel diagnostics-panel" data-diagnostics-panel aria-label="Real-Time Telemetry & Diagnostics" hidden>
+        <section class="hud-panel diagnostics-panel" data-diagnostics-panel
+          aria-label="Real-Time Telemetry & Diagnostics" hidden>
           <div class="panel-heading">
             <span>📊 REAL-TIME TELEMETRY & DIAGNOSTICS</span>
             <div class="heading-right">
               <b>SYSTEM HEALTH</b>
-              <button type="button" class="sidebar-toggle-btn" data-toggle-sidebar title="Zurück zur Service-Ansicht">⇲ Service</button>
+              <button type="button" class="sidebar-toggle-btn" data-toggle-sidebar title="Zurück zur Service-Ansicht">⇲
+                Service</button>
             </div>
           </div>
           <div class="diagnostics-content">
@@ -693,22 +805,39 @@
                 <span class="diag-value" data-diagnostics-actions>—</span>
               </div>
             </div>
-            <div class="diag-details" style="margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
-              <div class="diag-detail-card" style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--ui-stroke-tertiary); border-radius: 6px; padding: 10px;">
-                <div style="color: var(--cyan-soft); font-size: 0.65rem; margin-bottom: 4px; font-family: monospace; letter-spacing: 0.05em;">API LATENCY (xAI)</div>
-                <div style="color: var(--ui-text-primary); font-size: 1rem; font-weight: 600; font-family: monospace;" data-diagnostics-api-latency>—</div>
+            <div class="diag-details"
+              style="margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+              <div class="diag-detail-card"
+                style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--ui-stroke-tertiary); border-radius: 6px; padding: 10px;">
+                <div
+                  style="color: var(--cyan-soft); font-size: 0.65rem; margin-bottom: 4px; font-family: monospace; letter-spacing: 0.05em;">
+                  API LATENCY (xAI)</div>
+                <div style="color: var(--ui-text-primary); font-size: 1rem; font-weight: 600; font-family: monospace;"
+                  data-diagnostics-api-latency>—</div>
               </div>
-              <div class="diag-detail-card" style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--ui-stroke-tertiary); border-radius: 6px; padding: 10px;">
-                <div style="color: var(--cyan-soft); font-size: 0.65rem; margin-bottom: 4px; font-family: monospace; letter-spacing: 0.05em;">RAM VERBRAUCH</div>
-                <div style="color: var(--ui-text-primary); font-size: 1rem; font-weight: 600; font-family: monospace;" data-diagnostics-ram>—</div>
+              <div class="diag-detail-card"
+                style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--ui-stroke-tertiary); border-radius: 6px; padding: 10px;">
+                <div
+                  style="color: var(--cyan-soft); font-size: 0.65rem; margin-bottom: 4px; font-family: monospace; letter-spacing: 0.05em;">
+                  RAM VERBRAUCH</div>
+                <div style="color: var(--ui-text-primary); font-size: 1rem; font-weight: 600; font-family: monospace;"
+                  data-diagnostics-ram>—</div>
               </div>
-              <div class="diag-detail-card" style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--ui-stroke-tertiary); border-radius: 6px; padding: 10px;">
-                <div style="color: var(--cyan-soft); font-size: 0.65rem; margin-bottom: 4px; font-family: monospace; letter-spacing: 0.05em;">KNOWLEDGE BASE</div>
-                <div style="color: var(--ui-text-primary); font-size: 1rem; font-weight: 600; font-family: monospace;" data-diagnostics-knowledge-base>—</div>
+              <div class="diag-detail-card"
+                style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--ui-stroke-tertiary); border-radius: 6px; padding: 10px;">
+                <div
+                  style="color: var(--cyan-soft); font-size: 0.65rem; margin-bottom: 4px; font-family: monospace; letter-spacing: 0.05em;">
+                  KNOWLEDGE BASE</div>
+                <div style="color: var(--ui-text-primary); font-size: 1rem; font-weight: 600; font-family: monospace;"
+                  data-diagnostics-knowledge-base>—</div>
               </div>
-              <div class="diag-detail-card" style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--ui-stroke-tertiary); border-radius: 6px; padding: 10px;">
-                <div style="color: var(--cyan-soft); font-size: 0.65rem; margin-bottom: 4px; font-family: monospace; letter-spacing: 0.05em;">WORKFLOWS</div>
-                <div style="color: var(--ui-text-primary); font-size: 1rem; font-weight: 600; font-family: monospace;" data-diagnostics-workflows>—</div>
+              <div class="diag-detail-card"
+                style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--ui-stroke-tertiary); border-radius: 6px; padding: 10px;">
+                <div
+                  style="color: var(--cyan-soft); font-size: 0.65rem; margin-bottom: 4px; font-family: monospace; letter-spacing: 0.05em;">
+                  WORKFLOWS</div>
+                <div style="color: var(--ui-text-primary); font-size: 1rem; font-weight: 600; font-family: monospace;"
+                  data-diagnostics-workflows>—</div>
               </div>
             </div>
           </div>
@@ -734,7 +863,8 @@
               <span class="drawer-active-label" data-drawer-active-title>⚙️ SYSTEM SETTINGS & CONFIGURATION</span>
             </div>
             <div class="drawer-actions">
-              <button type="button" class="drawer-close-btn" data-close-drawer aria-label="Control Center schließen">×</button>
+              <button type="button" class="drawer-close-btn" data-close-drawer
+                aria-label="Control Center schließen">×</button>
             </div>
           </div>
           <div class="drawer-body">
@@ -744,8 +874,10 @@
 
       </div>
     </main>
-    </div>
+  </div>
 
-    <footer class="control-footer"><span>DESKTOP SHELL / ELECTRON</span><span>CONTRACTS / TYPED</span><span>AUTHORITY / NONE GRANTED</span><span>BUILD / FOUNDATION 01</span></footer>
-  </body>
+  <footer class="control-footer"><span>DESKTOP SHELL / ELECTRON</span><span>CONTRACTS / TYPED</span><span>AUTHORITY /
+      NONE GRANTED</span><span>BUILD / FOUNDATION 01</span></footer>
+</body>
+
 </html>
