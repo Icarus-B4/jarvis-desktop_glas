@@ -2201,11 +2201,32 @@ if (shellBody) shellBody.dataset.navCollapsed = savedShellNavState === "true" ? 
 let lastSurfaceNav = optionalElement<HTMLElement>("[data-shell-home]");
 let lastDrawerKey: DrawerTabKey | null = null;
 
+const diagnosticsPanelEl = optionalElement<HTMLElement>("[data-diagnostics-panel]");
+let servicePanelEl: HTMLElement | undefined;
+
 function selectShellSurface(item: HTMLElement): void {
   document.querySelectorAll<HTMLElement>(".shell-nav-item").forEach((navItem) => {
     navItem.dataset.active = String(navItem === item);
   });
   lastSurfaceNav = item;
+}
+
+function showTelemetryPanel(): void {
+  if (servicePanelEl) servicePanelEl.hidden = true;
+  if (diagnosticsPanelEl) diagnosticsPanelEl.hidden = false;
+  document.querySelectorAll<HTMLElement>(".shell-nav-item").forEach((navItem) => {
+    navItem.dataset.active = String(navItem === optionalElement<HTMLElement>("[data-toggle-diagnostics-panel]"));
+  });
+  lastSurfaceNav = optionalElement<HTMLElement>("[data-toggle-diagnostics-panel]");
+  void refreshDiagnostics();
+}
+
+function showServicePanel(): void {
+  if (servicePanelEl) servicePanelEl.hidden = false;
+  if (diagnosticsPanelEl) diagnosticsPanelEl.hidden = true;
+  document.querySelectorAll<HTMLElement>(".shell-nav-item").forEach((navItem) => {
+    navItem.dataset.active = String(navItem === lastSurfaceNav);
+  });
 }
 
 document.querySelectorAll<HTMLButtonElement>("[data-toggle-shell-nav]").forEach((button) => {
@@ -2217,11 +2238,19 @@ document.querySelectorAll<HTMLButtonElement>("[data-toggle-shell-nav]").forEach(
   });
 });
 
+document.querySelectorAll<HTMLButtonElement>("[data-toggle-diagnostics-panel]").forEach((button) => {
+  button.addEventListener("click", () => {
+    selectShellSurface(button);
+    void showTelemetryPanel();
+  });
+});
+
 document.querySelectorAll<HTMLButtonElement>("[data-shell-home]").forEach((button) => {
   button.addEventListener("click", () => {
     selectShellSurface(button);
     closeDrawer();
     setStageView(null);
+    void showServicePanel();
   });
 });
 

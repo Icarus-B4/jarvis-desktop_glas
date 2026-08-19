@@ -303,24 +303,59 @@
           </dl>
         </section>
 
-        <!-- Capabilities / Model Status -->
-        <section class="hud-panel capabilities-panel" aria-label="System Capabilities">
+        <!-- Telemetrie / Diagnose-Status (erscheint wenn "Telemetry" in der linken Seitenleiste geklickt wird) -->
+        <section class="hud-panel diagnostics-panel" data-diagnostics-panel aria-label="Real-Time Telemetry & Diagnostics" hidden>
           <div class="panel-heading">
-            <span>+ CAPABILITIES & MODULES</span>
+            <span>📊 REAL-TIME TELEMETRY & DIAGNOSTICS</span>
+            <div class="heading-right">
+              <b>SYSTEM HEALTH</b>
+              <button type="button" class="sidebar-toggle-btn" data-toggle-sidebar title="Zurück zur Service-Ansicht">⇲ Service</button>
+            </div>
           </div>
-          <dl class="capability-list">
-            <div><dt>VOICE / STT</dt><dd data-cap-voice>—</dd></div>
-            <div><dt>MEMORY</dt><dd data-cap-memory>—</dd></div>
-            <div><dt>ACTIONS</dt><dd data-cap-action>—</dd></div>
-          </dl>
-          <div class="model-readiness" data-model-instruction hidden>
-            <p data-model-message>Checking model readiness…</p>
-            <code data-model-command></code>
-            <div class="model-readiness-controls">
-              <button type="button" class="icon-control" data-copy-model-command title="Copy command to clipboard">⎘ Copy</button>
-              <button type="button" class="icon-control" data-run-model-command title="Run command in terminal">▶ Run</button>
-              <button type="button" class="icon-control" data-start-ollama-btn style="background: rgba(16, 185, 129, 0.25); border-color: #10b981; color: #34d399; font-weight: 600;" title="Starte den lokalen Ollama Server">⚡ Start Ollama</button>
-              <span class="model-copy-status" data-model-copy-status></span>
+          <div class="diagnostics-content">
+            <div class="diagnostics-grid">
+              <div class="diag-card">
+                <span class="diag-label">SERVICE</span>
+                <span class="diag-value" data-diagnostics-service>—</span>
+              </div>
+              <div class="diag-card">
+                <span class="diag-label">UPTIME</span>
+                <span class="diag-value" data-diagnostics-uptime>—</span>
+              </div>
+              <div class="diag-card">
+                <span class="diag-label">MODE</span>
+                <span class="diag-value" data-diagnostics-mode>—</span>
+              </div>
+              <div class="diag-card">
+                <span class="diag-label">VOICE</span>
+                <span class="diag-value" data-diagnostics-voice>—</span>
+              </div>
+              <div class="diag-card">
+                <span class="diag-label">MEMORY</span>
+                <span class="diag-value" data-diagnostics-memory>—</span>
+              </div>
+              <div class="diag-card">
+                <span class="diag-label">ACTIONS</span>
+                <span class="diag-value" data-diagnostics-actions>—</span>
+              </div>
+            </div>
+            <div class="diag-details" style="margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+              <div class="diag-detail-card" style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--ui-stroke-tertiary); border-radius: 6px; padding: 10px;">
+                <div style="color: var(--cyan-soft); font-size: 0.65rem; margin-bottom: 4px; font-family: monospace; letter-spacing: 0.05em;">API LATENCY (xAI)</div>
+                <div style="color: var(--ui-text-primary); font-size: 1rem; font-weight: 600; font-family: monospace;" data-diagnostics-api-latency>—</div>
+              </div>
+              <div class="diag-detail-card" style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--ui-stroke-tertiary); border-radius: 6px; padding: 10px;">
+                <div style="color: var(--cyan-soft); font-size: 0.65rem; margin-bottom: 4px; font-family: monospace; letter-spacing: 0.05em;">RAM VERBRAUCH</div>
+                <div style="color: var(--ui-text-primary); font-size: 1rem; font-weight: 600; font-family: monospace;" data-diagnostics-ram>—</div>
+              </div>
+              <div class="diag-detail-card" style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--ui-stroke-tertiary); border-radius: 6px; padding: 10px;">
+                <div style="color: var(--cyan-soft); font-size: 0.65rem; margin-bottom: 4px; font-family: monospace; letter-spacing: 0.05em;">KNOWLEDGE BASE</div>
+                <div style="color: var(--ui-text-primary); font-size: 1rem; font-weight: 600; font-family: monospace;" data-diagnostics-knowledge-base>—</div>
+              </div>
+              <div class="diag-detail-card" style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--ui-stroke-tertiary); border-radius: 6px; padding: 10px;">
+                <div style="color: var(--cyan-soft); font-size: 0.65rem; margin-bottom: 4px; font-family: monospace; letter-spacing: 0.05em;">WORKFLOWS</div>
+                <div style="color: var(--ui-text-primary); font-size: 1rem; font-weight: 600; font-family: monospace;" data-diagnostics-workflows>—</div>
+              </div>
             </div>
           </div>
         </section>

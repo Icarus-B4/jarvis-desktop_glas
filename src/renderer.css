@@ -66,7 +66,7 @@ body {
     radial-gradient(80% 70% at 38% 42%, rgba(17, 62, 108, .3), transparent 66%),
     radial-gradient(40% 45% at 88% 10%, rgba(43, 123, 255, .1), transparent 72%),
     linear-gradient(145deg, #02050b 0%, var(--void-soft) 46%, #02040a 100%);
-  font-family: var(--font-sans);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -93,8 +93,14 @@ input:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
 
 .scan-overlay { z-index: 20; overflow: hidden; mix-blend-mode: screen; opacity: .64; }
 .scan-beam { position: absolute; top: -42%; width: 100%; height: 35%; background: linear-gradient(transparent, rgba(84, 230, 255, .14), transparent); filter: blur(16px); animation: scan-sweep 9s linear infinite; }
-.scan-lines { position: absolute; inset: 0; opacity: .36; background: repeating-linear-gradient(to bottom, rgba(93, 218, 255, .055) 0 1px, transparent 1px 5px); }
+.scan-lines { position: absolute; inset: 0; opacity: .36; background: repeating-linear-gradient(to bottom, rgba(93, 218, 255, .055) 0 1px, transparent 1px 5px); animation: scan-glitch 6s linear infinite; }
 
+@keyframes scan-glitch {
+0%, 82%, 90%, 100% { transform: translateY(0); opacity: .36; }
+85% { transform: translateY(-3px) translateX(1px); opacity: .5; }
+87% { transform: translateY(2px) translateX(-1.5px); opacity: .28; }
+89% { transform: translateY(-1px); opacity: .42; }
+}
 .control-header,
 .shell-body,
 .control-grid,
@@ -1886,6 +1892,70 @@ html[data-orb-state="disconnected"] .orb-composition { --status-accent: #5f6e78;
 .workspace-stack > .command-dock { min-height: 0; }
 .control-stack { gap: 8px; }
 .capabilities-panel .module-controls-bar { display: none; }
+.diagnostics-panel .diagnostics-content {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+}
+.diagnostics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.diag-card {
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid var(--ui-stroke-tertiary);
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.diag-label {
+  color: var(--ui-text-tertiary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.diag-value {
+  color: var(--ui-text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.diag-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.diag-detail-card {
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid var(--ui-stroke-tertiary);
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.diag-detail-card > div:first-child {
+  color: var(--cyan-soft);
+  font-size: 0.62rem;
+  letter-spacing: 0.05em;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+  text-transform: uppercase;
+}
+.diag-detail-card > div:last-child {
+  color: var(--ui-text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+}
 .conversation-panel {
   flex: 1;
   min-height: 0;
