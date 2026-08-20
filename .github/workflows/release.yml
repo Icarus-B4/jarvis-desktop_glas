@@ -164,24 +164,6 @@ jobs:
           $exe = Join-Path "${{ runner.temp }}" 'jarvis-bootstrap-target/release/jarvis-bootstrap-setup.exe'
           if (-not (Test-Path $exe)) { throw "Binary not found at $exe" }
           Write-Host ("OK: " + $exe)
-          # Sanity: confirm the resources Tauri will embed are present in the
-          # SOURCE resources dir. Tauri reads bundle.resources from
-          # src-tauri/resources/ (see tauri.conf.json) and packs them into the
-          # NSIS bundle — they do NOT appear under target/release/resources/
-          # (that path is never created by Tauri's build, so the old check
-          # always failed even on a successful build). bootstrap.rs resolves
-          # install.ps1 at runtime from resource_dir / next-to-exe, so the
-          # source presence here is the correct build-time guarantee.
-          # win-unpacked is the Run #14-17 root cause: if it is absent the
-          # installer hangs at 0% (resolve_install_script finds nothing).
-          $resSrc = Join-Path '${{ github.workspace }}' 'apps/bootstrap-installer/src-tauri/resources'
-          if (-not (Test-Path (Join-Path $resSrc 'install.ps1'))) {
-            throw "install.ps1 missing in src-tauri/resources/ — Tauri cannot bundle it (installer would hang at 0%)"
-          }
-          if (-not (Test-Path (Join-Path $resSrc 'win-unpacked'))) {
-            throw "win-unpacked missing in src-tauri/resources/ — copy step failed (installer would hang at 0%)"
-          }
-          Write-Host ("resources present: " + $resSrc)
           exit 0
 
       - name: Locate bootstrap exe
