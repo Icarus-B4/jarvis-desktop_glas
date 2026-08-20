@@ -14,10 +14,12 @@ name = "jarvis_bootstrap_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2", features = [] }
+# Pin to 2.4.x to match installed tauri-cli 2.4.0 — CI has no committed lock by
+# default, so a fresh resolve would pull Tauri 2.5+ (CLI/Core mismatch -> crash).
+tauri-build = { version = "=2.4.0", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "=2.4.0", features = [] }
 tauri-plugin-shell = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-process = "2"
