@@ -73,3 +73,11 @@ apps/jarvis-desktop/release/*.exe
 apps/jarvis-desktop/release/*.dmg
 apps/jarvis-desktop/release/*.AppImage
 .env
+
+# Brand assets must be tracked (consumed by electron-builder + runtime tray/window).
+# Re-include icon files even though the global *.png / *.ico rules above ignore them.
+!icons/icon.png
+!icons/icon.ico
+!icons/icon.svg
+!icons/icon.icns
+!scripts/make_icon.py
