@@ -79,10 +79,12 @@ jobs:
         run: cargo install tauri-cli --version 2.4.0 --locked
 
       - name: Build bootstrap installer (Tauri, drives install.ps1)
+        # --no-bundle: we ship a standalone exe (win-unpacked lives in resources/).
+        # Full NSIS bundle crashes in CI (signing/WebView2 on a clean runner).
         shell: pwsh
         run: |
           cd ${{ github.workspace }}/apps/bootstrap-installer/src-tauri
-          cargo tauri build
+          cargo tauri build --no-bundle
 
       - name: Locate bootstrap exe
         id: bootstrap-exe
