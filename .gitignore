@@ -74,6 +74,13 @@ apps/jarvis-desktop/release/*.dmg
 apps/jarvis-desktop/release/*.AppImage
 .env
 
+# electron-builder output (this project writes to repo-root /release). Never commit installers/asar.
+/release/
+/release/**/*.exe
+/release/**/*.dmg
+/release/**/*.AppImage
+/release/**/*.asar
+
 # Brand assets must be tracked (consumed by electron-builder + runtime tray/window).
 # Re-include icon files even though the global *.png / *.ico rules above ignore them.
 !icons/icon.png
