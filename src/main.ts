@@ -390,11 +390,15 @@ async function waitForHealth(): Promise<void> {
 
 function resolveBackendEntry(): { entryPath: string; cwd: string } | undefined {
   const appPath = app.getAppPath();
+  // In a packaged build, electron-builder's `extraResources` copies the backend
+  // next to app.asar as <resources>/backend (free files, NOT inside the asar).
+  // Bun must run the .ts entry from there with cwd=backend so workspace resolution works.
+  const resourcesDir = appPath.endsWith(".asar") ? resolve(appPath, "..") : appPath;
   const candidates = [
+    { entry: join(resourcesDir, "backend", "src", "cli.ts"), cwd: join(resourcesDir, "backend") },
     { entry: join(appPath, "backend", "src", "cli.ts"), cwd: appPath },
-    { entry: resolve(appPath, "..", "backend", "src", "cli.ts"), cwd: resolve(appPath, "..") },
-    { entry: resolve(appPath, "..", "jarvis-desktop_glas", "backend", "src", "cli.ts"), cwd: resolve(appPath, "..", "jarvis-desktop_glas") },
-    { entry: resolve(appPath, "..", "jarvis", "backend", "src", "cli.ts"), cwd: resolve(appPath, "..", "jarvis") },
+    { entry: resolve(appPath, "..", "jarvis-desktop_glas", "backend", "src", "cli.ts"), cwd: resolve(appPath, "..", "jarvis-desktop_glas", "backend") },
+    { entry: resolve(appPath, "..", "jarvis", "backend", "src", "cli.ts"), cwd: resolve(appPath, "..", "jarvis", "backend") },
   ];
 
   for (const candidate of candidates) {

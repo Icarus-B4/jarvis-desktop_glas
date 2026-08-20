@@ -23,7 +23,14 @@
     "icon": "icons/icon.ico",
     "files": [
       "dist/**/*",
-      "icons/**/*"
+      "icons/**/*",
+      "backend/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "backend",
+        "to": "backend"
+      }
     ],
     "directories": {
       "output": "release"
@@ -39,9 +46,9 @@
       "artifactName": "JARVIS-Setup-${version}.${ext}"
     },
     "nsis": {
-      "oneClick": true,
+      "oneClick": false,
       "perMachine": false,
-      "allowToChangeInstallationDirectory": false,
+      "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
     },

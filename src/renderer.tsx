@@ -2514,6 +2514,12 @@ settingsForm?.addEventListener("submit", async (e) => {
   await saveAllSettings();
 });
 
+// The global SPEICHERN button sits OUTSIDE the <form> element in index.html,
+// so a plain type="submit" never fires the form's submit event. Bind it directly.
+optionalElement<HTMLButtonElement>("[data-save-settings-btn]")?.addEventListener("click", async () => {
+  await saveAllSettings();
+});
+
 // Confirm Modal Handler
 optionalElement<HTMLButtonElement>("[data-confirm-save-close]")?.addEventListener("click", async () => {
   if (confirmModalEl) confirmModalEl.hidden = true;
