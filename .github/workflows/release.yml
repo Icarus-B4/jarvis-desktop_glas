@@ -70,10 +70,11 @@ jobs:
           echo "path=$($exe.FullName)" >> $env:GITHUB_OUTPUT
           Write-Host ('Found: ' + $exe.Name)
 
+      - name: Install cargo-tauri (needed for bootstrap build)
+        run: cargo install cargo-tauri --locked
+
       - name: Build bootstrap installer (Tauri, drives install.ps1)
         shell: pwsh
-        env:
-          JARVIS_INTERNAL_INSTALLER: ${{ steps.electron-installer.outputs.path }}
         run: |
           cd ${{ github.workspace }}/apps/bootstrap-installer/src-tauri
           cargo tauri build
