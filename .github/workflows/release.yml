@@ -1,4 +1,4 @@
-name: Release Harness H&J
+name: Release J.A.R.V.I.S Desktop
 
 on:
   push:
@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to build (e.g. 0.1.47)'
+        description: 'Version to build (e.g. 0.1.0)'
         required: true
-        default: '0.1.47'
+        default: '0.1.0'
 
 permissions:
   contents: write
@@ -44,106 +44,49 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: |
-            ./src-tauri
-            ./bootstrap-installer/src-tauri
+            ./apps/bootstrap-installer/src-tauri
 
       - name: Install JS dependencies
-        run: |
-          bun install
-          bun install --cwd hermes-bridge
+        run: bun install
 
-      - name: Build main app (Next.js standalone + resources)
-        run: bun run build:desktop
+      - name: Build desktop app (Electron NSIS installer)
+        run: bun run dist:win
         working-directory: ${{ github.workspace }}
 
-      - name: Build main installer (Tauri NSIS)
-        run: bunx tauri build --bundles nsis
-        working-directory: ${{ github.workspace }}/src-tauri
-
-      - name: Patch installer.nsi to wipe stale node_modules on upgrade
+      - name: Locate Electron NSIS installer
+        id: electron-installer
         shell: pwsh
         run: |
-          $nsisDir = Join-Path '${{ github.workspace }}' 'src-tauri\target\release\bundle\nsis'
-          & (Join-Path '${{ github.workspace }}' 'scripts\patch-installer-cleanup.ps1') -NsisDir $nsisDir
+          $outDir = Join-Path '${{ github.workspace }}' 'release'
+          $exe = Get-ChildItem $outDir -Filter 'J.A.R.V.I.S*Setup*.exe' -Recurse | Select-Object -First 1
+          if (-not $exe) { throw 'Electron NSIS installer not found in release/' }
+          echo "path=$($exe.FullName)" >> $env:GITHUB_OUTPUT
+          Write-Host ('Found: ' + $exe.Name)
 
-      - name: Recompile patched installer.nsi
-        shell: pwsh
-        run: |
-          $nsisDir = Join-Path '${{ github.workspace }}' 'src-tauri\target\release\bundle\nsis'
-          $makensis = Join-Path $env:LOCALAPPDATA 'tauri\NSIS\nsis.exe'
-          if (-not (Test-Path $makensis)) {
-            $found = Get-ChildItem (Join-Path $env:LOCALAPPDATA 'tauri\NSIS') -Filter nsis.exe -Recurse | Select-Object -First 1
-            if (-not $found) { throw 'makensis not found' }
-            $makensis = $found.FullName
-          }
-          $nsi = Get-ChildItem $nsisDir -Filter installer.nsi | Select-Object -First 1
-          if (-not $nsi) { Write-Host 'No installer.nsi present — skipping recompile'; exit 0 }
-          & $makensis '/INPUTCHARSET=UTF8' $nsi.FullName
-          if ($LASTEXITCODE -ne 0) { throw 'makensis failed' }
-          $setup = Get-ChildItem $nsisDir -Filter 'Harness H&J_*_x64-setup.exe' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-          if ($setup) {
-            Move-Item -LiteralPath (Join-Path $nsisDir 'nsis-output.exe') -Destination $setup.FullName -Force
-            Write-Host ('Recompiled -> ' + $setup.Name)
-          } else {
-            Write-Host 'nsis-output.exe kept (no final setup name matched)'
-          }
-
-      - name: Build bootstrap installer (Rust, embeds main installer)
-        shell: pwsh
-        run: |
-          $nsisDir = Join-Path '${{ github.workspace }}' 'src-tauri\target\release\bundle\nsis'
-          $nsis = Get-ChildItem $nsisDir -Filter 'Harness H&J_*_x64-setup.exe' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-          if (-not $nsis) { throw 'Main installer not found' }
-          echo "HARNESS_INTERNAL_INSTALLER=$($nsis.FullName)" >> $env:GITHUB_ENV
-
-      - name: Import code-signing certificate
-        if: ${{ env.HAS_CERT == 'true' }}
+      - name: Build bootstrap installer (Tauri, drives install.ps1)
         shell: pwsh
         env:
-          CODE_SIGN_CERT_PFX: ${{ secrets.CODE_SIGN_CERT_PFX }}
-          CODE_SIGN_CERT_PASSWORD: ${{ secrets.CODE_SIGN_CERT_PASSWORD }}
+          JARVIS_INTERNAL_INSTALLER: ${{ steps.electron-installer.outputs.path }}
         run: |
-          $pfxPath = Join-Path '${{ github.workspace }}' 'signing-cert.pfx'
-          [System.IO.File]::WriteAllBytes($pfxPath, [System.Convert]::FromBase64String($env:CODE_SIGN_CERT_PFX))
-          $securePass = ConvertTo-SecureString -String $env:CODE_SIGN_CERT_PASSWORD -AsPlainText -Force
-          $cert = Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $securePass
-          "SIGN_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
-          Write-Host ('Certificate imported: ' + $cert.Subject)
+          cd ${{ github.workspace }}/apps/bootstrap-installer/src-tauri
+          cargo tauri build
 
-      - name: Sign all EXEs (defeats SmartScreen/Defender false positive)
-        if: ${{ env.HAS_CERT == 'true' }}
+      - name: Locate bootstrap exe
+        id: bootstrap-exe
         shell: pwsh
         run: |
-          $sdk = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits'
-          $signtool = Get-ChildItem $sdk -Filter signtool.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $signtool) { throw 'signtool.exe not found in Windows SDK' }
-          $signtool = $signtool.FullName
-          $exes = @(
-            (Get-ChildItem (Join-Path '${{ github.workspace }}' 'bootstrap-installer\src-tauri\target\release\Harness-HJ-Setup.exe') | Select-Object -First 1).FullName,
-            (Get-ChildItem (Join-Path '${{ github.workspace }}' 'src-tauri\target\release\bundle\nsis') -Filter 'Harness H&J_*_x64-setup.exe' | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
-          ) | Where-Object { $_ -and (Test-Path $_) }
-          foreach ($exe in $exes) {
-            & $signtool sign /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com /sha1 $env:SIGN_THUMBPRINT $exe
-            if ($LASTEXITCODE -ne 0) { throw ('Signing failed for ' + $exe) }
-            Write-Host ('Signed: ' + $exe)
-          }
-
-      - name: Cargo build bootstrap
-        run: cargo build --release
-        working-directory: ${{ github.workspace }}/bootstrap-installer/src-tauri
-
-      - name: Upload bootstrap installer artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Harness-HJ-Setup
-          path: ${{ github.workspace }}/bootstrap-installer/src-tauri/target/release/Harness-HJ-Setup.exe
+          $dir = Join-Path '${{ github.workspace }}' 'apps\bootstrap-installer\src-tauri\target\release'
+          $exe = Get-ChildItem $dir -Filter 'JARVIS-setup.exe' | Select-Object -First 1
+          if (-not $exe) { throw 'Bootstrap exe not found' }
+          echo "path=$($exe.FullName)" >> $env:GITHUB_OUTPUT
+          Write-Host ('Bootstrap: ' + $exe.Name)
 
       - name: Publish GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            ${{ github.workspace }}/bootstrap-installer/src-tauri/target/release/Harness-HJ-Setup.exe
-            ${{ github.workspace }}/src-tauri/target/release/bundle/nsis/Harness H&J_*_x64-setup.exe
+            ${{ steps.electron-installer.outputs.path }}
+            ${{ steps.bootstrap-exe.outputs.path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
