@@ -89,8 +89,11 @@ jobs:
         shell: pwsh
         run: |
           $dir = Join-Path '${{ github.workspace }}' 'apps\bootstrap-installer\src-tauri\target\release'
-          $exe = Get-ChildItem $dir -Filter 'JARVIS-setup.exe' | Select-Object -First 1
-          if (-not $exe) { throw 'Bootstrap exe not found' }
+          $exe = Get-ChildItem $dir -Filter 'jarvis-bootstrap-setup.exe' | Select-Object -First 1
+          if (-not $exe) {
+            Write-Host "Contents of target/release/:"; Get-ChildItem $dir -Filter '*.exe' | Select-Object -First 10 | ForEach-Object { Write-Host $_.Name }
+            throw 'Bootstrap exe (jarvis-bootstrap-setup.exe) not found'
+          }
           echo "path=$($exe.FullName)" >> $env:GITHUB_OUTPUT
           Write-Host ('Bootstrap: ' + $exe.Name)
 
