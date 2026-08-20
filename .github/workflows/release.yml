@@ -71,7 +71,7 @@ jobs:
           Write-Host ('Found: ' + $exe.Name)
 
       - name: Install cargo-tauri (needed for bootstrap build)
-        run: cargo install cargo-tauri --locked
+        run: cargo install cargo-tauri
 
       - name: Build bootstrap installer (Tauri, drives install.ps1)
         shell: pwsh
@@ -96,7 +96,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           update_only: true
-          name: ${{ github.ref_name }}
+          name: J.A.R.V.I.S. Desktop v${{ github.ref_name }}
           files: |
             ${{ steps.bootstrap-exe.outputs.path }}
         env:
