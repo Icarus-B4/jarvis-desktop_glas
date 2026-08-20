@@ -56,9 +56,7 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
     },
-    "publish": {
-      "provider": "github"
-    }
+    "publish": "never"
   },
   "dependencies": {
     "@jarvis/shared": "workspace:*",

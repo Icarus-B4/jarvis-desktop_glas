@@ -19,7 +19,6 @@ env:
   TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
   TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
   HAS_CERT: ${{ secrets.CODE_SIGN_CERT_PFX != '' && 'true' || 'false' }}
-  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   build-windows:
@@ -59,8 +58,12 @@ jobs:
         shell: pwsh
         run: |
           $outDir = Join-Path '${{ github.workspace }}' 'release'
-          $exe = Get-ChildItem $outDir -Filter 'J.A.R.V.I.S*Setup*.exe' -Recurse | Select-Object -First 1
-          if (-not $exe) { throw 'Electron NSIS installer not found in release/' }
+          if (-not (Test-Path $outDir)) { throw "release/ directory not found after electron-builder" }
+          $exe = Get-ChildItem $outDir -Filter 'JARVIS-Setup-*.exe' -Recurse | Where-Object { $_.Name -notmatch 'block' } | Select-Object -First 1
+          if (-not $exe) {
+            Write-Host "Contents of release/:"; Get-ChildItem $outDir -Recurse -Filter '*.exe' | Select-Object -First 20 | ForEach-Object { Write-Host $_.Name }
+            throw 'Electron NSIS installer not found in release/'
+          }
           echo "path=$($exe.FullName)" >> $env:GITHUB_OUTPUT
           Write-Host ('Found: ' + $exe.Name)
 
