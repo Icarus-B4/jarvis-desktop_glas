@@ -135,33 +135,41 @@ jobs:
 
       - name: Build bootstrap installer (Tauri, drives install.ps1)
         # --no-bundle: ships the standalone bootstrap binary
-        # (jarvis-bootstrap-setup.exe) + resources/ (install.ps1 + win-unpopped).
+        # (jarvis-bootstrap-setup.exe) + resources/ (install.ps1 + win-unpacked).
         # Full NSIS bundle (downloadBootstrapper/embedBootstrapper) hangs/crashes
         # on a clean runner; the binary alone is sufficient. CARGO_TARGET_DIR
         # moved to $TEMP to dodge Defender os error 32 on parallel compile.
+        # NOTE: the exe is built into $CARGO_TARGET_DIR/release, NOT src-tauri/
+        # target/release — so the Locate step MUST use the same CARGO_TARGET_DIR.
         shell: pwsh
         env:
-          CARGO_TARGET_DIR: ${{ runner.temp }}\jarvis-bootstrap-target
+          CARGO_TARGET_DIR: ${{ runner.temp }}\\jarvis-bootstrap-target
           CARGO_INCREMENTAL: 0
         run: |
           cd ${{ github.workspace }}/apps/bootstrap-installer/src-tauri
           cargo tauri build --no-bundle
-          Write-Host "=== target/release .exe ==="
-          gci target/release -Filter '*.exe' -Recurse | select -First 10 | % { Write-Host $_.Name }
+          Write-Host "=== built exe ==="
+          $exe = Join-Path "${{ runner.temp }}" 'jarvis-bootstrap-target/release/jarvis-bootstrap-setup.exe'
+          if (-not (Test-Path $exe)) { throw "Binary not found at $exe" }
+          Write-Host ("OK: " + $exe)
+          exit 0
 
       - name: Locate bootstrap exe
         id: bootstrap-exe
         shell: pwsh
+        env:
+          CARGO_TARGET_DIR: ${{ runner.temp }}\\jarvis-bootstrap-target
         run: |
-          $dir = Join-Path '${{ github.workspace }}' 'apps/bootstrap-installer/src-tauri/target/release'
+          $dir = Join-Path "${{ runner.temp }}" 'jarvis-bootstrap-target/release'
           $exe = Get-ChildItem $dir -Filter 'jarvis-bootstrap-setup.exe' | Select-Object -First 1
           if (-not $exe) {
-            Write-Host "Contents of target/release/:"
+            Write-Host "Contents of $dir :"
             Get-ChildItem $dir -Filter '*.exe' | Select-Object -First 10 | ForEach-Object { Write-Host $_.Name }
             throw 'Bootstrap exe (jarvis-bootstrap-setup.exe) not found'
           }
           echo "path=$($exe.FullName)" >> $env:GITHUB_OUTPUT
           Write-Host ('Bootstrap: ' + $exe.Name)
+          exit 0
 
       - name: Publish GitHub Release
         # softprops creates the Release (tag=v*) + uploads BOTH the NSIS
