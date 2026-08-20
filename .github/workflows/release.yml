@@ -49,7 +49,14 @@ jobs:
           workspaces: |
             ./apps/bootstrap-installer/src-tauri
 
-      - name: Install JS dependencies
+      - name: Install JS Dependencies
+        run: bun install
+
+      - name: Install bootstrap JS dependencies
+        # apps/bootstrap-installer is NOT a root workspace package, so the root
+        # `bun install` does NOT populate its node_modules — `cargo tauri build`'s
+        # beforeBuildCommand (`bun run build`) would crash without this.
+        working-directory: ${{ github.workspace }}/apps/bootstrap-installer
         run: bun install
 
       - name: Build desktop app (Electron NSIS installer)
