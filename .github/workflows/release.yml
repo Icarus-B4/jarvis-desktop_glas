@@ -124,6 +124,10 @@ jobs:
           if ($LASTEXITCODE -gt 7) { throw "robocopy failed with exit code $LASTEXITCODE" }
           $n = (Get-ChildItem -Recurse -File $dst).Count
           Write-Host ("win-unpopped copied -> " + $dst + " (" + $n + " files, from " + $src.FullName + ")")
+          # Force success: robocopy returns 1 on success, which persists in
+          # $LASTEXITCODE (Write-Host is a cmdlet and does NOT reset it), so pwsh
+          # would otherwise exit 1 and fail the step. Explicit exit 0 overrides.
+          exit 0
 
       - name: Install tauri-cli (provides the `cargo tauri` subcommand)
         # Pin v2.4.0: latest 2.11.x fails — yanked arrayref (tiny-skia/resvg).
