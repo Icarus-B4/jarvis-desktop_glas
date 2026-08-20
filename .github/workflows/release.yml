@@ -71,7 +71,9 @@ jobs:
           Write-Host ('Found: ' + $exe.Name)
 
       - name: Install tauri-cli (provides the `cargo tauri` subcommand)
-        run: cargo install tauri-cli
+        # --locked pins to tauri-cli's published Cargo.lock (avoids yanked
+        # transitive crates like arrayref breaking the install on latest).
+        run: cargo install tauri-cli --locked
 
       - name: Build bootstrap installer (Tauri, drives install.ps1)
         shell: pwsh
