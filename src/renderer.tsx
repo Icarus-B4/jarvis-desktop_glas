@@ -2300,11 +2300,35 @@ function handleLiveEvent(event: JarvisLiveEvent): void {
   } else if (event.type === "orb.state.changed") {
     if (activeRequestId === undefined) setLiveState(event.payload.state);
   } else if (event.type === "diagnostics.updated") {
-    const data = event.payload ?? {};
-    if (data && typeof data === "object") {
-        if (telemetryVoice) telemetryVoice.textContent = `LATENCY: ${(data as any).latency ?? 0}ms | MEM: ${(data as any).memory ?? "0MB"}`;
-        if (telemetryActions) telemetryActions.textContent = `QUEUED: ${(data as any).stats?.queued ?? 0} | EXEC: ${(data as any).stats?.executing ?? 0} | FAIL: ${(data as any).stats?.failed ?? 0}`;
-      }
+    const snap = (event.payload ?? {}) as any;
+    const set = (sel: string, value: string) => {
+      const el = document.querySelector<HTMLElement>(sel);
+      if (el) el.textContent = value;
+    };
+    const fmtUptime = (s: number): string => {
+      if (typeof s !== "number" || !Number.isFinite(s)) return "—";
+      const h = Math.floor(s / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      const sec = Math.floor(s % 60);
+      return [h, m, sec].map((n) => String(n).padStart(2, "0")).join(":");
+    };
+    const xai = snap?.providers?.xaiStatus ?? "n/a";
+    const mem = snap?.stats?.memoriesCount ?? "—";
+    const actions = snap?.stats
+      ? `QUEUED: ${snap.stats.queued ?? 0} | EXEC: ${snap.stats.executing ?? 0} | FAIL: ${snap.stats.failed ?? 0}`
+      : "—";
+    set("[data-diagnostics-service]", xai === "online" ? "ONLINE" : xai.toUpperCase());
+    set("[data-diagnostics-uptime]", fmtUptime(snap?.uptimeSeconds));
+    set("[data-diagnostics-mode]", voiceStatus?.muted ? "MUTED" : "ACTIVE");
+    set("[data-diagnostics-voice]", voiceStatus ? `STT:${voiceStatus.sttEngine.status} TTS:${voiceStatus.ttsEngine.status}` : "—");
+    set("[data-diagnostics-memory]", String(mem));
+    if (telemetryActions) telemetryActions.textContent = actions;
+    set("[data-diagnostics-actions]", actions);
+    set("[data-diagnostics-api-latency]", `${snap?.latency?.xaiApiMs ?? "—"}ms (${xai})`);
+    set("[data-diagnostics-ram]", `${snap?.memory?.rssMb ?? "—"} MB`);
+    set("[data-diagnostics-knowledge-base]", String(snap?.stats?.knowledgeCount ?? "—"));
+    set("[data-diagnostics-workflows]", String(snap?.stats?.workflowsCount ?? "—"));
+    if (telemetryVoice) telemetryVoice.textContent = `VOICE / ${voiceStatus?.muted ? "MUTED" : "ACTIVE"} | ${xai.toUpperCase()}`;
   } else if (event.type === "voice.status.changed") {
     voiceStatus = event.payload.voiceStatus;
     void refreshRuntimeStatus();

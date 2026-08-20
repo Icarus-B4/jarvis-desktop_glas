@@ -3,6 +3,7 @@ import type {
   JarvisApiError,
   JarvisChatRequest,
   JarvisChatStreamEvent,
+  JarvisDiagnosticsSnapshot,
   JarvisHealthSnapshot,
   JarvisLiveEvent,
   JarvisKnowledgeQuery,
@@ -600,6 +601,26 @@ export function createJarvisRequestHandler(
   // backend runs in a separate process from the Electron renderer, so this
   // is the only push channel back to the UI.
   const liveEventSubscribers = new Set<(event: JarvisLiveEvent) => void>();
+
+  // Real-time diagnostics fan-out: poll the adapter every 3s and push a
+  // `diagnostics.updated` live event so the Control Room telemetry panel
+  // shows live data instead of static dashes. Cleared on process exit.
+  const diagnosticsTimer = setInterval(async () => {
+    try {
+      const snapshot: JarvisDiagnosticsSnapshot = await diagnosticsAdapter.getDiagnostics();
+      publishLiveEvent({
+        id: crypto.randomUUID(),
+        type: "diagnostics.updated",
+        occurredAt: new Date().toISOString(),
+        payload: snapshot as unknown as Record<string, unknown>,
+      });
+    } catch (err) {
+      console.warn("[handler] diagnostics emission failed:", err);
+    }
+  }, 3_000);
+  diagnosticsTimer.unref?.();
+  process.once("beforeExit", () => clearInterval(diagnosticsTimer));
+
   const publishLiveEvent = (event: JarvisLiveEvent): void => {
     for (const subscriber of liveEventSubscribers) {
       try {
