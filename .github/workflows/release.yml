@@ -85,6 +85,16 @@ jobs:
         # Pin v2.4.0: latest 2.11.x fails — yanked arrayref (tiny-skia/resvg).
         run: cargo install tauri-cli --version 2.4.0 --locked
 
+      - name: Build bootstrap frontend
+        # Built EXPLICITLY here because Tauri's `beforeBuildCommand` spawns a
+        # `cmd /S /C` subshell that does NOT inherit GitHub's setup-bun PATH
+        # on CI (fresh-carho home, bun missing in subshell → beforeBuildCommand
+        # exit 1 → `cargo tauri build` "failure"). Root cause of 13 red runs.
+        working-directory: ${{ github.workspace }}/apps/bootstrap-installer
+        run: |
+          bun install
+          bun run build
+
       - name: Build bootstrap installer (Tauri, drives install.ps1)
         # --no-bundle: we ship a standalone exe (win-unpacked lives in resources/).
         # Full NSIS bundle crashes in CI (signing/WebView2 on a clean runner).
