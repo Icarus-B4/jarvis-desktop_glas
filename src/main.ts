@@ -483,7 +483,6 @@ async function connectLiveEventStream(): Promise<void> {
         method: "GET",
         headers: { Accept: "text/event-stream" },
         redirect: "error",
-        signal: AbortSignal.timeout(0),
       });
       if (!response.ok || !response.body) {
         throw new Error(`Live event stream returned ${response.status}`);
