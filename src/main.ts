@@ -343,7 +343,7 @@ function createSystemTray(win: BrowserWindow): void {
 }
 
 const serviceBaseUrl = normalizeLoopbackHttpOrigin(
-  process.env.JARVIS_LOCAL_SERVICE_URL ?? "http://127.0.0.1:4320",
+  process.env.JARVIS_LOCAL_SERVICE_URL ?? "http://127.0.0.1:4317",
 );
 let serviceProcess: ChildProcessWithoutNullStreams | undefined;
 let serviceOwnedByDesktop = false;
@@ -443,7 +443,7 @@ async function ensureLocalService(): Promise<void> {
     env: {
       ...process.env,
       JARVIS_SERVICE_HOST: "127.0.0.1",
-      JARVIS_SERVICE_PORT: "4320",
+      JARVIS_SERVICE_PORT: "4317",
       // xAI API-Key an den Backend-Service weitergeben
       XAI_API_KEY: process.env.XAI_API_KEY ?? "",
     },

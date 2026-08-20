@@ -194,6 +194,48 @@ function isNoiseOrHallucination(text: string): boolean {
   return hallucinations.includes(t);
 }
 
+// Detects explicit user commands that must always reach the assistant, even
+// while external media (Spotify PWA) is playing. Used to keep the mic live
+// during playback instead of hard-blocking everything.
+function looksLikeCommand(text: string): boolean {
+  const t = text.toLowerCase().trim();
+  if (!t) return false;
+  if (t.includes("jarvis")) return true;
+  if (/^(?:öffne|oeffne|open|starte|spiele|spiel|zeige|zeig|suche|schließe|schliesse|close|stoppe|stopp|pause|halte|halt|weiter|lauter|leiser|lautstärke|lautstaerke|mache|mach|sage|sag|wie|was|wer|wo)\b/.test(t)) return true;
+  return false;
+}
+
+// Heuristic for song lyrics / background music chatter that should be dropped
+// during external media playback (not real commands). Looks for typical lyric
+// filler words and repetitive short phrases rather than command vocabulary.
+function looksLikeLyrics(text: string): boolean {
+  const t = text.toLowerCase().trim();
+  if (!t || t.length < 2) return false;
+  // A recognized command is never lyrics.
+  if (looksLikeCommand(t)) return false;
+  const lyricWords = [
+    "one more", "oh oh", "oh oh oh", "na na", "la la", "yeah", "yea", "yuh",
+    "uh huh", "mmm", "woo", "hey hey", "doo doo", "sha la", "bom bom",
+    "dont", "don't", "fuck", "shit", "ass", "baby", "girl", "boy", "love",
+    "heart", "night", "tonight", "dance", "groove", "rhythm", "beat", "flow",
+    "mic", "microphone", "spotlight", "stage", "crowd", "hands up", "put your",
+    "get down", "turn up", "light it", "fire", "higher", " louder", "wow",
+    "howd", "how'd", "like me", "with me", "for me", "on me", "in the", "all night",
+  ];
+  const words = t.split(/\s+/);
+  let hits = 0;
+  for (const w of lyricWords) {
+    if (t.includes(w)) hits++;
+  }
+  // Very short filler or several lyric markers => lyrics.
+  if (words.length <= 3 && hits >= 1) return true;
+  if (hits >= 2) return true;
+  // Long run-on without any command keyword and lots of short words is
+  // typically sung/background chatter.
+  if (words.length >= 8 && hits >= 1) return true;
+  return false;
+}
+
     // Wenn Aufnahme gestoppt → an xAI Whisper senden und SOFORT absenden
     mediaRecorder.onstop = async () => {
       if (recordingChunks.length === 0) return;
@@ -263,13 +305,25 @@ function isNoiseOrHallucination(text: string): boolean {
             return;
           }
 
-          // Wenn KI bereits antwortet, denkt, ODER externe Medienwiedergabe
-          // läuft (z. B. Spotify-PWA): Hintergrund-Geräusche, Songtexte und
-          // Zufallsgeräusche nicht als Befehl werten. Wakeword-/Stopp-
-          // Kommandos wurden oben bereits vor diesem Gate ausgewertet.
-          if (activeRequestId !== undefined || isTtsPlaying || isExternalMediaPlaying) {
+          // Wenn KI bereits antwortet oder denkt: Hintergrund-Geräusche /
+          // Tastaturklicks nicht als Abbruch werten. Wakeword-/Stopp-Kommandos
+          // wurden oben bereits vor diesem Gate ausgewertet.
+          // NOTE: external media playback (isExternalMediaPlaying) is NOT a
+          // hard block here — that would make Ed unable to issue any command
+          // while music plays. Instead, lyrics are filtered softly below.
+          if (activeRequestId !== undefined || isTtsPlaying) {
             if (voiceStatus && !voiceStatus.muted) {
               setLiveState(isTtsPlaying ? "responding" : "thinking");
+            }
+            return;
+          }
+
+          // Soft gate while external media (Spotify PWA) plays: drop spoken
+          // song lyrics / background chatter, but let real commands through
+          // so Ed can keep controlling Jarvis hands-free during playback.
+          if (isExternalMediaPlaying && !looksLikeCommand(text) && looksLikeLyrics(text)) {
+            if (voiceStatus && !voiceStatus.muted) {
+              setLiveState("listening");
             }
             return;
           }
