@@ -49,15 +49,25 @@ jobs:
           workspaces: |
             ./apps/bootstrap-installer/src-tauri
 
-      - name: Install JS Dependencies
+      - name: Install JS Dependencies (root workspace)
         run: bun install
 
       - name: Install bootstrap JS dependencies
         # apps/bootstrap-installer is NOT a root workspace package, so the root
-        # `bun install` does NOT populate its node_modules — `cargo tauri build`'s
-        # beforeBuildCommand (`bun run build`) would crash without this.
+        # `bun install` does NOT populate its node_modules. `cargo tauri build`'s
+        # beforeBuildCommand (removed — now a separate step) must have these.
         working-directory: ${{ github.workspace }}/apps/bootstrap-installer
         run: bun install
+
+      - name: Build bootstrap frontend
+        # EXPLICIT step: Tauri's beforeBuildCommand spawns a cmd/S/C subshell that
+        # does NOT inherit setup-bun's PATH on CI -> `bun: not found` -> exit 1.
+        # Building the frontend here (where bun IS on PATH) + --no-bundle (no
+        # beforeBuildCommand) avoids the subshell PATH bug entirely.
+        working-directory: ${{ github.workspace }}/apps/bootstrap-installer
+        run: |
+          bun install
+          bun run build
 
       - name: Build desktop app (Electron NSIS installer)
         # --publish never overrides package.json build.publish so electron-builder
@@ -75,52 +85,61 @@ jobs:
           if (-not (Test-Path $outDir)) { throw "release/ directory not found after electron-builder" }
           $exe = Get-ChildItem $outDir -Filter 'JARVIS-Setup-*.exe' -Recurse | Where-Object { $_.Name -notmatch 'block' } | Select-Object -First 1
           if (-not $exe) {
-            Write-Host "Contents of release/:"; Get-ChildItem $outDir -Recurse -Filter '*.exe' | Select-Object -First 20 | ForEach-Object { Write-Host $_.Name }
+            Write-Host "Contents of release/:"
+            Get-ChildItem $outDir -Recurse -Filter '*.exe' | Select-Object -First 20 | ForEach-Object { Write-Host $_.Name }
             throw 'Electron NSIS installer not found in release/'
           }
           echo "path=$($exe.FullName)" >> $env:GITHUB_OUTPUT
           Write-Host ('Found: ' + $exe.Name)
 
+      - name: Copy win-unpacked into bootstrap resources
+        # CRITICAL FIX (Run #14-17 root cause): `cargo tauri build` validates
+        # bundle.resources at COMPILE time (tauri_build::build in build.rs).
+        # resources/win-unpopped is gitignored (662MB Electron artifact) — absent
+        # on a fresh CI runner -> "resource path resources\win-unpopped doesn't
+        # exist" -> build.rs exit code 1 -> Build bootstrap installer: failure.
+        # Copy the Electron win-unpopped (from the step above) into the bootstrap
+        # resources/ so the path resolves. VERIFIED locally: cargo tauri build
+        # succeeds the instant resources/win-unpopped exists (1m28s, exit 0).
+        shell: pwsh
+        run: |
+          $src = Join-Path '${{ github.workspace }}' 'release/win-unpopped'
+          if (-not (Test-Path $src)) { throw "Electron win-unpopped not found at $src" }
+          $dst = Join-Path '${{ github.workspace }}' 'apps/bootstrap-installer/src-tauri/resources/win-unpopped'
+          New-Item -ItemType Directory -Force -Path $dst | Out-Null
+          robocopy "$src" "$dst" /E /NFL /NDL /NJS /NJH | Out-Null
+          $n = (Get-ChildItem -Recurse -File $dst).Count
+          Write-Host ("win-unpopped copied -> " + $dst + " (" + $n + " files)")
+
       - name: Install tauri-cli (provides the `cargo tauri` subcommand)
         # Pin v2.4.0: latest 2.11.x fails — yanked arrayref (tiny-skia/resvg).
         run: cargo install tauri-cli --version 2.4.0 --locked
 
-      - name: Build bootstrap frontend
-        # Built EXPLICITLY here because Tauri's `beforeBuildCommand` spawns a
-        # `cmd /S /C` subshell that does NOT inherit GitHub's setup-bun PATH
-        # on CI (fresh-carho home, bun missing in subshell → beforeBuildCommand
-        # exit 1 → `cargo tauri build` "failure"). Root cause of 13 red runs.
-        working-directory: ${{ github.workspace }}/apps/bootstrap-installer
-        run: |
-          bun install
-          bun run build
-
       - name: Build bootstrap installer (Tauri, drives install.ps1)
-        # Per harness-hj-desktop-dev: `cargo tauri build` MUST build the full
-        # NSIS bundle (injects WebView2 bootstrapper + produces the signed-ready
-        # NSIS). `--no-bundle` produced a bare exe that crashes on clean machines.
-        # CARGO_TARGET_DIR outside the repo ($TEMP) — `Webdesign\` is scanned by
-        # Windows Defender which causes `os error 32` file-locks on parallel .rmeta
-        # compiles -> build.rs (exit code 1) crash. The target-dir redirect is the
-        # verified fix from references/bootstrap-installer-verified-fixes.md.
+        # --no-bundle: ships the standalone bootstrap binary
+        # (jarvis-bootstrap-setup.exe) + resources/ (install.ps1 + win-unpopped).
+        # Full NSIS bundle (downloadBootstrapper/embedBootstrapper) hangs/crashes
+        # on a clean runner; the binary alone is sufficient. CARGO_TARGET_DIR
+        # moved to $TEMP to dodge Defender os error 32 on parallel compile.
         shell: pwsh
         env:
           CARGO_TARGET_DIR: ${{ runner.temp }}\jarvis-bootstrap-target
           CARGO_INCREMENTAL: 0
         run: |
           cd ${{ github.workspace }}/apps/bootstrap-installer/src-tauri
-          cargo tauri build
-          Write-Host "=== dist/ contents ==="
+          cargo tauri build --no-bundle
+          Write-Host "=== target/release .exe ==="
           gci target/release -Filter '*.exe' -Recurse | select -First 10 | % { Write-Host $_.Name }
 
       - name: Locate bootstrap exe
         id: bootstrap-exe
         shell: pwsh
         run: |
-          $dir = Join-Path '${{ github.workspace }}' 'apps\bootstrap-installer\src-tauri\target\release'
+          $dir = Join-Path '${{ github.workspace }}' 'apps/bootstrap-installer/src-tauri/target/release'
           $exe = Get-ChildItem $dir -Filter 'jarvis-bootstrap-setup.exe' | Select-Object -First 1
           if (-not $exe) {
-            Write-Host "Contents of target/release/:"; Get-ChildItem $dir -Filter '*.exe' | Select-Object -First 10 | ForEach-Object { Write-Host $_.Name }
+            Write-Host "Contents of target/release/:"
+            Get-ChildItem $dir -Filter '*.exe' | Select-Object -First 10 | ForEach-Object { Write-Host $_.Name }
             throw 'Bootstrap exe (jarvis-bootstrap-setup.exe) not found'
           }
           echo "path=$($exe.FullName)" >> $env:GITHUB_OUTPUT
