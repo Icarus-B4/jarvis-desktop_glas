@@ -1,0 +1,66 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "J.A.R.V.I.S Setup",
+  "version": "0.1.0",
+  "identifier": "com.jarvis.desktop.setup",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://127.0.0.1:5178",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "J.A.R.V.I.S. Setup",
+        "width": 720,
+        "height": 560,
+        "minWidth": 640,
+        "minHeight": 480,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": true,
+        "transparent": false,
+        "center": true,
+        "visible": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "app"],
+    "resources": {
+      "resources/install.ps1": "install.ps1",
+      "resources/win-unpacked": "win-unpacked"
+    },
+    "category": "DeveloperTool",
+    "shortDescription": "J.A.R.V.I.S. Desktop Installer",
+    "longDescription": "Installs J.A.R.V.I.S. Desktop — the private control room assistant shell.",
+    "publisher": "J.A.R.V.I.S.",
+    "copyright": "Copyright © 2026 J.A.R.V.I.S.",
+    "icon": [
+      "../../../icons/32x32.png",
+      "../../../icons/128x128.png",
+      "../../../icons/128x128@2x.png",
+      "../../../icons/icon.icns",
+      "../../../icons/icon.ico"
+    ],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "embedBootstrapper"
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "11.0"
+    }
+  },
+  "plugins": {
+    "shell": {
+      "open": true
+    }
+  }
+}

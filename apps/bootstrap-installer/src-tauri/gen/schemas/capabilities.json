@@ -1,0 +1,1 @@
+{"com.jarvis.desktop.setup":{"identifier":"com.jarvis.desktop.setup","description":"J.A.R.V.I.S. Setup — bootstrap installer capabilities","local":true,"windows":["main"],"permissions":["core:default","core:event:default","core:window:default","core:app:default","shell:allow-open","dialog:default","process:default"]}}

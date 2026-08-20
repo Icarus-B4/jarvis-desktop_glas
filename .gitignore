@@ -17,6 +17,20 @@ dist-ssr
 .playwright-mcp/
 scratch/
 
+# Bootstrap installer bundled Electron build (662MB) — local-only, never commit.
+apps/bootstrap-installer/src-tauri/resources/win-unpacked/
+
+# Bootstrap installer portable test build (662MB win-unpacked) — never commit.
+apps/bootstrap-installer/dist-portable/
+apps/bootstrap-installer/src-tauri/target/
+apps/bootstrap-installer/target/
+
+# WebView2 bootstrapper scratch
+wv2setup.exe
+
+# Local tooling / scratch work
+instructions/feuture.txt
+
 # Environment / secrets — NEVER commit real .env files
 .env
 .env.*
