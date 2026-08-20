@@ -96,12 +96,22 @@ jobs:
           bun run build
 
       - name: Build bootstrap installer (Tauri, drives install.ps1)
-        # --no-bundle: we ship a standalone exe (win-unpacked lives in resources/).
-        # Full NSIS bundle crashes in CI (signing/WebView2 on a clean runner).
+        # Per harness-hj-desktop-dev: `cargo tauri build` MUST build the full
+        # NSIS bundle (injects WebView2 bootstrapper + produces the signed-ready
+        # NSIS). `--no-bundle` produced a bare exe that crashes on clean machines.
+        # CARGO_TARGET_DIR outside the repo ($TEMP) — `Webdesign\` is scanned by
+        # Windows Defender which causes `os error 32` file-locks on parallel .rmeta
+        # compiles -> build.rs (exit code 1) crash. The target-dir redirect is the
+        # verified fix from references/bootstrap-installer-verified-fixes.md.
         shell: pwsh
+        env:
+          CARGO_TARGET_DIR: ${{ runner.temp }}\jarvis-bootstrap-target
+          CARGO_INCREMENTAL: 0
         run: |
           cd ${{ github.workspace }}/apps/bootstrap-installer/src-tauri
-          cargo tauri build --no-bundle
+          cargo tauri build
+          Write-Host "=== dist/ contents ==="
+          gci target/release -Filter '*.exe' -Recurse | select -First 10 | % { Write-Host $_.Name }
 
       - name: Locate bootstrap exe
         id: bootstrap-exe
