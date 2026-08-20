@@ -62,5 +62,22 @@ const [tokens, rendererCss] = await Promise.all([
 ]);
 await writeFile(join(outputRoot, "renderer.css"), `${tokens}\n${rendererCss}`, "utf8");
 
+// Bundle the local backend service so it runs standalone inside the installer.
+// The backend imports the workspace package @jarvis/shared (a symlinked dep that
+// does NOT survive electron-builder's copy step), so we inline it with Bun's
+// bundler. The output runs with the bundled bun.exe (see main.ts resolveBunPath).
+const backendBundle = await Bun.build({
+  entrypoints: [join(projectRoot, "backend", "src", "cli.ts")],
+  outdir: join(projectRoot, "backend", "dist"),
+  naming: "server.js",
+  target: "node",
+  format: "esm",
+  external: ["bun"],
+});
+if (!backendBundle.success) {
+  throw new AggregateError(backendBundle.logs, "JARVIS backend bundle failed");
+}
+console.log("JARVIS backend service bundled at backend/dist/server.js");
+
 console.log(`JARVIS desktop preview built at ${outputRoot}`);
 

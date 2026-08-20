@@ -390,15 +390,15 @@ async function waitForHealth(): Promise<void> {
 
 function resolveBackendEntry(): { entryPath: string; cwd: string } | undefined {
   const appPath = app.getAppPath();
-  // In a packaged build, electron-builder's `extraResources` copies the backend
-  // next to app.asar as <resources>/backend (free files, NOT inside the asar).
-  // Bun must run the .ts entry from there with cwd=backend so workspace resolution works.
+  // In a packaged build, electron-builder's `extraResources` copies the bundled
+  // backend next to app.asar as <resources>/backend/dist/server.js (a self-contained
+  // ESM bundle produced by scripts/build.ts, with @jarvis/shared inlined).
   const resourcesDir = appPath.endsWith(".asar") ? resolve(appPath, "..") : appPath;
   const candidates = [
+    { entry: join(resourcesDir, "backend", "dist", "server.js"), cwd: join(resourcesDir, "backend", "dist") },
+    { entry: join(appPath, "backend", "dist", "server.js"), cwd: join(appPath, "backend", "dist") },
     { entry: join(resourcesDir, "backend", "src", "cli.ts"), cwd: join(resourcesDir, "backend") },
-    { entry: join(appPath, "backend", "src", "cli.ts"), cwd: appPath },
     { entry: resolve(appPath, "..", "jarvis-desktop_glas", "backend", "src", "cli.ts"), cwd: resolve(appPath, "..", "jarvis-desktop_glas", "backend") },
-    { entry: resolve(appPath, "..", "jarvis", "backend", "src", "cli.ts"), cwd: resolve(appPath, "..", "jarvis", "backend") },
   ];
 
   for (const candidate of candidates) {
@@ -407,6 +407,19 @@ function resolveBackendEntry(): { entryPath: string; cwd: string } | undefined {
     }
   }
   return undefined;
+}
+
+function resolveBunPath(): string {
+  // In a packaged build, electron-builder's `extraResources` copies bun next to
+  // app.asar as <resources>/bun/bun.exe (or bun on POSIX). Prefer that so the
+  // service starts even when `bun` is not on the user's PATH (double-clicked .exe).
+  const appPath = app.getAppPath();
+  const resourcesDir = appPath.endsWith(".asar") ? resolve(appPath, "..") : appPath;
+  const embedded = process.platform === "win32"
+    ? join(resourcesDir, "bun", "bun.exe")
+    : join(resourcesDir, "bun", "bun");
+  if (existsSync(embedded)) return embedded;
+  return process.env.JARVIS_BUN_PATH ?? "bun";
 }
 
 async function ensureLocalService(): Promise<void> {
@@ -424,7 +437,8 @@ async function ensureLocalService(): Promise<void> {
     return;
   }
 
-  serviceProcess = spawn(process.env.JARVIS_BUN_PATH ?? "bun", [resolved.entryPath], {
+  const bunBin = resolveBunPath();
+  serviceProcess = spawn(bunBin, [resolved.entryPath], {
     cwd: resolved.cwd,
     env: {
       ...process.env,

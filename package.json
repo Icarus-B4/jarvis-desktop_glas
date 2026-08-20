@@ -28,8 +28,12 @@
     ],
     "extraResources": [
       {
-        "from": "backend",
-        "to": "backend"
+        "from": "backend/dist",
+        "to": "backend/dist"
+      },
+      {
+        "from": "tools/bun",
+        "to": "bun"
       }
     ],
     "directories": {
