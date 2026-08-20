@@ -49,9 +49,6 @@
       "../../../icons/icon.ico"
     ],
     "windows": {
-      "webviewInstallMode": {
-        "type": "onlineInstall"
-      }
     },
     "macOS": {
       "minimumSystemVersion": "11.0"
