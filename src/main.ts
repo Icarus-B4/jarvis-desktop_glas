@@ -458,6 +458,66 @@ async function ensureLocalService(): Promise<void> {
   });
 
   await waitForHealth();
+  void connectLiveEventStream();
+}
+
+// Bridge the backend's SSE live-event channel (/v1/events) into the
+// Electron renderer. The backend runs in a separate process and only the
+// main process can forward these events to the UI. Without this, the
+// renderer's handleLiveEvent (used by the open_url fix and the external-
+// media mic gate) never receives action.intent.updated events.
+async function connectLiveEventStream(): Promise<void> {
+  const eventsUrl = `${serviceBaseUrl}/v1/events`;
+  let backoffMs = 1_000;
+  const maxBackoffMs = 15_000;
+
+  const relay = (event: unknown): void => {
+    for (const w of BrowserWindow.getAllWindows()) {
+      if (!w.isDestroyed()) w.webContents.send("jarvis:live-event", event);
+    }
+  };
+
+  while (true) {
+    try {
+      const response = await fetch(eventsUrl, {
+        method: "GET",
+        headers: { Accept: "text/event-stream" },
+        redirect: "error",
+        signal: AbortSignal.timeout(0),
+      });
+      if (!response.ok || !response.body) {
+        throw new Error(`Live event stream returned ${response.status}`);
+      }
+      backoffMs = 1_000;
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let sep: number;
+        // SSE messages are separated by a blank line.
+        while ((sep = buffer.indexOf("\n\n")) !== -1) {
+          const raw = buffer.slice(0, sep);
+          buffer = buffer.slice(sep + 2);
+          const dataLine = raw.split("\n").find((l) => l.startsWith("data:"));
+          if (!dataLine) continue;
+          const payload = dataLine.slice(5).trim();
+          if (!payload) continue;
+          try {
+            relay(JSON.parse(payload));
+          } catch (err) {
+            console.warn("[live-event] failed to parse SSE payload:", err);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn(`[live-event] stream disconnected, retrying in ${backoffMs}ms:`, err);
+    }
+    await new Promise((resolve) => setTimeout(resolve, backoffMs));
+    backoffMs = Math.min(backoffMs * 2, maxBackoffMs);
+  }
 }
 
 async function ensureBarehandsService(): Promise<void> {

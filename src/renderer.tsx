@@ -1864,7 +1864,17 @@ async function submitCurrentMessage(textParam?: string, imageDataParam?: string)
     } catch (err) {
       addEntry("warning", `Spotify konnte nicht geöffnet werden: ${err instanceof Error ? err.message : String(err)}`);
     }
-    return;
+    // Combined command like "Öffne Spotify und spiele Ol Dirty Bastard":
+    // extract the song part and let the lower Spotify-song block (which calls
+    // media.control + handleActionDecision, setting isExternalMediaPlaying)
+    // handle it. Without this, "und spiele X" was dropped and media.control
+    // never ran, so the mic gate stayed open and lyrics flooded the chat.
+    const songPart = text.match(/\b(?:und\s+)?spiel(?:e|)\b\s+(.+)$/i);
+    if (songPart?.[1]) {
+      text = `spiele ${songPart[1].trim()}`;
+    } else {
+      return;
+    }
   }
 
   const deterministicFolder = parseDeterministicFolderCommand(text);
