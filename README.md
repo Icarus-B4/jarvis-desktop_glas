@@ -18,6 +18,10 @@
 
 ---
 
+<div align="center">
+  <img width="100%" src="./assets/home.png" alt="a Jarvis core" />
+</div>
+
 <a id="english"></a>
 
 # English
