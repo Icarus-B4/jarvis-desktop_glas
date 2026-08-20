@@ -96,20 +96,29 @@ jobs:
         # CRITICAL FIX (Run #14-17 root cause): `cargo tauri build` validates
         # bundle.resources at COMPILE time (tauri_build::build in build.rs).
         # resources/win-unpopped is gitignored (662MB Electron artifact) — absent
-        # on a fresh CI runner -> "resource path resources\win-unpopped doesn't
+        # on a fresh CI runner -> "resource path resources\\win-unpopped doesn't
         # exist" -> build.rs exit code 1 -> Build bootstrap installer: failure.
         # Copy the Electron win-unpopped (from the step above) into the bootstrap
         # resources/ so the path resolves. VERIFIED locally: cargo tauri build
         # succeeds the instant resources/win-unpopped exists (1m28s, exit 0).
+        # NOTE: on CI the Electron build puts win-unpacked into a SUB-DIRECTORY
+        # (e.g. release/win/ or release/win64/) — so we search RECURSIVELY under
+        # release/, not assume it sits directly in release/ (unlike localhost).
         shell: pwsh
         run: |
-          $src = Join-Path '${{ github.workspace }}' 'release/win-unpopped'
-          if (-not (Test-Path $src)) { throw "Electron win-unpopped not found at $src" }
+          $release = Join-Path '${{ github.workspace }}' 'release'
+          if (-not (Test-Path $release)) { throw "release/ directory not found after electron-builder" }
+          $src = Get-ChildItem $release -Directory -Recurse -Filter 'win-unpacked' | Select-Object -First 1
+          if (-not $src) {
+            Write-Host "Contents of release/:"
+            Get-ChildItem $release -Recurse | Select-Object -First 30 | ForEach-Object { Write-Host $_.FullName }
+            throw 'Electron win-unpacked directory not found in release/'
+          }
           $dst = Join-Path '${{ github.workspace }}' 'apps/bootstrap-installer/src-tauri/resources/win-unpopped'
           New-Item -ItemType Directory -Force -Path $dst | Out-Null
-          robocopy "$src" "$dst" /E /NFL /NDL /NJS /NJH | Out-Null
+          robocopy "$($src.FullName)" "$dst" /E /NFL /NDL /NJS /NJH | Out-Null
           $n = (Get-ChildItem -Recurse -File $dst).Count
-          Write-Host ("win-unpopped copied -> " + $dst + " (" + $n + " files)")
+          Write-Host ("win-unpopped copied -> " + $dst + " (" + $n + " files, from " + $src.FullName + ")")
 
       - name: Install tauri-cli (provides the `cargo tauri` subcommand)
         # Pin v2.4.0: latest 2.11.x fails — yanked arrayref (tiny-skia/resvg).
