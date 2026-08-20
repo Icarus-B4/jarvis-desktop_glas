@@ -113,6 +113,7 @@ let lastVoiceTranscript = "";
 let mediaRecorder: MediaRecorder | undefined;
 let recordingChunks: Blob[] = [];
 let isTtsPlaying = false;
+let isExternalMediaPlaying = false;
 let activeTtsContext: AudioContext | undefined;
 let activeTtsSource: AudioBufferSourceNode | undefined;
 let stopRequested = false;
@@ -254,12 +255,19 @@ function isNoiseOrHallucination(text: string): boolean {
             lower.includes("jarvis stop") ||
             lower.includes("jarvis stopp")
           ) {
+            // Ed may be stopping external media (Spotify PWA) by voice — drop
+            // the gate immediately so the stop command is honored even if the
+            // playback-completion event has not arrived yet.
+            isExternalMediaPlaying = false;
             stopConversation();
             return;
           }
 
-          // Wenn KI bereits antwortet oder denkt: Hintergrund-Geräusche/Tastaturklicks nicht als Abbruch werten!
-          if (activeRequestId !== undefined || isTtsPlaying) {
+          // Wenn KI bereits antwortet, denkt, ODER externe Medienwiedergabe
+          // läuft (z. B. Spotify-PWA): Hintergrund-Geräusche, Songtexte und
+          // Zufallsgeräusche nicht als Befehl werten. Wakeword-/Stopp-
+          // Kommandos wurden oben bereits vor diesem Gate ausgewertet.
+          if (activeRequestId !== undefined || isTtsPlaying || isExternalMediaPlaying) {
             if (voiceStatus && !voiceStatus.muted) {
               setLiveState(isTtsPlaying ? "responding" : "thinking");
             }
@@ -1192,6 +1200,16 @@ async function handleActionDecision(intentId: string, decision: "approve" | "rej
       } else if (updated.capability === "app.open_url" || updated.capability === "browser.open") {
         const url = String(updated.params?.url ?? updated.params?.link ?? updated.params?.target ?? "");
         if (url) setStageView("web", url);
+      } else if (updated.capability === "media.control") {
+        // Toggle the mic gate so song lyrics during external playback
+        // (Spotify PWA) are not transcribed as commands.
+        const action = String(updated.params?.action ?? "");
+        const hasQuery = Boolean(updated.params?.query);
+        if (action === "play" || hasQuery) {
+          isExternalMediaPlaying = true;
+        } else if (action === "pause" || action === "stop") {
+          isExternalMediaPlaying = false;
+        }
       }
     }
   } catch (err) {
@@ -2188,6 +2206,18 @@ function handleLiveEvent(event: JarvisLiveEvent): void {
       if (url) {
         setStageView("web", url);
         addEntry("action", `🌐 "${url}" wird auf der Hauptbühne geöffnet.`);
+      }
+    }
+    // External media playback (Spotify PWA etc.) toggles the mic gate so
+    // song lyrics are not transcribed as commands. Set on play/query,
+    // clear on pause/stop — matches the backend media.control contract.
+    if (intent && intent.status === "completed" && intent.capability === "media.control") {
+      const action = String(intent.params?.action ?? "");
+      const hasQuery = Boolean(intent.params?.query);
+      if (action === "play" || hasQuery) {
+        isExternalMediaPlaying = true;
+      } else if (action === "pause" || action === "stop") {
+        isExternalMediaPlaying = false;
       }
     }
     void refreshRuntimeStatus();
