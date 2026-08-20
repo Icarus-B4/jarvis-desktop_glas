@@ -293,14 +293,27 @@ export class DefaultJarvisActionEngine implements JarvisActionEngine {
         }
         const target = exactLaunchCandidates[exactKey]?.find((candidate) => existsSync(candidate));
         if (!target) throw new Error(`Die explizit erlaubte Anwendung '${rawName}' wurde auf diesem PC nicht gefunden.`);
-        await new Promise<void>((resolve, reject) => {
-          const executable = target.toLowerCase().endsWith(".lnk") ? "explorer.exe" : target;
-          const args = target.toLowerCase().endsWith(".lnk") ? [target] : [];
-          execFile(executable, args, { windowsHide: false, timeout: 10_000 }, (err) => {
-            if (err) reject(new Error(`Anwendung '${rawName}' konnte nicht gestartet werden: ${err.message}`));
-            else resolve();
+        // .lnk targets (including Brave/Chrome PWAs like Spotify) must be
+        // launched through the Shell, not explorer.exe. explorer.exe only
+        // delegates to the Shell and returns a non-zero exit code even on
+        // success, which Node reports as "Command failed". Start-Process
+        // resolves the shortcut correctly and exits cleanly.
+        if (target.toLowerCase().endsWith(".lnk")) {
+          const escapedTarget = target.replace(/'/g, "''");
+          await new Promise<void>((resolve, reject) => {
+            exec(`Start-Process -FilePath '${escapedTarget}'`, { shell: "powershell.exe", windowsHide: true, timeout: 10_000 }, (err) => {
+              if (err) reject(new Error(`Anwendung '${rawName}' konnte nicht gestartet werden: ${err.message}`));
+              else resolve();
+            });
           });
-        });
+        } else {
+          await new Promise<void>((resolve, reject) => {
+            execFile(target, [], { windowsHide: false, timeout: 10_000 }, (err) => {
+              if (err) reject(new Error(`Anwendung '${rawName}' konnte nicht gestartet werden: ${err.message}`));
+              else resolve();
+            });
+          });
+        }
         return { success: true, app: rawName, target, message: `Anwendung '${rawName}' über die exakte Allowlist gestartet.` };
       }
 
