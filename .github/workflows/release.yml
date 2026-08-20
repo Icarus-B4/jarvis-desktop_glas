@@ -63,7 +63,7 @@ jobs:
         # EXPLICIT step: Tauri's beforeBuildCommand spawns a cmd/S/C subshell that
         # does NOT inherit setup-bun's PATH on CI -> `bun: not found` -> exit 1.
         # Building the frontend here (where bun IS on PATH) + --no-bundle (no
-        # beforeBuildCommand) avoids the subshell PATH bug entirely.
+        # beforeBuildCommand) avoids the subshell PATH bug entirely...
         working-directory: ${{ github.workspace }}/apps/bootstrap-installer
         run: |
           bun install
