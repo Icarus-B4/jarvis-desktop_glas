@@ -134,24 +134,34 @@ jobs:
         run: cargo install tauri-cli --version 2.4.0 --locked
 
       - name: Build bootstrap installer (Tauri, drives install.ps1)
-        # --no-bundle: ships the standalone bootstrap binary
-        # (jarvis-bootstrap-setup.exe) + resources/ (install.ps1 + win-unpacked).
-        # Full NSIS bundle (downloadBootstrapper/embedBootstrapper) hangs/crashes
-        # on a clean runner; the binary alone is sufficient. CARGO_TARGET_DIR
-        # moved to $TEMP to dodge Defender os error 32 on parallel compile.
+        # FULL bundle (NOT --no-bundle): Tauri only copies bundle.resources
+        # (install.ps1 + win-unpacked) NEXT TO the exe during the NSIS bundle
+        # step. With --no-bundle those resources are NOT placed beside the exe,
+        # so resolve_install_script() fails -> installer hangs at 0% (the
+        # "nothing happens" bug). The NSIS setup .exe is a bonus artifact; we
+        # only publish the standalone jarvis-bootstrap-setup.exe below.
+        # webviewInstallMode is onlineInstall (not downloadBootstrapper) to avoid
+        # a network download that hangs on a clean runner during bundle creation.
+        # CARGO_TARGET_DIR moved to $TEMP to dodge Defender os error 32.
         # NOTE: the exe is built into $CARGO_TARGET_DIR/release, NOT src-tauri/
         # target/release — so the Locate step MUST use the same CARGO_TARGET_DIR.
         shell: pwsh
         env:
-          CARGO_TARGET_DIR: ${{ runner.temp }}\\jarvis-bootstrap-target
+          CARGO_TARGET_DIR: ${{ runner.temp }}\jarvis-bootstrap-target
           CARGO_INCREMENTAL: 0
         run: |
           cd ${{ github.workspace }}/apps/bootstrap-installer/src-tauri
-          cargo tauri build --no-bundle
+          cargo tauri build
           Write-Host "=== built exe ==="
           $exe = Join-Path "${{ runner.temp }}" 'jarvis-bootstrap-target/release/jarvis-bootstrap-setup.exe'
           if (-not (Test-Path $exe)) { throw "Binary not found at $exe" }
           Write-Host ("OK: " + $exe)
+          # Sanity: confirm the bundled resources landed next to the exe.
+          $resDir = Join-Path "${{ runner.temp }}" 'jarvis-bootstrap-target/release/resources'
+          if (-not (Test-Path (Join-Path $resDir 'install.ps1'))) {
+            throw "install.ps1 missing next to exe — bundle.resources not embedded (installer would hang at 0%)"
+          }
+          Write-Host ("resources present: " + $resDir)
           exit 0
 
       - name: Locate bootstrap exe
