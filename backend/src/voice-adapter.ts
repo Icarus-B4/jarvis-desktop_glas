@@ -32,11 +32,17 @@ export class DefaultJarvisVoiceAdapter implements JarvisVoiceAdapter {
 }
 
 /** xAI STT-Anfrage: Audiodaten (WAV/WebM) → Text */
+// STT is hard-pinned to German. The prompt biases xAI Whisper strongly
+// toward German transcription even when the audio is noisy or contains
+// proper nouns / website names (e.g. "Webstark", "Wikipedia"), which
+// Whisper otherwise misreads as other languages (Danish, Kauderwelsch).
+const XAI_STT_PROMPT = "Transkribiere ausschließlich auf Deutsch. Erkenne deutsche Befehle, Webseiten-Namen (z. B. Webstark, Wikipedia) und Eigennamen korrekt. Gib nur den gesprochenen Text zurück.";
+
 export async function transcribeWithXai(
   audioData: ArrayBuffer,
   mimeType: string,
   apiKey: string,
-  language = "de",
+  language: string = "de-DE",
 ): Promise<string> {
   const XAI_STT_URL = "https://api.x.ai/v1/stt";
 
@@ -45,6 +51,7 @@ export async function transcribeWithXai(
   const blob = new Blob([audioData], { type: mimeType });
   form.append("file", blob, mimeType.includes("webm") ? "audio.webm" : "audio.wav");
   form.append("language", language);
+  form.append("prompt", XAI_STT_PROMPT);
   form.append("response_format", "json");
 
   const response = await fetch(XAI_STT_URL, {

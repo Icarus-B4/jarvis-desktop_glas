@@ -495,14 +495,24 @@ async function* runToolLoopChat(
       messages.push(assistantMessage as any);
 
       for (const toolCall of result.toolCalls) {
-        if (seenToolCalls.size >= 3) {
-          finalContent = "Die Werkzeugkette wurde nach drei unterschiedlichen Aufrufen sicher beendet.";
+        // Hard cap on distinct tool calls — now coupled to maxTurns so a
+        // realistic chain (e.g. web.search then app.open_url) is not cut off
+        // after only 3 calls.
+        if (seenToolCalls.size >= maxTurns) {
+          finalContent = "Die Werkzeugkette wurde nach der maximalen Anzahl Aufrufe sicher beendet.";
           break toolLoop;
         }
         const fingerprint = `${toolCall.name}:${toolCall.arguments || "{}"}`;
         if (seenToolCalls.has(fingerprint)) {
-          finalContent = result.content?.trim() || "Der identische Werkzeugaufruf wurde bereits verarbeitet; keine Wiederholung ausgeführt.";
-          break toolLoop;
+          // Skip the duplicate instead of aborting the whole loop. Returning a
+          // tool result with a hint lets the model self-correct (e.g. retry
+          // with a fixed argument) rather than killing the chain.
+          messages.push({
+            role: "tool",
+            tool_call_id: toolCall.id,
+            content: "Dieser Werkzeugaufruf ist identisch mit einem bereits ausgeführten. Bitte korrigiere die Argumente oder fahre mit einem anderen Schritt fort.",
+          } as any);
+          continue;
         }
         seenToolCalls.add(fingerprint);
 
