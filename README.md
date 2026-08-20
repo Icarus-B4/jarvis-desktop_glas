@@ -607,7 +607,7 @@ Wie ist das Wetter?
 Jarvis, an die Arbeit!
 Mache einen Screenshot
 Wie bin ich angezogen?
-Aktiviere Cursorsteuerung
+Aktiviere Cursorsteuerung / (funktioniert noch nicht!)
 ```
 
 ## Sicherheit und Datenschutz
