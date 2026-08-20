@@ -117,6 +117,8 @@ let isExternalMediaPlaying = false;
 let activeTtsContext: AudioContext | undefined;
 let activeTtsSource: AudioBufferSourceNode | undefined;
 let stopRequested = false;
+let isPaused = false;
+let lastSpokenText = "";
 
 function stopTtsPlayback(): void {
   isTtsPlaying = false;
@@ -133,6 +135,7 @@ function stopTtsPlayback(): void {
 /** bricht laufendes TTS oder aktive KI-Generierung sofort ab */
 function stopConversation(): void {
   stopRequested = true;
+  isPaused = false;
   stopTtsPlayback();
   const reqId = activeRequestId;
   clearChatState();
@@ -154,6 +157,38 @@ function stopConversation(): void {
     setLiveState(readiness?.status === "ready" ? "ready" : "idle");
   }
   setTimeout(() => { stopRequested = false; }, 500);
+}
+
+/**
+ * Pausiert die TTS-Ausgabe: stoppt die laufende AudioBufferSourceNode sofort
+ * (Web Audio hat kein echtes Pause) und merkt den zuletzt gesprochenen Text,
+ * damit "weiter"/"resume" ihn erneut synthetisieren kann.
+ */
+function pauseConversation(): void {
+  stopRequested = true;
+  isPaused = true;
+  stopTtsPlayback();
+  const reqId = activeRequestId;
+  clearChatState();
+  if (reqId) {
+    try { window.jarvisDesktop.cancelChat(reqId); } catch {}
+  }
+  if (voiceStatus && !voiceStatus.muted) {
+    setLiveState("listening");
+  } else {
+    setLiveState(readiness?.status === "ready" ? "ready" : "idle");
+  }
+  setTimeout(() => { stopRequested = false; }, 500);
+}
+
+/** Setzt nach einer Pause die Ausgabe mit dem zuletzt gesprochenen Text fort. */
+function resumeConversation(): void {
+  if (!isPaused) return;
+  isPaused = false;
+  stopRequested = false;
+  if (lastSpokenText) {
+    void speakJarvisResponse(lastSpokenText);
+  }
 }
 
 /**
@@ -286,13 +321,12 @@ function looksLikeLyrics(text: string): boolean {
             sendToBarehands("jarvis:cursor-mode", { on: false });
             return;
           }
-          // "stop", "stopp", "abbrechen", "halt", "pause", "ruhe" = SOFORT ABBRECHEN
+          // "stop", "stopp", "abbrechen", "halt", "ruhe" = SOFORT ABBRECHEN (Stop)
           if (
             lower === "stop" ||
             lower === "stopp" ||
             lower === "abbrechen" ||
             lower === "halt" ||
-            lower === "pause" ||
             lower === "ruhe" ||
             lower.includes("jarvis stop") ||
             lower.includes("jarvis stopp")
@@ -302,6 +336,21 @@ function looksLikeLyrics(text: string): boolean {
             // playback-completion event has not arrived yet.
             isExternalMediaPlaying = false;
             stopConversation();
+            return;
+          }
+          // "pause" = TTS pausieren (nicht komplett abbrechen)
+          if (lower === "pause") {
+            isExternalMediaPlaying = false;
+            pauseConversation();
+            return;
+          }
+          // "weiter"/"resume"/"fortsetzen" = nach einer Pause die Ausgabe fortsetzen
+          if (
+            isPaused &&
+            (lower === "weiter" || lower === "resume" || lower === "fortsetzen" || lower.includes("weiter machen"))
+          ) {
+            isExternalMediaPlaying = false;
+            resumeConversation();
             return;
           }
 
@@ -443,6 +492,7 @@ async function speakJarvisResponse(text: string): Promise<void> {
   if (!cleanText || cleanText.length < 3) return;
 
   const ttsText = cleanText.length > 600 ? cleanText.slice(0, 600) + "..." : cleanText;
+  lastSpokenText = ttsText;
 
   try {
     isTtsPlaying = true;
@@ -2103,6 +2153,8 @@ async function submitCurrentMessage(textParam?: string, imageDataParam?: string)
   const thinkingText = activeModelMode === "cloud" ? "Grok (xAI) denkt..." : "Ollama (Qwen) denkt...";
   activeAssistantEntry = addEntry("assistant", imageDataParam ? "Grok Vision analysiert Bild..." : thinkingText, true);
   activeRequestId = crypto.randomUUID();
+  stopRequested = false;
+  isPaused = false;
   if (cancelButton) cancelButton.hidden = false;
   if (sendButton) sendButton.disabled = true;
   if (input) input.disabled = true;
@@ -2160,6 +2212,10 @@ async function runTerminalCommand(cmd: string): Promise<void> {
 }
 function handleChatEvent(event: JarvisChatStreamEvent): void {
   if (event.requestId !== activeRequestId) return;
+  // Stop/Pause angefordert: verzögerte delta/done-Events dürfen die TTS-Ausgabe
+  // nach dem Abbruch nicht erneut reaktivieren. (chat.cancelled bleibt erlaubt.)
+  if (stopRequested && event.type !== "chat.cancelled") return;
+  if (isPaused && event.type !== "chat.cancelled") return;
   if (event.type === "chat.start") { setLiveState("thinking"); return; }
   if (event.type === "chat.delta") {
     if (chatSafetyTimer) {
