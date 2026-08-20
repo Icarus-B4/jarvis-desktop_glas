@@ -56,7 +56,11 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
     },
-    "publish": []
+    "publish": {
+      "provider": "github",
+      "owner": "Icarus-B4",
+      "repo": "jarvis-desktop_glas"
+    }
   },
   "dependencies": {
     "@jarvis/shared": "workspace:*",
