@@ -116,7 +116,11 @@ jobs:
           }
           $dst = Join-Path '${{ github.workspace }}' 'apps/bootstrap-installer/src-tauri/resources/win-unpopped'
           New-Item -ItemType Directory -Force -Path $dst | Out-Null
+          # robocopy exit codes: 0=nothing copied, 1=files copied (SUCCESS),
+          # 2-7=minor, 8+=real failure. CI treats any non-zero as step failure,
+          # so mask 0-7 as success, only throw on 8+.
           robocopy "$($src.FullName)" "$dst" /E /NFL /NDL /NJS /NJH | Out-Null
+          if ($LASTEXITCODE -gt 7) { throw "robocopy failed with exit code $LASTEXITCODE" }
           $n = (Get-ChildItem -Recurse -File $dst).Count
           Write-Host ("win-unpopped copied -> " + $dst + " (" + $n + " files, from " + $src.FullName + ")")
 
