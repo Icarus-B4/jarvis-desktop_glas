@@ -83,7 +83,15 @@ jobs:
         run: |
           $outDir = Join-Path '${{ github.workspace }}' 'release'
           if (-not (Test-Path $outDir)) { throw "release/ directory not found after electron-builder" }
-          $exe = Get-ChildItem $outDir -Filter 'JARVIS-Setup-*.exe' -Recurse | Where-Object { $_.Name -notmatch 'block' } | Select-Object -First 1
+          # Retry: electron-builder may still be finalizing the .exe (signing/blockmap)
+          # a few seconds after the build step reports success — avoid a race crash.
+          $exe = $null
+          for ($i = 0; $i -lt 5; $i++) {
+            $exe = Get-ChildItem $outDir -Filter 'JARVIS-Setup-*.exe' -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Name -notmatch 'block' } | Select-Object -First 1
+            if ($exe) { break }
+            Write-Host "Waiting for JARVIS-Setup-*.exe ... ($($i+1)/5)"
+            Start-Sleep -Seconds 4
+          }
           if (-not $exe) {
             Write-Host "Contents of release/:"
             Get-ChildItem $outDir -Recurse -Filter '*.exe' | Select-Object -First 20 | ForEach-Object { Write-Host $_.Name }
