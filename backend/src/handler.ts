@@ -193,7 +193,7 @@ const TOOL_DEFINITIONS: Array<Record<string, unknown>> = [
     type: "function",
     function: {
       name: "media.control",
-      description: "Steuert Medienwiedergabe (Play, Pause, Next, Prev, Stop, Volume).",
+      description: "Steuert Medienwiedergabe (play, pause, next, prev, stop, mute, volup, voldown) UND spielt einen konkreten Song oder Interpreten in Spotify ab. Wenn ein Titel oder Künstler genannt wird, setze action auf 'play' und gib den Namen im query-Parameter an (z. B. action='play', query='Ol Dirty Bastard'). Für reine Transportsteuerung nur action ohne query verwenden.",
       parameters: { type: "object", properties: { action: { type: "string", description: "play, pause, next, prev, stop, mute, volup, voldown" }, query: { type: "string", description: "Song/Interpret für direkte Wiedergabe" } }, required: ["action"] },
     },
   },
