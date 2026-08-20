@@ -62,6 +62,22 @@ export type JarvisSystemInfo = {
   uptimeSeconds: number;
 };
 
+export type JarvisUpdaterStatus =
+  | "idle"
+  | "checking"
+  | "available"
+  | "not-available"
+  | "downloading"
+  | "downloaded"
+  | "error";
+
+export type JarvisUpdaterState = {
+  status: JarvisUpdaterStatus;
+  info: { version?: string } | null;
+  error: string | null;
+  progress: number;
+};
+
 export type JarvisDesktopBridge = {
   getRuntimeStatus(): Promise<DesktopRuntimeStatus>;
   getModelReadiness(): Promise<JarvisModelReadiness>;
@@ -111,6 +127,9 @@ export type JarvisDesktopBridge = {
   barehandsPushEvent(type: string, payload?: Record<string, unknown>): Promise<{ pushed: boolean }>;
   barehandsCursor(action: string, payload?: Record<string, unknown>): Promise<{ ok: boolean }>;
   openUrl(url: string): Promise<{ ok: boolean }>;
+  checkForUpdates(): Promise<{ status: string; updateAvailable?: boolean; error?: string }>;
+  quitAndInstall(): Promise<{ ok: boolean; error?: string }>;
+  onUpdaterState(listener: (state: JarvisUpdaterState) => void): () => void;
 };
 
 
@@ -187,6 +206,15 @@ const bridge: JarvisDesktopBridge = {
     ipcRenderer.invoke("jarvis:barehands-cursor", action, payload),
   openUrl: (url: string): Promise<{ ok: boolean }> =>
     ipcRenderer.invoke("jarvis:open-url", url),
+  checkForUpdates: (): Promise<{ status: string; updateAvailable?: boolean; error?: string }> =>
+    ipcRenderer.invoke("jarvis:check-for-updates"),
+  quitAndInstall: (): Promise<{ ok: boolean; error?: string }> =>
+    ipcRenderer.invoke("jarvis:quit-and-install"),
+  onUpdaterState(listener: (state: JarvisUpdaterState) => void): () => void {
+    const wrapped = (_event: Electron.IpcRendererEvent, payload: JarvisUpdaterState): void => listener(payload);
+    ipcRenderer.on("jarvis:updater-state", wrapped);
+    return () => ipcRenderer.removeListener("jarvis:updater-state", wrapped);
+  },
 };
 
 contextBridge.exposeInMainWorld("jarvisDesktop", bridge);

@@ -3,6 +3,7 @@ import { execFile, spawn, type ChildProcessWithoutNullStreams } from "node:child
 import { cpus, freemem, totalmem, uptime } from "node:os";
 import { join, resolve } from "node:path";
 import { app, BrowserWindow, clipboard, desktopCapturer, dialog, globalShortcut, ipcMain, Menu, nativeImage, screen, session, Tray } from "electron";
+import { autoUpdater, type UpdateInfo } from "electron-updater";
 import {
   isJarvisApiError,
   isJarvisChatRequest,
@@ -124,23 +125,156 @@ function saveDesktopConfig(newConfig: Partial<JarvisDesktopConfig>): JarvisDeskt
 let appTray: Tray | undefined;
 let isAppQuitting = false;
 
+// Resolves the real J.A.R.V.I.S. diamond mark. It lives at <project>/icons/icon.png
+// (and is copied next to the build output). Falls back to a generated placeholder
+// only if that file is missing, so the app never crashes on a missing asset.
+function resolveIconAsset(): string | undefined {
+  const candidates = [
+    join(app.getAppPath(), "icons", "icon.png"),
+    join(app.getAppPath(), "..", "icons", "icon.png"),
+    join(process.cwd(), "icons", "icon.png"),
+  ];
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
+  }
+  return undefined;
+}
+
 function getTrayIconPath(): string {
   return join(app.getPath("userData"), "jarvis-tray-icon.png");
 }
 
 function ensureTrayIconFile(): string {
   const iconPath = getTrayIconPath();
-  if (!existsSync(iconPath)) {
-    const pngDataUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAqdJREFUeNqMV81y00AQnZ0drCSOwxAOhBscOCEH4MCFA4eE3Blyi8M5wBnyBHAZTsAZOAEfIPgAHDhw4gRxCE5wBv6g5d2V16t1WbIsWyW1qpmdnd2Z3fl7u1o2mzW2rZTSXn321+M4to/H41o/12v6Hdu23wRBAF5/eX5+Vvf391u957K+C0fX9Qk8/67rfl4fV6vVL9d150VRfNne3n4SBEFxfn7+Vggxm81mz+/5fH5BvtPpdF7GcbwAzz+TydQB3/1hGF6EofjxeDzL8xz2r/h+38g8QggnURRBZ7wH/z4+Pn7s+/5V0zS/0+n0h0yvA+Kz3+X1ev3X8zw4H/i/1/H/B+6fgN9Q+Hq9/pFlWZfn+Xmapt9VVVWBn0jQp7C1tbX1c2Nj402SJEv+7h31562trT8zJID7N9T/J2R/sryzs7MH9wvhf5t+wDvgFvB/wA3gN/Q/g9vALeAeeL8K8n/0v4T+B/o89H84HA45D+4/wz/eA7/2ff/F1tbWZ1EUfXdd94fnv/vB/R78z1dZlt0VRfHN932470m1Cq+vr58Ph8N319fXb87Ozj7s7e19/F/lC71/Wffz+XxZluXX0NDfA/tB+F+xWq1+d7vdq6Ojo+XJycnx7e3tr1+T0t9j8l+D62W73T7p9XpnXdd9Xl1dfToYDF7Kfgj7f7xev1ar1edxHMOh/6/sA3qf4/G4KsvyeLPZ/AaO/fH19fUznv0E4H+lGz633W7f39zc/MqyDE7+mO9y/gfgT+i8C7+V77rdbvflcDj84Pf+i+8v+8/X33t63mNlWb5aLBbPh8MhHP1n3//d2Wb8B/gI+Ah4uP9N/gC1014H4FvAC+Ap5H0A/v64t/B7BfwO2Aew+zvgE+A94BbwHfgV8BnwOf0vYAD0QGv9W7+zTwAAAABJRU5ErkJggg==";
-    const buffer = Buffer.from(pngDataUrl.replace(/^data:image\/png;base64,/, ""), "base64");
-    writeFileSync(iconPath, buffer);
+  const source = resolveIconAsset();
+  if (source && existsSync(source)) {
+    try {
+      writeFileSync(iconPath, readFileSync(source));
+    } catch (err) {
+      console.warn("Tray-Icon konnte nicht kopiert werden:", err);
+    }
   }
   return iconPath;
 }
 
+// Returns the real J.A.R.V.I.S. logo as a NativeImage (from the icon.png asset).
 function getAppIcon(): Electron.NativeImage {
+  const source = resolveIconAsset();
+  if (source && existsSync(source)) {
+    const img = nativeImage.createFromPath(source);
+    if (!img.isEmpty()) return img;
+  }
+  // Last-resort fallback: a tiny generated placeholder so the window can still open.
   const pngDataUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAqdJREFUeNqMV81y00AQnZ0drCSOwxAOhBscOCEH4MCFA4eE3Blyi8M5wBnyBHAZTsAZOAEfIPgAHDhw4gRxCE5wBv6g5d2V16t1WbIsWyW1qpmdnd2Z3fl7u1o2mzW2rZTSXn321+M4to/H41o/12v6Hdu23wRBAF5/eX5+Vvf391u957K+C0fX9Qk8/67rfl4fV6vVL9d150VRfNne3n4SBEFxfn7+Vggxm81mz+/5fH5BvtPpdF7GcbwAzz+TydQB3/1hGF6EofjxeDzL8xz2r/h+38g8QggnURRBZ7wH/z4+Pn7s+/5V0zS/0+n0h0yvA+Kz3+X1ev3X8zw4H/i/1/H/B+6fgN9Q+Hq9/pFlWZfn+Xmapt9VVVWBn0jQp7C1tbX1c2Nj402SJEv+7h31562trT8zJID7N9T/J2R/sryzs7MH9wvhf5t+wDvgFvB/wA3gN/Q/g9vALeAeeL8K8n/0v4T+B/o89H84HA45D+4/wz/eA7/2ff/F1tbWZ1EUfXdd94fnv/vB/R78z1dZlt0VRfHN932470m1Cq+vr58Ph8N319fXb87Ozj7s7e19/F/lC71/Wffz+XxZluXX0NDfA/tB+F+xWq1+d7vdq6Ojo+XJycnx7e3tr1+T0t9j8l+D62W73T7p9XpnXdd9Xl1dfToYDF7Kfgj7f7xev1ar1edxHMOh/6/sA3qf4/G4KsvyeLPZ/AaO/fH19fUznv0E4H+lGz633W7f39zc/MqyDE7+mO9y/gfgT+i8C7+V77rdbvflcDj84Pf+i+8v+8/X33t63mNlWb5aLBbPh8MhHP1n3//d2Wb8B/gI+Ah4uP9N/gC1014H4FvAC+Ap5H0A/v64t/B7BfwO2Aew+zvgE+A94BbwHfgV8BnwOf0vYAD0QGv9W7+zTwAAAABJRU5ErkJggg==";
   return nativeImage.createFromDataURL(pngDataUrl);
+}
+
+// ---------------------------------------------------------------------------
+// Auto-Update (electron-updater)
+// Lifecycle events are forwarded to the renderer so the UI can show status.
+// Update checks only run in a packaged build (not during `electron .` dev).
+// ---------------------------------------------------------------------------
+export type UpdaterStatus =
+  | "idle"
+  | "checking"
+  | "available"
+  | "not-available"
+  | "downloading"
+  | "downloaded"
+  | "error";
+
+let updaterStatus: UpdaterStatus = "idle";
+let updaterInfo: UpdateInfo | null = null;
+let updaterError: string | null = null;
+let updaterProgress = 0;
+
+function broadcastUpdaterState(win?: BrowserWindow | null): void {
+  const payload = {
+    status: updaterStatus,
+    info: updaterInfo,
+    error: updaterError,
+    progress: updaterProgress,
+  };
+  if (win && !win.isDestroyed()) {
+    win.webContents.send("jarvis:updater-state", payload);
+  }
+  BrowserWindow.getAllWindows().forEach((w) => {
+    if (!w.isDestroyed() && w !== win) w.webContents.send("jarvis:updater-state", payload);
+  });
+}
+
+function setupAutoUpdater(): void {
+  if (!app.isPackaged) {
+    console.info("[updater] Übersprungen — nicht in gepackter Build-Umgebung.");
+    return;
+  }
+
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on("checking-for-update", () => {
+    updaterStatus = "checking";
+    updaterError = null;
+    broadcastUpdaterState();
+  });
+
+  autoUpdater.on("update-available", (info: UpdateInfo) => {
+    updaterStatus = "available";
+    updaterInfo = info;
+    updaterProgress = 0;
+    broadcastUpdaterState();
+  });
+
+  autoUpdater.on("update-not-available", (info: UpdateInfo) => {
+    updaterStatus = "not-available";
+    updaterInfo = info;
+    broadcastUpdaterState();
+  });
+
+  autoUpdater.on("download-progress", (progress) => {
+    updaterStatus = "downloading";
+    // progress.percent can be NaN during early stages — guard it.
+    updaterProgress = Number.isFinite(progress.percent) ? Math.round(progress.percent) : 0;
+    broadcastUpdaterState();
+  });
+
+  autoUpdater.on("update-downloaded", (info: UpdateInfo) => {
+    updaterStatus = "downloaded";
+    updaterInfo = info;
+    updaterProgress = 100;
+    broadcastUpdaterState();
+  });
+
+  autoUpdater.on("error", (err: Error) => {
+    updaterStatus = "error";
+    updaterError = err.message;
+    broadcastUpdaterState();
+    console.warn("[updater] Fehler:", err.message);
+  });
+
+  // IPC: manuell nach Updates suchen (z.B. Button in den Einstellungen)
+  ipcMain.handle("jarvis:check-for-updates", async () => {
+    try {
+      const result = await autoUpdater.checkForUpdatesAndNotify();
+      return { status: updaterStatus, updateAvailable: Boolean(result?.updateInfo) };
+    } catch (err) {
+      return { status: "error", error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  // IPC: App neu starten und Update installieren
+  ipcMain.handle("jarvis:quit-and-install", () => {
+    if (updaterStatus === "downloaded") {
+      autoUpdater.quitAndInstall();
+      return { ok: true };
+    }
+    return { ok: false, error: "Kein heruntergeladenes Update bereit." };
+  });
+
+  // Beim Start automatisch im Hintergrund prüfen (non-blocking, wie im Plan).
+  void autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+    console.warn("[updater] Initialer Check fehlgeschlagen:", err);
+  });
 }
 
 function createSystemTray(win: BrowserWindow): void {
@@ -1262,6 +1396,7 @@ app.whenReady().then(async () => {
     if (typeof requestId === "string") activeChats.cancel(event.sender.id, requestId);
   });
   createControlRoomWindow();
+  setupAutoUpdater();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createControlRoomWindow();

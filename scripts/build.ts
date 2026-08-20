@@ -43,6 +43,19 @@ for (const result of builds) {
 }
 
 await copyFile(join(sourceRoot, "index.html"), join(outputRoot, "index.html"));
+
+// Copy icon assets so the running app (app.getAppPath()/icons/...) can resolve them.
+const iconSrcDir = join(projectRoot, "icons");
+const iconOutDir = join(outputRoot, "icons");
+await mkdir(iconOutDir, { recursive: true });
+for (const iconFile of ["icon.png", "icon.ico", "icon.svg", "icon.icns"]) {
+  const from = join(iconSrcDir, iconFile);
+  try {
+    await copyFile(from, join(iconOutDir, iconFile));
+  } catch {
+    // optional asset — ignore if absent
+  }
+}
 const [tokens, rendererCss] = await Promise.all([
   readFile(sharedTokens, "utf8"),
   readFile(join(sourceRoot, "renderer.css"), "utf8"),

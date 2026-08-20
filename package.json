@@ -13,12 +13,47 @@
     "typecheck": "tsc --noEmit",
     "check": "bun run typecheck && bun test",
     "start": "bun run build && electron .",
-    "preview": "electron ."
+    "preview": "electron .",
+    "dist:win": "bun run build && electron-builder --win --config"
+  },
+  "build": {
+    "appId": "org.jarvis.desktop",
+    "productName": "J.A.R.V.I.S.",
+    "copyright": "Copyright © 2026 J.A.R.V.I.S.",
+    "icon": "icons/icon.ico",
+    "files": [
+      "dist/**/*",
+      "icons/**/*"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": "x64"
+        }
+      ],
+      "icon": "icons/icon.ico",
+      "artifactName": "JARVIS-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "publish": {
+      "provider": "github"
+    }
   },
   "dependencies": {
     "@jarvis/shared": "workspace:*",
     "@react-three/fiber": "8.17.10",
     "@react-three/postprocessing": "2.16.3",
+    "electron-updater": "^6.3.9",
     "postprocessing": "6.36.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -31,6 +66,7 @@
     "@types/react-dom": "^18.3.1",
     "@types/three": "0.170.0",
     "electron": "^37.2.6",
+    "electron-builder": "^25.1.8",
     "typescript": "^5.6.3"
   }
 }
