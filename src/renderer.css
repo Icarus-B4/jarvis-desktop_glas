@@ -274,6 +274,41 @@ input:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
 .shell-body[data-nav-collapsed="true"] .shell-nav-item { grid-template-columns: 1fr; padding: 0; }
 .shell-body[data-nav-collapsed="true"] .shell-sidebar-status { justify-content: center; padding: 0; }
 
+/* Auto-Update Badge — appears under "Gateway ready" when an update is available */
+.shell-sidebar-update {
+  height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  border-top: 1px solid var(--ui-stroke-quaternary);
+  color: var(--ui-text-primary);
+  font-family: var(--font-mono);
+  font-size: .5rem;
+  white-space: nowrap;
+}
+.shell-sidebar-update[hidden] { display: none; }
+.shell-sidebar-update .updater-dot {
+  width: 5px; height: 5px; flex: 0 0 auto; border-radius: 50%;
+  background: var(--amber, #f5a623); box-shadow: 0 0 8px var(--amber, #f5a623);
+}
+.shell-sidebar-update #updater-text { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; }
+.shell-sidebar-update .updater-install {
+  flex: 0 0 auto;
+  background: var(--ui-accent, #2d7ff9);
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  padding: 2px 8px;
+  font-family: var(--font-mono);
+  font-size: .48rem;
+  cursor: pointer;
+}
+.shell-sidebar-update .updater-install:hover { filter: brightness(1.15); }
+.shell-body[data-nav-collapsed="true"] .shell-sidebar-update span,
+.shell-body[data-nav-collapsed="true"] .shell-sidebar-update .updater-install { display: none; }
+.shell-body[data-nav-collapsed="true"] .shell-sidebar-update { justify-content: center; padding: 0; }
+
 .control-grid {
   min-height: 0;
   display: grid;

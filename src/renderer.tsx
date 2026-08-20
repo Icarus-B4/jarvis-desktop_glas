@@ -3350,6 +3350,53 @@ form?.addEventListener("submit", (event) => {
 reduceMotion.addEventListener("change", () => applyOrbState(previewState ?? liveState));
 window.jarvisDesktop.onChatEvent(handleChatEvent);
 window.jarvisDesktop.onLiveEvent(handleLiveEvent);
+
+// ── Auto-Update Anzeige (Sidebar, unter "Gateway ready") ──
+// Backend sendet `jarvis:updater-state` (s. main.ts). Wir zeigen ein
+// dezentes Badge + "Neu starten"-Button, sobald ein Update da ist.
+function setupUpdaterBanner(): void {
+  const banner = document.getElementById("updater-banner");
+  const text = document.getElementById("updater-text");
+  const installBtn = document.getElementById("updater-install-btn");
+  if (!banner || !text || !installBtn) return;
+
+  // Nur anzeigen, wenn wir in einem gepackten Build laufen (Dev hat keinen updater).
+  const tryShow = (state: { status: string; info?: unknown; progress?: number } | null): void => {
+    if (!state) return;
+    const status = state.status;
+    if (status === "available" || status === "downloading" || status === "downloaded") {
+      banner.hidden = false;
+      if (status === "downloading") {
+        const pct = typeof state.progress === "number" ? ` (${state.progress}%)` : "";
+        text.textContent = `Update wird geladen${pct}`;
+        installBtn.hidden = true;
+      } else if (status === "downloaded") {
+        text.textContent = "Update bereit — neu starten?";
+        installBtn.hidden = false;
+      } else {
+        text.textContent = "Update verfügbar";
+        installBtn.hidden = false;
+      }
+    } else if (status === "not-available" || status === "idle" || status === "error") {
+      banner.hidden = true;
+    }
+  };
+
+  tryShow((window as any).__updaterState ?? null);
+
+  if (window.jarvisDesktop.onUpdaterState) {
+    window.jarvisDesktop.onUpdaterState((state) => {
+      (window as any).__updaterState = state;
+      tryShow(state);
+    });
+  }
+
+  installBtn.addEventListener("click", () => {
+    void window.jarvisDesktop.quitAndInstall?.();
+  });
+}
+
+setupUpdaterBanner();
 addEntry("system", "Private Control Room initialized. Voice STT (Auto-Send) & High-Quality TTS ready.");
 void loadSettings();
 applyOrbState("idle"); void refreshRuntimeStatus().then(() => addEntry(readiness?.status === "ready" ? "system" : "warning", readiness?.status === "ready" ? "Local Qwen3 8B chat is ready." : "Local model guidance is available; no download was started."));
