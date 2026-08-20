@@ -114,7 +114,7 @@ jobs:
             Get-ChildItem $release -Recurse | Select-Object -First 30 | ForEach-Object { Write-Host $_.FullName }
             throw 'Electron win-unpacked directory not found in release/'
           }
-          $dst = Join-Path '${{ github.workspace }}' 'apps/bootstrap-installer/src-tauri/resources/win-unpopped'
+          $dst = Join-Path '${{ github.workspace }}' 'apps/bootstrap-installer/src-tauri/resources/win-unpacked'
           New-Item -ItemType Directory -Force -Path $dst | Out-Null
           # robocopy exit codes: 0=nothing copied, 1=files copied (SUCCESS),
           # 2-7=minor, 8+=real failure. CI treats any non-zero as step failure.
