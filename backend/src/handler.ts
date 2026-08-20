@@ -584,7 +584,31 @@ export function createJarvisRequestHandler(
   const memoryAdapter = options.memoryAdapter ?? new FileJarvisMemoryAdapter();
   const fileAdapter = options.fileAdapter ?? new FileJarvisFileAdapter();
   const browserAdapter = options.browserAdapter ?? new DefaultJarvisBrowserAdapter();
-  const actionEngine = options.actionEngine ?? new DefaultJarvisActionEngine();
+  // SSE fan-out for live events (JarvisLiveEvent). The renderer subscribes
+  // to /v1/events and reacts to action.intent.* events (e.g. opening a
+  // URL on the main stage when an app.open_url action completes). The
+  // backend runs in a separate process from the Electron renderer, so this
+  // is the only push channel back to the UI.
+  const liveEventSubscribers = new Set<(event: JarvisLiveEvent) => void>();
+  const publishLiveEvent = (event: JarvisLiveEvent): void => {
+    for (const subscriber of liveEventSubscribers) {
+      try {
+        subscriber(event);
+      } catch (err) {
+        console.warn("[handler] live event subscriber failed:", err);
+      }
+    }
+  };
+  const actionEngine = options.actionEngine ?? new DefaultJarvisActionEngine({
+    onIntentEvent: (intent) => {
+      publishLiveEvent({
+        id: crypto.randomUUID(),
+        type: "action.intent.updated",
+        occurredAt: new Date().toISOString(),
+        payload: { intent },
+      });
+    },
+  });
   const agentOrchestrator = options.agentOrchestrator ?? new DefaultJarvisAgentOrchestrator();
   const workflowEngine = options.workflowEngine ?? new DefaultJarvisWorkflowEngine(actionEngine);
   const knowledgeAdapter = options.knowledgeAdapter ?? new FileJarvisKnowledgeAdapter();
@@ -998,6 +1022,15 @@ export function createJarvisRequestHandler(
           };
           controller.enqueue(encoder.encode(liveSse(connectedEvent)));
 
+          const subscriber = (event: JarvisLiveEvent) => {
+            try {
+              controller.enqueue(encoder.encode(liveSse(event)));
+            } catch {
+              // Controller already closed; the abort handler below cleans up.
+            }
+          };
+          liveEventSubscribers.add(subscriber);
+
           const interval = setInterval(() => {
             try {
               const pingEvent: JarvisLiveEvent = {
@@ -1014,6 +1047,7 @@ export function createJarvisRequestHandler(
 
           request.signal.addEventListener("abort", () => {
             clearInterval(interval);
+            liveEventSubscribers.delete(subscriber);
             try { controller.close(); } catch {}
           });
         },

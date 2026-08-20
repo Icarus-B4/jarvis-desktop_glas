@@ -10,8 +10,16 @@ import type {
 
 export type UrlOpener = (url: string) => Promise<void>;
 
+// Called whenever an intent is proposed or its status changes, so the
+// Electron renderer can react to completions (e.g. open a URL on the
+// main stage) without polling. The backend runs in a separate process
+// and cannot call the renderer directly, so events travel over the
+// existing SSE channel (JarvisLiveEvent).
+export type IntentEventListener = (intent: JarvisActionIntent) => void;
+
 export type JarvisActionEngineOptions = {
   openUrl?: UrlOpener;
+  onIntentEvent?: IntentEventListener;
 };
 
 export type JarvisActionEngine = {
@@ -33,9 +41,19 @@ export class DefaultJarvisActionEngine implements JarvisActionEngine {
   private installedAppsLastFetched = 0;
   private activeExecutions = new Set<AbortController>();
   private openUrl?: UrlOpener;
+  private onIntentEvent?: IntentEventListener;
 
   constructor(options?: JarvisActionEngineOptions) {
     this.openUrl = options?.openUrl;
+    this.onIntentEvent = options?.onIntentEvent;
+  }
+
+  private emitIntentEvent(intent: JarvisActionIntent): void {
+    try {
+      this.onIntentEvent?.(intent);
+    } catch (err) {
+      console.warn("[action-engine] onIntentEvent listener failed:", err);
+    }
   }
 
   cancelAll(): void {
@@ -127,6 +145,7 @@ export class DefaultJarvisActionEngine implements JarvisActionEngine {
       updatedAt: now,
     };
     this.intents.set(intent.id, intent);
+    this.emitIntentEvent(intent);
     return intent;
   }
 
@@ -148,6 +167,7 @@ export class DefaultJarvisActionEngine implements JarvisActionEngine {
         updatedAt: now,
       };
       this.intents.set(intent.id, updated);
+      this.emitIntentEvent(updated);
       return updated;
     }
 
@@ -158,6 +178,7 @@ export class DefaultJarvisActionEngine implements JarvisActionEngine {
       updatedAt: now,
     };
     this.intents.set(intent.id, executing);
+    this.emitIntentEvent(executing);
 
     try {
       const result = await this.executeCapability(intent.capability, intent.params);
@@ -168,6 +189,7 @@ export class DefaultJarvisActionEngine implements JarvisActionEngine {
         updatedAt: new Date().toISOString(),
       };
       this.intents.set(intent.id, completed);
+      this.emitIntentEvent(completed);
       return completed;
     } catch (err) {
       const failed: JarvisActionIntent = {
@@ -177,6 +199,7 @@ export class DefaultJarvisActionEngine implements JarvisActionEngine {
         updatedAt: new Date().toISOString(),
       };
       this.intents.set(intent.id, failed);
+      this.emitIntentEvent(failed);
       return failed;
     }
   }

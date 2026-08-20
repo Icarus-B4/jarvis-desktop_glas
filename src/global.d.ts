@@ -53,6 +53,9 @@ declare global {
       barehandsPushEvent: JarvisDesktopBridge["barehandsPushEvent"];
       barehandsCursor: JarvisDesktopBridge["barehandsCursor"];
       openUrl: JarvisDesktopBridge["openUrl"];
+      checkForUpdates: JarvisDesktopBridge["checkForUpdates"];
+      quitAndInstall: JarvisDesktopBridge["quitAndInstall"];
+      onUpdaterState: JarvisDesktopBridge["onUpdaterState"];
     };
   }
 }

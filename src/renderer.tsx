@@ -2178,6 +2178,18 @@ function handleLiveEvent(event: JarvisLiveEvent): void {
     addEntry("action", `Action proposal: ${event.payload.intent.title}`, false, event.payload.intent);
     void refreshRuntimeStatus();
   } else if (event.type === "action.intent.updated") {
+    const intent = (event.payload as { intent?: JarvisActionIntent }).intent;
+    // Backend-completed actions that target the main stage (e.g. opening a
+    // URL) arrive here via the SSE live-event channel. The backend runs in
+    // a separate process, so this is the only path that triggers the stage
+    // view for voice-driven intents (no manual Approve click involved).
+    if (intent && intent.status === "completed" && (intent.capability === "app.open_url" || intent.capability === "browser.open")) {
+      const url = String(intent.params?.url ?? intent.params?.link ?? intent.params?.target ?? "");
+      if (url) {
+        setStageView("web", url);
+        addEntry("action", `🌐 "${url}" wird auf der Hauptbühne geöffnet.`);
+      }
+    }
     void refreshRuntimeStatus();
   } else if (event.type === "service.error") {
     addEntry("warning", `Service reported error: ${event.payload.error.error.message}`);
