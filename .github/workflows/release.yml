@@ -53,7 +53,11 @@ jobs:
         run: bun install
 
       - name: Build desktop app (Electron NSIS installer)
-        run: bun run dist:win
+        # --publish never overrides package.json build.publish so electron-builder
+        # only BUILDS (no self-upload). softprops/action-gh-release owns the Release.
+        run: |
+          bun run build
+          bunx electron-builder --win --config --publish never
         working-directory: ${{ github.workspace }}
 
       - name: Locate Electron NSIS installer
@@ -91,14 +95,14 @@ jobs:
           Write-Host ('Bootstrap: ' + $exe.Name)
 
       - name: Publish GitHub Release
-        # electron-builder already created/updated this Release (tag=v*) with
-        # the NSIS artifact — softprops only appends the bootstrap exe.
+        # softprops creates the Release (tag=v*) + uploads BOTH the NSIS
+        # installer (electron-builder) and the bootstrap exe (Tauri).
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          update_only: true
           name: J.A.R.V.I.S. Desktop v${{ github.ref_name }}
           files: |
+            ${{ steps.electron-installer.outputs.path }}
             ${{ steps.bootstrap-exe.outputs.path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
