@@ -1,6 +1,7 @@
 import { exec, execFile } from "node:child_process";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { copyFileSync, existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { clickCursor, setCursorNormalizedPosition, typeAtCursor } from "./cursor-bridge";
 import type {
   JarvisActionDecideRequest,
@@ -214,9 +215,28 @@ export class DefaultJarvisActionEngine implements JarvisActionEngine {
       const action = String(params.action ?? "").trim();
       const dx = typeof params.dx === "number" ? params.dx : 0;
       const dy = typeof params.dy === "number" ? params.dy : 0;
-      // Cursor-Bridge is optional at runtime; we succeed logically so the chat flow
-      // doesn't block on Windows-only side effects during normal API handling.
-      return { success: true, action, dx, dy, message: `Cursor-Aktion '${action}' protokolliert.` };
+      // Cursor-Bridge: map the abstract cursor action onto a barehands board
+      // command and ship it to the running stage (port 8794). Decoupled POST,
+      // same pattern as barehands.board / media.control.
+      const cmdAction =
+        action === "click" ? "give" :
+        action === "right_click" ? "yank" :
+        action === "move" ? "hand" :
+        action === "scroll_up" || action === "scroll_down" ? "hover" :
+        action;
+      try {
+        const cmd: Record<string, unknown> = { a: cmdAction };
+        if (dx !== 0 || dy !== 0) { cmd.dx = dx; cmd.dy = dy; }
+        const res = await fetch("http://127.0.0.1:8794/cmd", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(cmd),
+        });
+        if (!res.ok) throw new Error(`Cursor-Command fehlgeschlagen (${res.status})`);
+        return { success: true, action, cmdAction, dx, dy, message: `Cursor-Aktion '${action}' an barehands gesendet.` };
+      } catch (err) {
+        throw new Error(`barehands.cursor fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`);
+      }
     }
 
     // 3. Barehands Board: AI puts cards/images/models on the hand-tracked glass.
@@ -241,6 +261,31 @@ export class DefaultJarvisActionEngine implements JarvisActionEngine {
         return { success: true, action, message: `Board-Aktion '${action}' an barehands gesendet.` };
       } catch (err) {
         throw new Error(`barehands.board fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
+    // 4. Barehands stage_media: copy a local file into the media airlock, then
+    //    stage it on the board via add_img/hand. The airlock is the ONLY folder
+    //    the board will ever stage from (safety feature — never widen it).
+    if (capability === "barehands.stage_media") {
+      const src = String(params.src ?? "").trim();
+      if (!src) throw new Error("Kein Quell-Pfad angegeben.");
+      if (!existsSync(src)) throw new Error(`Quelldatei existiert nicht: ${src}`);
+      const airlockRoot = join(dirname(fileURLToPath(import.meta.url)), "barehands", "media");
+      const baseName = String(params.name ?? src.split(/[\\/]/).pop() ?? "image").trim() || "image";
+      const dest = join(airlockRoot, baseName.replace(/[^a-zA-Z0-9._-]/g, "_"));
+      try {
+        copyFileSync(src, dest);
+        const rel = `/media/${baseName.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+        const res = await fetch("http://127.0.0.1:8794/cmd", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ a: "add_img", src: rel }),
+        });
+        if (!res.ok) throw new Error(`Stage-Command fehlgeschlagen (${res.status})`);
+        return { success: true, staged: rel, message: `Datei '${baseName}' in die Media-Airlock kopiert und aufs Board gestellt.` };
+      } catch (err) {
+        throw new Error(`barehands.stage_media fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
 

@@ -267,6 +267,21 @@ const TOOL_DEFINITIONS: Array<Record<string, unknown>> = [
   {
     type: "function",
     function: {
+      name: "barehands.stage_media",
+      description: "Kopiert eine lokale Bild-/Modell-Datei in die barehands Media-Airlock (den einzigen Ordner, aus dem das Board stage-t) und stellt sie auf dem Glas-Board dar. Nutze das, wenn Ed ein Bild/Modell aufs Board legen will, das noch nicht in der Airlock liegt. Gib src (absoluter Pfad) und optional name an.",
+      parameters: {
+        type: "object",
+        properties: {
+          src: { type: "string", description: "Absoluter Pfad zur Quelldatei (png/jpg/webp/gif/glb/gltf)" },
+          name: { type: "string", description: "Optional: Zielname in der Airlock (sonst Dateiname)" },
+        },
+        required: ["src"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "scratchpad.write",
       description: "Schreibt eine Notiz ins Scratchpad.",
       parameters: { type: "object", properties: { text: { type: "string", description: "Der Notiztext" } }, required: ["text"] },
@@ -401,6 +416,23 @@ async function executeTool(
         });
         const updated = await actionEngine.decideAction({ intentId: intent.id, decision: "approve" });
         return JSON.stringify({ ok: true, capability: "barehands.board", intent: updated });
+      } catch (err) {
+        return JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    case "barehands.stage_media": {
+      const src = String(args.src ?? "").trim();
+      if (!src) return JSON.stringify({ error: "src parameter required" });
+      const name = String(args.name ?? "").trim() || undefined;
+      try {
+        const intent = await actionEngine.proposeAction({
+          capability: "barehands.stage_media",
+          title: "Barehands Media stage",
+          description: `Stellt ${src} auf dem Board dar`,
+          params: { src, name },
+        });
+        const updated = await actionEngine.decideAction({ intentId: intent.id, decision: "approve" });
+        return JSON.stringify({ ok: true, capability: "barehands.stage_media", intent: updated });
       } catch (err) {
         return JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) });
       }

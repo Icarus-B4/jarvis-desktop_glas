@@ -1,5 +1,19 @@
 <!DOCTYPE html>
 <!--
+=============================================================================
+GESTURE TUNING (ported from upstream jaredrhod/barehands — barehands.md / TROUBLESHOOTING.md)
+=============================================================================
+If a gesture misfires for Ed's hand or camera setup, do NOT guess at thresholds.
+Use the TUNING CLINIC protocol from upstream:
+  1. Sample the CORRECT pose and the IMPOSTOR pose with the P-sampler (the
+     gesture debug overlay shows the live metric values as you hold each pose).
+  2. Find the SEPARATING metric — the one number that is reliably different
+     between the two poses (e.g. finger spread vs. palm-flat distance).
+  3. Cut MID-CANYON — set the threshold halfway between the two sampled clusters.
+This board's gesture set lives in THE PALM ENGINE (stage.html ~line 2159) and
+THE FORCE PULL v6 / THE CLAW (~line 2254). Tune there, never in the tracker glue.
+Full write-up: docs/barehands-gesture-tuning.md
+=============================================================================
 barehands: move things on your screen with your bare hands.
 Copyright (C) 2026 Jared Rhodenizer
 
