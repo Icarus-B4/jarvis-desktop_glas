@@ -377,6 +377,20 @@ function looksLikeLyrics(text: string): boolean {
             return;
           }
 
+          // BARGE-IN: if Jarvis is currently speaking and the user starts
+          // talking, interrupt immediately — stop TTS + cancel any in-flight
+          // model generation so Ed is never talked over with stale rambling.
+          if (isTtsPlaying) {
+            stopTtsPlayback();
+            const reqId = activeRequestId;
+            if (reqId) {
+              try { window.jarvisDesktop.cancelChat(reqId); } catch { /* noop */ }
+            }
+            if (voiceStatus && !voiceStatus.muted) {
+              setLiveState("listening");
+            }
+          }
+
           // Spracheingabe DIREKT an Jarvis senden (ohne ins Textfeld zu kopieren)
           submitCurrentMessage(text);
         } else {

@@ -77,6 +77,33 @@ function loadSoulPrompt(): string {
 
 const SOUL_PROMPT = loadSoulPrompt();
 
+// Load LifeOS TELOS files (user-owned, persistent) from Documents/Jarvis-Glas/lifeos
+// and inject into the system prompt. This is Ed's persistent memory the model reads
+// every turn, so it can disambiguate entities instead of guessing. Never hardcoded.
+function loadLifeosContext(): string {
+  try {
+    const os = require("node:os");
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const dir = path.join(os.homedir(), "Documents", "Jarvis-Glas", "lifeos");
+    const parts: string[] = [];
+    for (const [file, label] of [
+      ["MISSION.md", "MISSION"],
+      ["VALUES.md", "VALUES"],
+      ["CURRENT_STATE.md", "CURRENT_STATE"],
+    ] as const) {
+      const p = path.join(dir, file);
+      if (fs.existsSync(p)) {
+        const content = fs.readFileSync(p, "utf-8").trim();
+        if (content) parts.push(`# ${label}\n${content}`);
+      }
+    }
+    return parts.join("\n\n");
+  } catch {
+    return "";
+  }
+}
+
 const dashboardFixture = {
   profile: {
     displayName: "Local Preview",
@@ -536,7 +563,11 @@ async function* runToolLoopChat(
   publishLiveEvent: (event: JarvisLiveEvent) => void,
 ): AsyncIterable<JarvisChatStreamEvent> {
   try {
-    const systemPrompt = `${JARVIS_TOOL_SYSTEM_PROMPT}\n\n${SOUL_PROMPT ? `=== AGENT IDENTITY (SOUL.md) ===\n${SOUL_PROMPT}\n=== END IDENTITY ===\n\n` : ""}Du hast Zugriff auf folgende Tools:\n- memory.search: Suche im Langzeitgedächtnis\n- files.list: Dateien auflisten\n- files.read: Datei lesen\n- web.search: Websuche\n- knowledge.query: Wissensdatenbank durchsuchen\n- app.open_url: URL auf der Hauptbühne (im Desktop) öffnen, NICHT extern\n- app.open_app: Windows-App per Action Proposal starten (nicht als Tool-Call)\n- media.control: Medien steuern\n- system.execute_command: Nur explizite Benutzereingabe mit >, $ oder /; nicht als LLM-Tool\n- system.take_screenshot: Screenshot erstellen\n- camera.open: Kamera öffnen\n- scratchpad.write: Notiz schreiben\n- barehands.toggle: Barehands-/No-Hands-Modus umschalten\n- barehands.cursor: Cursor-Bewegung/Klick/Scroll senden`;
+    // LifeOS TELOS context (user-owned, persistent across reinstalls) — injected
+    // into every turn so the model disambiguates Ed's entities (sites, apps,
+    // music service) instead of guessing. Never hardcoded; read live from disk.
+    const lifeosCtx = loadLifeosContext();
+    const systemPrompt = `${JARVIS_TOOL_SYSTEM_PROMPT}\n\n${SOUL_PROMPT ? `=== AGENT IDENTITY (SOUL.md) ===\n${SOUL_PROMPT}\n=== END IDENTITY ===\n\n` : ""}${lifeosCtx ? `=== LIFEOS CONTEXT (Ed's persistent TELOS) ===\n${lifeosCtx}\n=== END LIFEOS CONTEXT ===\n\n` : ""}Du hast Zugriff auf folgende Tools:\n- memory.search: Suche im Langzeitgedächtnis\n- files.list: Dateien auflisten\n- files.read: Datei lesen\n- web.search: Websuche\n- knowledge.query: Wissensdatenbank durchsuchen\n- app.open_url: URL auf der Hauptbühne (im Desktop) öffnen, NICHT extern\n- app.open_app: Windows-App per Action Proposal starten (nicht als Tool-Call)\n- media.control: Medien steuern\n- system.execute_command: Nur explizite Benutzereingabe mit >, $ oder /; nicht als LLM-Tool\n- system.take_screenshot: Screenshot erstellen\n- camera.open: Kamera öffnen\n- scratchpad.write: Notiz schreiben\n- barehands.toggle: Barehands-/No-Hands-Modus umschalten\n- barehands.cursor: Cursor-Bewegung/Klick/Scroll senden`;
 
     let messages: Array<{ role: string; content?: string; imageData?: string; tool_calls?: unknown; tool_call_id?: string }> = [
       { role: "system", content: systemPrompt },

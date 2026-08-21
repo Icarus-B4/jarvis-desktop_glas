@@ -25,6 +25,7 @@
       "dist/**/*",
       "icons/**/*",
       "backend/**/*",
+      "scripts/**/*",
       "!**/.env",
       "!**/.env.*"
     ],
@@ -37,6 +38,10 @@
       {
         "from": "tools/bun",
         "to": "bun"
+      },
+      {
+        "from": "scripts",
+        "to": "scripts"
       }
     ],
     "directories": {

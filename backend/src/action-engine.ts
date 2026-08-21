@@ -485,10 +485,18 @@ export class DefaultJarvisActionEngine implements JarvisActionEngine {
 
       // A concrete title/artist is searched and played inside the user's Spotify PWA.
       if (trackQuery) {
+        // Resolve script path robustly: works in dev (process.cwd = repo root)
+        // AND in the packaged build. In the packaged build scripts/ ships as an
+        // extraResource at <app>/../scripts (one level above app.asar), so we
+        // probe both cwd-relative and app-path-relative candidates.
+        const here = dirname(fileURLToPath(import.meta.url));
         const scriptCandidates = [
           join(process.cwd(), "scripts", "spotify-control.ps1"),
           join(process.cwd(), "..", "scripts", "spotify-control.ps1"),
           join(process.cwd(), "..", "..", "scripts", "spotify-control.ps1"),
+          join(here, "..", "..", "scripts", "spotify-control.ps1"),
+          join(here, "..", "..", "..", "scripts", "spotify-control.ps1"),
+          join(here, "..", "..", "..", "..", "scripts", "spotify-control.ps1"),
         ];
         const spotifyScript = scriptCandidates.find((candidate) => existsSync(candidate));
         if (!spotifyScript) throw new Error("Spotify-Steuerskript nicht gefunden.");
