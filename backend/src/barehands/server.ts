@@ -22,6 +22,16 @@ export type BarehandsServerHandle = {
   get root(): string;
 };
 
+// Live ring-state mirror, fed by Jarvis' own agent loop via
+// updateBarehandsLiveState() (see bottom of file). The upstream server.py
+// reads these from ./state/ files written by assistant hooks; Jarvis has no
+// such files, so we mirror the live KI state here instead. GET /orb prefers
+// the mirror and falls back to the file-based path so the upstream behaviour
+// keeps working if files are ever written.
+let liveOrbState: "idle" | "listening" | "thinking" | "speaking" = "idle";
+let liveOrbMood = "green";
+let liveOrbWave: number[] | null = null;
+
 const DEFAULT_CONFIG: BarehandsConfig = {
   name: "Assistant",
   port: 8794,
@@ -188,31 +198,32 @@ export function createBarehandsServer(options: BarehandsServerOptions) {
     }
 
     if (pathname === "/barehands/orb") {
-      const sDir = join(root, "state");
+      // Prefer the live mirror fed by Jarvis' agent loop; fall back to the
+      // upstream file-based state so the documented server.py behaviour
+      // (state/state, state/mood.json, state/wave.json) still wins if present.
       const out: Record<string, unknown> = {
-        state: "idle",
-        mood: "green",
-        wave: null as unknown,
+        state: liveOrbState,
+        mood: liveOrbMood,
+        wave: liveOrbWave,
       };
+      // File fallback only overrides when the mirror is at its default idle
+      // and the files actually exist (so a hand-written state always shows).
       try {
+        const sDir = join(root, "state");
         const s = readFileSync(join(sDir, "state"), "utf-8").trim().toLowerCase();
-        if (["idle", "listening", "thinking", "speaking"].includes(s)) out.state = s;
-      } catch {
-        // no state file, idle default
-      }
-      try {
+        if (["idle", "listening", "thinking", "speaking"].includes(s)) {
+          if (liveOrbState === "idle") out.state = s;
+        }
         const m = JSON.parse(readFileSync(join(sDir, "mood.json"), "utf-8"));
-        if (Date.now() - Number(m.ts ?? 0) < 45000) out.mood = m.mood ?? "green";
-      } catch {
-        // no mood file
-      }
-      if (out.state === "speaking") {
-        try {
+        if (Date.now() - Number(m.ts ?? 0) < 45000) {
+          if (liveOrbMood === "green") out.mood = m.mood ?? "green";
+        }
+        if (out.state === "speaking") {
           const w = JSON.parse(readFileSync(join(sDir, "wave.json"), "utf-8"));
           if (Date.now() - Number(w.ts ?? 0) < 600) out.wave = (w.samples ?? []).slice(0, 64);
-        } catch {
-          // no wave data
         }
+      } catch {
+        // no state files — keep the live mirror values
       }
       return Response.json(out, {
         headers: { "Cache-Control": "no-store" },
@@ -515,4 +526,26 @@ export function createBarehandsServer(options: BarehandsServerOptions) {
       return root;
     },
   } as BarehandsServerHandle;
+}
+
+/**
+ * Bridge Jarvis' live agent state into the barehands ring.
+ *
+ * The upstream server.py reads ring state from ./state/ files written by
+ * assistant hooks. Jarvis has no such files — its KI state lives in the
+ * agent loop. Call this from the handler whenever the agent state changes
+ * (listening/thinking/speaking/idle); the barehands stage.html picks it up
+ * via GET /orb. Added without touching BarehandsServerHandle so existing
+ * callers and the Electron wiring stay unchanged.
+ */
+export function updateBarehandsLiveState(
+  state: "idle" | "listening" | "thinking" | "speaking",
+  mood?: "green" | "amber" | "red",
+  wave?: number[] | null,
+): void {
+  if (["idle", "listening", "thinking", "speaking"].includes(state)) {
+    liveOrbState = state;
+  }
+  if (mood) liveOrbMood = mood;
+  if (wave !== undefined) liveOrbWave = wave && wave.length ? wave.slice(0, 64) : null;
 }

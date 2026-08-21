@@ -219,6 +219,31 @@ export class DefaultJarvisActionEngine implements JarvisActionEngine {
       return { success: true, action, dx, dy, message: `Cursor-Aktion '${action}' protokolliert.` };
     }
 
+    // 3. Barehands Board: AI puts cards/images/models on the hand-tracked glass.
+    // Decoupled POST to the barehands service (port 8794, same as media.control's
+    // decoupled PowerShell call). The service validates the media airlock for src.
+    if (capability === "barehands.board") {
+      const action = String(params.action ?? "").trim();
+      if (!action) throw new Error("Keine Board-Aktion angegeben.");
+      try {
+        const cmd: Record<string, unknown> = { a: action };
+        if (typeof params.title === "string" && params.title) cmd.title = params.title;
+        if (typeof params.body === "string" && params.body) cmd.body = params.body;
+        if (typeof params.src === "string" && params.src) cmd.src = params.src;
+        if (typeof params.file === "string" && params.file) cmd.file = params.file;
+        if (params.open === 1) cmd.open = 1;
+        const res = await fetch("http://127.0.0.1:8794/cmd", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(cmd),
+        });
+        if (!res.ok) throw new Error(`Board-Command fehlgeschlagen (${res.status})`);
+        return { success: true, action, message: `Board-Aktion '${action}' an barehands gesendet.` };
+      } catch (err) {
+        throw new Error(`barehands.board fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
     // 1. Webseiten auf der Hauptbühne öffnen (NICHT externer Browser)
     // Die tatsächliche Anzeige erfolgt im Renderer via setStageView("web", url).
     // Hier wird nur die URL bestätigt, keine externe Ausführung getriggert.

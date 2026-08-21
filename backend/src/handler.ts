@@ -31,6 +31,7 @@ import {
 import { DefaultJarvisBrowserAdapter, type JarvisBrowserAdapter } from "./browser-adapter";
 import { DefaultJarvisDiagnosticsAdapter, type JarvisDiagnosticsAdapter } from "./diagnostics-adapter";
 import { FileJarvisFileAdapter, type JarvisFileAdapter } from "./file-adapter";
+import { updateBarehandsLiveState } from "./barehands/server";
 import { FileJarvisKnowledgeAdapter, type JarvisKnowledgeAdapter } from "./knowledge-adapter";
 import {
   FileJarvisMemoryAdapter,
@@ -247,6 +248,25 @@ const TOOL_DEFINITIONS: Array<Record<string, unknown>> = [
   {
     type: "function",
     function: {
+      name: "barehands.board",
+      description: "Legt eine Karte, ein Bild oder ein 3D-Modell auf das barehands Glas-Board (Hand-Tracking-Interface). Wenn Ed etwas SEHEN will ('zeig mir', 'leg das aufs board', 'zeig meine Notizen zu X'): finde das Ding und stelle es auf das Glas, statt es nur als Text zu beschreiben. Aktionen: add_card (Titel+Text), present (Spotlight mittig), add_img/hand (Bild/Modell aus dem media-Airlock via src), clear (Board leeren), reset. Optional title/body/src/file/open.",
+      parameters: {
+        type: "object",
+        properties: {
+          action: { type: "string", description: "add_card | present | add_img | hand | give | clear | reset | yank | hover | explode | assemble" },
+          title: { type: "string", description: "Karten-Titel" },
+          body: { type: "string", description: "Karten-Text/Inhalt" },
+          src: { type: "string", description: "Bild/Modell-Pfad aus dem media-Airlock (nur Dateien in media/)" },
+          file: { type: "string", description: "Notiz-Pfad (orb-index/relativ) zum Spotlighten" },
+          open: { type: "number", description: "1 = Notiz geöffnet spotliften" },
+        },
+        required: ["action"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "scratchpad.write",
       description: "Schreibt eine Notiz ins Scratchpad.",
       parameters: { type: "object", properties: { text: { type: "string", description: "Der Notiztext" } }, required: ["text"] },
@@ -364,6 +384,27 @@ async function executeTool(
         return JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) });
       }
     }
+    case "barehands.board": {
+      const action = String(args.action ?? "").trim();
+      if (!action) return JSON.stringify({ error: "action parameter required" });
+      const title = String(args.title ?? "").trim();
+      const body = String(args.body ?? "").trim();
+      const src = String(args.src ?? "").trim() || undefined;
+      const file = String(args.file ?? "").trim() || undefined;
+      const open = args.open === 1 || args.open === "1" ? 1 : undefined;
+      try {
+        const intent = await actionEngine.proposeAction({
+          capability: "barehands.board",
+          title: `Barehands Board: ${action}`,
+          description: title ? `${action} → ${title}` : `Board-Aktion ${action}`,
+          params: { action, title: title || undefined, body: body || undefined, src, file, open },
+        });
+        const updated = await actionEngine.decideAction({ intentId: intent.id, decision: "approve" });
+        return JSON.stringify({ ok: true, capability: "barehands.board", intent: updated });
+      } catch (err) {
+        return JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
     case "system.execute_command": {
       const command = String(args.command ?? "").trim();
       if (!command) return JSON.stringify({ error: "command parameter required" });
@@ -454,6 +495,7 @@ async function* runToolLoopChat(
   fileAdapter: JarvisFileAdapter,
   browserAdapter: JarvisBrowserAdapter,
   knowledgeAdapter: JarvisKnowledgeAdapter,
+  publishLiveEvent: (event: JarvisLiveEvent) => void,
 ): AsyncIterable<JarvisChatStreamEvent> {
   try {
     const systemPrompt = `${JARVIS_TOOL_SYSTEM_PROMPT}\n\n${SOUL_PROMPT ? `=== AGENT IDENTITY (SOUL.md) ===\n${SOUL_PROMPT}\n=== END IDENTITY ===\n\n` : ""}Du hast Zugriff auf folgende Tools:\n- memory.search: Suche im Langzeitgedächtnis\n- files.list: Dateien auflisten\n- files.read: Datei lesen\n- web.search: Websuche\n- knowledge.query: Wissensdatenbank durchsuchen\n- app.open_url: URL auf der Hauptbühne (im Desktop) öffnen, NICHT extern\n- app.open_app: Windows-App per Action Proposal starten (nicht als Tool-Call)\n- media.control: Medien steuern\n- system.execute_command: Nur explizite Benutzereingabe mit >, $ oder /; nicht als LLM-Tool\n- system.take_screenshot: Screenshot erstellen\n- camera.open: Kamera öffnen\n- scratchpad.write: Notiz schreiben\n- barehands.toggle: Barehands-/No-Hands-Modus umschalten\n- barehands.cursor: Cursor-Bewegung/Klick/Scroll senden`;
@@ -471,6 +513,12 @@ async function* runToolLoopChat(
     const seenToolCalls = new Set<string>();
     let finalContent = "";
 
+    // Ring-state bridge: the agent is now reasoning. Mirrored into the
+    // barehands ring via updateBarehandsLiveState (GET /orb) and fanned out
+    // as a live event so any other consumer can react.
+    publishLiveEvent({ id: crypto.randomUUID(), type: "orb.state.changed", occurredAt: new Date().toISOString(), payload: { state: "thinking" } });
+    updateBarehandsLiveState("thinking");
+
     toolLoop: for (let turn = 0; turn < maxTurns; turn++) {
       const result = await xaiAdapter.completeChat({
         messages,
@@ -481,6 +529,8 @@ async function* runToolLoopChat(
 
       if (!result.toolCalls || result.toolCalls.length === 0) {
         finalContent = result.content || "";
+        publishLiveEvent({ id: crypto.randomUUID(), type: "orb.state.changed", occurredAt: new Date().toISOString(), payload: { state: "responding" } });
+        updateBarehandsLiveState("speaking");
         break;
       }
 
@@ -540,12 +590,18 @@ async function* runToolLoopChat(
     yield { type: "chat.start", requestId: chatReq.requestId, model: chatReq.model ?? "grok-4.1-fast" };
     yield { type: "chat.delta", requestId: chatReq.requestId, delta: finalContent };
     yield { type: "chat.done", requestId: chatReq.requestId, message: { role: "assistant", content: finalContent } };
+    // Ring-state bridge: agent finished — return the ring to idle.
+    publishLiveEvent({ id: crypto.randomUUID(), type: "orb.state.changed", occurredAt: new Date().toISOString(), payload: { state: "idle" } });
+    updateBarehandsLiveState("idle");
   } catch (err) {
     if (signal.aborted) {
       yield { type: "chat.cancelled", requestId: chatReq.requestId };
     } else {
       yield { type: "chat.error", requestId: chatReq.requestId, error: { code: "tool_loop_failed", message: err instanceof Error ? err.message : "Tool-Loop fehlgeschlagen." } };
     }
+    // Ring-state bridge: any abnormal end returns the ring to idle.
+    publishLiveEvent({ id: crypto.randomUUID(), type: "orb.state.changed", occurredAt: new Date().toISOString(), payload: { state: "idle" } });
+    updateBarehandsLiveState("idle");
   }
 }
 
@@ -881,6 +937,83 @@ export function createJarvisRequestHandler(
       return Response.json(snapshot, { status: 200, headers });
     }
 
+    // --- LifeOS Brain State (user-owned TELOS files, never hardcoded) ---
+    if (pathname === "/v1/lifeos/state" && request.method === "GET") {
+      try {
+        const os = await import("node:os");
+        const fs = await import("node:fs/promises");
+        const path = await import("node:path");
+        const lifeosDir = path.join(os.homedir(), "AppData", "Roaming", "Jarvis-Glas", "lifeos");
+        const read = async (name: string): Promise<string> => {
+          try { return await fs.readFile(path.join(lifeosDir, name), "utf-8"); } catch { return ""; }
+        };
+        const mission = await read("MISSION.md");
+        const values = await read("VALUES.md");
+        const current = await read("CURRENT_STATE.md");
+        const initialized = mission.length > 0 || values.length > 0 || current.length > 0;
+        return Response.json({ initialized, mission, values, current }, { status: 200, headers });
+      } catch {
+        return Response.json({ initialized: false, mission: "", values: "", current: "" }, { status: 200, headers });
+      }
+    }
+
+    if (pathname === "/v1/lifeos/interview" && request.method === "POST") {
+      try {
+        const body = await request.json() as { mission?: string; values?: string; current?: string };
+        const os = await import("node:os");
+        const fs = await import("node:fs/promises");
+        const path = await import("node:path");
+        const lifeosDir = path.join(os.homedir(), "AppData", "Roaming", "Jarvis-Glas", "lifeos");
+        await fs.mkdir(lifeosDir, { recursive: true });
+        if (typeof body.mission === "string" && body.mission.trim()) await fs.writeFile(path.join(lifeosDir, "MISSION.md"), body.mission.trim() + "\n", "utf-8");
+        if (typeof body.values === "string" && body.values.trim()) await fs.writeFile(path.join(lifeosDir, "VALUES.md"), body.values.trim() + "\n", "utf-8");
+        if (typeof body.current === "string" && body.current.trim()) await fs.writeFile(path.join(lifeosDir, "CURRENT_STATE.md"), body.current.trim() + "\n", "utf-8");
+        return Response.json({ ok: true }, { status: 200, headers });
+      } catch {
+        return Response.json({ ok: false, error: "Failed to save LifeOS state" }, { status: 500, headers });
+      }
+    }
+
+    // --- Real-Time News Feed (RSS, user-configurable sources, no API key required) ---
+    if (pathname === "/v1/news" && request.method === "POST") {
+      try {
+        let feeds: string[] = [];
+        try {
+          const body = await request.json() as { feeds?: string[] };
+          if (Array.isArray(body.feeds)) feeds = body.feeds.filter((f) => typeof f === "string" && f.startsWith("http"));
+        } catch { /* empty -> defaults below */ }
+        if (feeds.length === 0) {
+          feeds = [
+            "https://www.tagesschau.de/index/rss2.xml",
+            "https://feeds.bbci.co.uk/news/world/rss.xml",
+          ];
+        }
+        const fetched = await Promise.all(
+          feeds.slice(0, 10).map(async (url) => {
+            try {
+              const res = await fetch(url, { signal: AbortSignal.timeout(4000), headers: { "User-Agent": "JARVIS/1.0" } });
+              if (!res.ok) return [] as any[];
+              const xml = await res.text();
+              const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].slice(0, 4);
+              return items.map((m) => {
+                const block = m[1];
+                const title = block.match(/<title>([\s\S]*?)<\/title>/)?.[1]?.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1")?.trim() ?? "";
+                const link = block.match(/<link>([\s\S]*?)<\/link>/)?.[1]?.trim() ?? "";
+                const tag = url.includes("srf") ? "🇨🇭 SCHWEIZ" : url.includes("bbc") ? "🌍 WELT" : url.includes("tagesschau") ? "🇩🇪 DE" : "🔗 FEED";
+                return { title, link, tag };
+              }).filter((i) => i.title && i.link);
+            } catch {
+              return [] as any[];
+            }
+          }),
+        );
+        const flat = fetched.flat().slice(0, 12);
+        return Response.json(flat, { status: 200, headers });
+      } catch {
+        return Response.json([], { status: 200, headers });
+      }
+    }
+
     // --- System Configuration Endpoints ---
     if (pathname === "/v1/config" && request.method === "GET") {
       const xaiApiKey = getXaiApiKey();
@@ -1001,7 +1134,7 @@ export function createJarvisRequestHandler(
         const toolLoopAdapter = xaiAdapter as unknown as {
           completeChat(request: { messages: Array<{ role: string; content?: string; imageData?: string; tool_calls?: unknown; tool_call_id?: string }>; tools?: Array<Record<string, unknown>>; model?: string; signal?: AbortSignal }): Promise<{ content: string; toolCalls?: Array<{ id: string; name: string; arguments: string }> }>;
         };
-        return chatStream(runToolLoopChat(chatReq, signal as AbortSignal, toolLoopAdapter, actionEngine, memoryAdapter, fileAdapter, browserAdapter, knowledgeAdapter), chatReq.requestId);
+        return chatStream(runToolLoopChat(chatReq, signal as AbortSignal, toolLoopAdapter, actionEngine, memoryAdapter, fileAdapter, browserAdapter, knowledgeAdapter, publishLiveEvent), chatReq.requestId);
       }
 
       // Fallback: Legacy-Stream
