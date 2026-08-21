@@ -154,10 +154,7 @@ try {
     Log "Warnung: LifeOS-Installation uebersprungen (nicht kritisch) - $($_.Exception.Message)"
 }
 
-# Stage 5: finalize
-=======
 # Stage 4: finalize
->>>>>>> fix/bootstrap-installer-resource-check
 Stage "finalize" "Schliesse Installation ab..."
 Log "Installation complete."
 exit 0
