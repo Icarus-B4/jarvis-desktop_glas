@@ -516,7 +516,13 @@ const JARVIS_TOOL_SYSTEM_PROMPT = `Du bist J.A.R.V.I.S., der persönliche Assist
 Nutze die verfügbaren Tools, um Informationen zu beschaffen oder Aktionen auszuführen.
 Wenn keine Aktion mehr nötig ist, antworte kurz und direkt auf Deutsch.
 Bei Medienwünschen gib in media.control zwingend den query-Parameter mit, wenn Song/Künstler genannt wird.
-Antworte präzise, hilfsbereit und auf Deutsch.`;
+Antworte präzise, hilfsbereit und auf Deutsch.
+
+SPRACHREGEL (ABSOLUT STRIKT):
+- Du antwortest ZWINGEND IMMER auf Deutsch, unabhängig davon, in welcher Sprache Ed schreibt oder spricht.
+- Selbst wenn Eds Nachricht auf Englisch, Dänisch, Spanisch oder einer anderen Sprache verfasst ist, ist deine Antwort auf Deutsch.
+- Beispiel: Schreibt Ed "What time is it?", antwortest du "Es ist 14:32 Uhr." — nicht auf Englisch.
+- Diese Regel hat Vorrang vor jeder Sprache, die Ed verwendet. Brich sie niemals.`;
 
 async function* runToolLoopChat(
   chatReq: JarvisChatRequest,
@@ -970,12 +976,34 @@ export function createJarvisRequestHandler(
     }
 
     // --- LifeOS Brain State (user-owned TELOS files, never hardcoded) ---
+    // Persistenter Ort: Documents\Jarvis-Glas\lifeos (ueberlebt Reinstall, da ausserhalb
+    // des Installer-Scope). Einmalige Migration aus dem alten Roaming-Pfad.
+    function getLifeosDir(): string {
+      const os = require("node:os");
+      const fs = require("node:fs");
+      const path = require("node:path");
+      const persistent = path.join(os.homedir(), "Documents", "Jarvis-Glas", "lifeos");
+      const legacy = path.join(os.homedir(), "AppData", "Roaming", "Jarvis-Glas", "lifeos");
+      try {
+        if (!fs.existsSync(persistent)) {
+          fs.mkdirSync(persistent, { recursive: true });
+          if (fs.existsSync(legacy)) {
+            for (const f of ["MISSION.md", "VALUES.md", "CURRENT_STATE.md"]) {
+              const src = path.join(legacy, f);
+              if (fs.existsSync(src)) fs.copyFileSync(src, path.join(persistent, f));
+            }
+          }
+        }
+      } catch { /* non-fatal */ }
+      return persistent;
+    }
+
     if (pathname === "/v1/lifeos/state" && request.method === "GET") {
       try {
         const os = await import("node:os");
         const fs = await import("node:fs/promises");
         const path = await import("node:path");
-        const lifeosDir = path.join(os.homedir(), "AppData", "Roaming", "Jarvis-Glas", "lifeos");
+        const lifeosDir = getLifeosDir();
         const read = async (name: string): Promise<string> => {
           try { return await fs.readFile(path.join(lifeosDir, name), "utf-8"); } catch { return ""; }
         };
@@ -995,7 +1023,7 @@ export function createJarvisRequestHandler(
         const os = await import("node:os");
         const fs = await import("node:fs/promises");
         const path = await import("node:path");
-        const lifeosDir = path.join(os.homedir(), "AppData", "Roaming", "Jarvis-Glas", "lifeos");
+        const lifeosDir = getLifeosDir();
         await fs.mkdir(lifeosDir, { recursive: true });
         if (typeof body.mission === "string" && body.mission.trim()) await fs.writeFile(path.join(lifeosDir, "MISSION.md"), body.mission.trim() + "\n", "utf-8");
         if (typeof body.values === "string" && body.values.trim()) await fs.writeFile(path.join(lifeosDir, "VALUES.md"), body.values.trim() + "\n", "utf-8");

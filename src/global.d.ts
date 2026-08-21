@@ -33,6 +33,9 @@ declare global {
       addKnowledgeItem: JarvisDesktopBridge["addKnowledgeItem"];
       deleteKnowledgeItem: JarvisDesktopBridge["deleteKnowledgeItem"];
       getDiagnostics: JarvisDesktopBridge["getDiagnostics"];
+      getNewsFeed: JarvisDesktopBridge["getNewsFeed"];
+      getLifeOSState: JarvisDesktopBridge["getLifeOSState"];
+      saveLifeOSInterview: JarvisDesktopBridge["saveLifeOSInterview"];
       startChat: JarvisDesktopBridge["startChat"];
       cancelChat: JarvisDesktopBridge["cancelChat"];
       onChatEvent: JarvisDesktopBridge["onChatEvent"];

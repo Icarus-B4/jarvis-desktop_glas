@@ -26,6 +26,8 @@ export type DesktopRuntimeStatus = {
   serviceBaseUrl: string;
   health: unknown;
   startupError?: string;
+  version: string;
+  barehandsVersion: string;
 };
 
 export type JarvisFileInfo = {
@@ -109,6 +111,9 @@ export type JarvisDesktopBridge = {
   addKnowledgeItem(request: JarvisKnowledgeAddRequest): Promise<JarvisKnowledgeItem>;
   deleteKnowledgeItem(id: string): Promise<boolean>;
   getDiagnostics(): Promise<JarvisDiagnosticsSnapshot>;
+  getNewsFeed(): Promise<Array<{ title: string; tag: string; link: string }>>;
+  getLifeOSState(): Promise<{ initialized: boolean; mission: string; values: string; current: string }>;
+  saveLifeOSInterview(payload: { mission: string; values: string; current: string }): Promise<{ ok: boolean }>;
   startChat(request: JarvisChatRequest): void;
   cancelChat(requestId: string): void;
   onChatEvent(listener: (event: JarvisChatStreamEvent) => void): () => void;
@@ -164,6 +169,9 @@ const bridge: JarvisDesktopBridge = {
   addKnowledgeItem: (request: JarvisKnowledgeAddRequest): Promise<JarvisKnowledgeItem> => ipcRenderer.invoke("jarvis:add-knowledge", request),
   deleteKnowledgeItem: (id: string): Promise<boolean> => ipcRenderer.invoke("jarvis:delete-knowledge", id),
   getDiagnostics: (): Promise<JarvisDiagnosticsSnapshot> => ipcRenderer.invoke("jarvis:get-diagnostics"),
+  getNewsFeed: (): Promise<Array<{ title: string; tag: string; link: string }>> => ipcRenderer.invoke("jarvis:get-news-feed"),
+  getLifeOSState: (): Promise<{ initialized: boolean; mission: string; values: string; current: string }> => ipcRenderer.invoke("jarvis:get-lifeos-state"),
+  saveLifeOSInterview: (payload: { mission: string; values: string; current: string }): Promise<{ ok: boolean }> => ipcRenderer.invoke("jarvis:save-lifeos-interview", payload),
   startChat: (request: JarvisChatRequest): void => ipcRenderer.send("jarvis:chat-start", request),
   cancelChat: (requestId: string): void => ipcRenderer.send("jarvis:chat-cancel", requestId),
   onChatEvent(listener: (event: JarvisChatStreamEvent) => void): () => void {

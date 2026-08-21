@@ -36,7 +36,7 @@ export class DefaultJarvisVoiceAdapter implements JarvisVoiceAdapter {
 // toward German transcription even when the audio is noisy or contains
 // proper nouns / website names (e.g. "Webstark", "Wikipedia"), which
 // Whisper otherwise misreads as other languages (Danish, Kauderwelsch).
-const XAI_STT_PROMPT = "Transkribiere ausschließlich auf Deutsch. Erkenne deutsche Befehle, Webseiten-Namen (z. B. Webstark, Wikipedia) und Eigennamen korrekt. Gib nur den gesprochenen Text zurück.";
+const XAI_STT_PROMPT = "Transkribiere ausschließlich auf Deutsch. Erkenne deutsche Befehle, Webseiten-Namen (z. B. Webstark, Wikipedia) und Eigennamen korrekt. Auch wenn die Sprache dänisch, niederländisch oder englisch ÄHNLICH klingt, ist die Transkription auf Deutsch. Gib nur den gesprochenen Text zurück.";
 
 export async function transcribeWithXai(
   audioData: ArrayBuffer,

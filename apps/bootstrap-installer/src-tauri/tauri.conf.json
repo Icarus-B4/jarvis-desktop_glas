@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "J.A.R.V.I.S Setup",
+  "productName": "Jarvis-Glas Setup",
   "version": "0.1.0",
   "identifier": "com.jarvis.desktop.setup",
   "build": {
@@ -12,7 +12,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "J.A.R.V.I.S. Setup",
+        "title": "Jarvis-Glas Setup",
         "width": 720,
         "height": 560,
         "minWidth": 640,
@@ -31,16 +31,16 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis", "app"],
+    "targets": ["app"],
     "resources": {
       "resources/install.ps1": "install.ps1",
       "resources/win-unpacked": "win-unpacked"
     },
     "category": "DeveloperTool",
-    "shortDescription": "J.A.R.V.I.S. Desktop Installer",
-    "longDescription": "Installs J.A.R.V.I.S. Desktop — the private control room assistant shell.",
-    "publisher": "J.A.R.V.I.S.",
-    "copyright": "Copyright © 2026 J.A.R.V.I.S.",
+    "shortDescription": "Jarvis-Glas Desktop Installer",
+    "longDescription": "Installs Jarvis-Glas Desktop — the private control room assistant shell.",
+    "publisher": "Jarvis-Glas",
+    "copyright": "Copyright © 2026 Jarvis-Glas",
     "icon": [
       "../../../icons/32x32.png",
       "../../../icons/128x128.png",

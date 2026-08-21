@@ -610,7 +610,44 @@ function applyOrbState(state: JarvisOrbState): void {
   renderLandingOrb(state);
   document.querySelectorAll<HTMLButtonElement>("[data-state-preview]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.statePreview === state && Boolean(previewState))));
 }
-function setLiveState(state: JarvisOrbState): void { liveState = state; if (!previewState) applyOrbState(state); }
+function setLiveState(state: JarvisOrbState): void {
+  if (liveState === state) return; // nur bei echtem Wechsel — setPhase sonst im Audio-Loop hunderte x/s
+  liveState = state;
+  // 7-Phase Gap-Closing Monitor: Orb-State auf Verarbeitungsphase mappen (0 Overhead).
+  const phaseByState: Record<string, string> = {
+    listening: "1",   // Signals — Empfang läuft
+    thinking: "3",    // ISA Gap — Analyse/Diff
+    responding: "6",  // Verify — Ergebnis wird ausgeliefert
+    ready: "7",       // Anneal — Schleife geschlossen / Ruhe
+    idle: "7",
+    disconnected: "7",
+    error: "7",
+  };
+  setPhase(phaseByState[state] ?? "1");
+  if (!previewState) applyOrbState(state);
+}
+
+// 7-Phase Gap-Closing Monitor: aktive Phase setzen (live aus Jarvis-Verarbeitung).
+let phaseDetailEl: HTMLElement | null = null;
+const phaseDetailText: Record<string, string> = {
+  "1": "Signals — Live-Eingabe (Sprache/Command/Typed) wird empfangen.",
+  "2": "Current — Aktueller Zustand von System, User und Umgebung wird erfasst.",
+  "3": "ISA Gap — Diff zu Ideal State (LifeOS MISSION/VALUES/CURRENT). Wo ist die Lücke?",
+  "4": "Plan — Handlungsplan + Tool-Auswahl wird erstellt.",
+  "5": "Execute — Aktion läuft über Tools / Automatisierung.",
+  "6": "Verify — Ergebnis wird geprüft (Messung, nicht Annahme).",
+  "7": "Anneal — Neuer Zustand festigen, aus der Schleife lernen.",
+};
+function setPhase(phase: string): void {
+  const steps = Array.from(document.querySelectorAll<HTMLElement>(".phase-step[data-phase]"));
+  let matched = false;
+  steps.forEach((s) => {
+    const active = s.getAttribute("data-phase") === phase;
+    if (active) matched = true;
+    s.classList.toggle("phase-step--active", active);
+  });
+  if (phaseDetailEl && matched) phaseDetailEl.textContent = phaseDetailText[phase] ?? "";
+}
 
 const orbStageEl = requiredElement<HTMLElement>(".orb-stage");
 const stageActionHudEl = requiredElement<HTMLElement>(".stage-action-hud");
@@ -783,9 +820,16 @@ let barehandsSystemCursorMode = false;
 function setStageView(view: "action" | "camera" | "screenshot" | "code" | "morning-brief" | "barehands" | "web" | "lifeos" | "settings" | "knowledge" | "workflows" | "agents" | "memory" | "files" | "browser" | null, data?: any): void {
   const allStageViews = Array.from(document.querySelectorAll<HTMLElement>("[data-stage-view]"));
 
+  // Unified hide: collapse every surface (stage views + separate shell panels + drawer)
+  // so only ONE surface is ever visible. Without this, toggling between a stage view
+  // and the diagnostics/service panel left the old one on screen.
+  allStageViews.forEach((el) => { el.hidden = true; });
+  if (diagnosticsPanelEl) diagnosticsPanelEl.hidden = true;
+  if (servicePanelEl) servicePanelEl.hidden = true;
+  if (hudDrawerEl) hudDrawerEl.hidden = true;
+
   if (!view) {
     orbStageEl.dataset.stageMode = "hero";
-    allStageViews.forEach((el) => { el.hidden = true; });
     stageActionHudEl.hidden = true;
     stageCameraViewEl.hidden = true;
     stageScreenshotViewEl.hidden = true;
@@ -882,22 +926,6 @@ document.querySelectorAll<HTMLButtonElement>("[data-stage-close-media]").forEach
 
 // --- HUD Morning Briefing Functions ---
 
-const mockNews = {
-  schweiz: [
-    { title: "SRF News: Schweizer Wirtschaft zeigt sich stabil im neuen Quartal", tag: "🇨🇭 SCHWEIZ", link: "https://www.srf.ch/news" },
-    { title: "Schweizer Alpen: Neue Nachhaltigkeits-Initiative für den Bergtourismus", tag: "🇨🇭 SCHWEIZ", link: "https://www.srf.ch/news" },
-    { title: "Innovationsstandort Schweiz: Ausbau von KI & IoT in Forschungsprojekten", tag: "🇨🇭 SCHWEIZ", link: "https://www.srf.ch/news" },
-  ],
-  telebiel: [
-    { title: "TeleBielingue: Umbau am Zentralplatz in Biel beginnt nächsten Monat", tag: "⛵ BIEL/BIENNE", link: "https://www.telebielingue.ch" },
-    { title: "Bieler Seeland: Rekordbesucherzahlen am Bielersee-Strandbad gemeldet", tag: "⛵ BIEL/BIENNE", link: "https://www.telebielingue.ch" },
-  ],
-  welt: [
-    { title: "Weltpolitik: Neue Klimaziele beim internationalen Gipfel verhandelt", tag: "🌐 WELT", link: "https://www.welt.de" },
-    { title: "Raumfahrt: Mars-Rover findet neue Hinweise auf früheres Vorkommen von Wasser", tag: "🌐 WELT", link: "https://www.welt.de" },
-  ]
-};
-
 function getWeatherInfo(code: number) {
   if (code === 0)
     return { icon: "☀️", desc: "Sonnig & Klar" };
@@ -978,20 +1006,30 @@ function renderNewsFeed() {
   if (!newsFeedGridEl)
     return;
   newsFeedGridEl.replaceChildren();
-  const mixedNews = [
-    mockNews.schweiz[0],
-    mockNews.telebiel[0],
-    mockNews.welt[0],
-    mockNews.schweiz[1]
-  ];
-  mixedNews.forEach((item) => {
-    const card = document.createElement("div");
-    card.className = "hud-news-card";
-    card.innerHTML = `
-      <span class="hud-news-source">${item.tag}</span>
-      <h3 class="hud-news-title">${item.title}</h3>
-    `;
-    newsFeedGridEl.appendChild(card);
+  const loading = document.createElement("div");
+  loading.className = "hud-news-card";
+  loading.innerHTML = `<span class="hud-news-source">📰 NEWS</span><h3 class="hud-news-title">Lade aktuelle Nachrichten…</h3>`;
+  newsFeedGridEl.appendChild(loading);
+  void window.jarvisDesktop.getNewsFeed().then((items: Array<{ title: string; tag: string; link: string }>) => {
+    if (!newsFeedGridEl) return;
+    newsFeedGridEl.replaceChildren();
+    if (!items || items.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "hud-news-card";
+      empty.innerHTML = `<span class="hud-news-source">📰 NEWS</span><h3 class="hud-news-title">Keine Nachrichten verfügbar. Quellen in den Einstellungen konfigurieren.</h3>`;
+      newsFeedGridEl.appendChild(empty);
+      return;
+    }
+    items.slice(0, 8).forEach((item) => {
+      const card = document.createElement("div");
+      card.className = "hud-news-card";
+      const safeTitle = item.title.replace(/[<>&]/g, "");
+      card.innerHTML = `
+        <span class="hud-news-source">${item.tag}</span>
+        <h3 class="hud-news-title"><a href="${item.link}" target="_blank" rel="noopener" style="color: inherit; text-decoration: none;">${safeTitle}</a></h3>
+      `;
+      newsFeedGridEl.appendChild(card);
+    });
   });
 }
 
@@ -999,14 +1037,22 @@ async function loadMorningBriefingTasks() {
   if (!morningTaskListEl || !morningAiSuggestionsEl)
     return;
   try {
-    morningTaskListEl.innerHTML = `
-      <li class="hud-task-item">✅ LifeOS HUD Dashboard Integration</li>
-      <li class="hud-task-item">⏳ Morning Briefing & TTS System</li>
-      <li class="hud-task-item">⏳ ESP32 Sensorik & Lilygo Anbindung</li>
-    `;
-    morningAiSuggestionsEl.innerHTML = `<strong>Ed, Systemsouveränität auf OPTIMIZED (Grok + Ollama).</strong><br>Empfohlener nächster Schritt: PlatformIO im Atelier aufrufen.`;
+    const actions = await window.jarvisDesktop.getActions();
+    const proposed = actions.filter((a: any) => a.status === "proposed");
+    if (proposed.length === 0) {
+      morningTaskListEl.innerHTML = `<li class="hud-task-item">✅ Keine offenen Aufgaben</li>`;
+    } else {
+      morningTaskListEl.innerHTML = proposed
+        .slice(0, 5)
+        .map((a: any) => `<li class="hud-task-item">⏳ ${a.title ?? "Unbenannte Aktion"}</li>`)
+        .join("");
+    }
+    const memCount = actions.length;
+    morningAiSuggestionsEl.innerHTML = `<strong>System bereit.</strong><br>${memCount} Aktion(en) im Verlauf. Nutze Jarvis für Aufgaben.`;
   } catch (err) {
     console.warn("Morning Tasks konnten nicht geladen werden:", err);
+    morningTaskListEl.innerHTML = `<li class="hud-task-item">⚠️ Aufgaben nicht verfügbar</li>`;
+    morningAiSuggestionsEl.innerHTML = `System nicht erreichbar.`;
   }
 }
 
@@ -1021,7 +1067,7 @@ async function speakMorningBriefing() {
   else if (hour >= 18 || hour < 5)
     greeting = "Guten Abend";
   const weatherText = latestWeatherSummary || "Die aktuellen Wetterdaten konnten nicht geladen werden.";
-  const text = `${greeting} Master. ${weatherText} Dein Fokus liegt auf der HUD Integration und den ESP32 Sensoren. Systeme optimiert.`;
+  const text = `${greeting}. ${weatherText} Dein persönlicher Assistent ist bereit.`;
   await speakJarvisResponse(text);
   if (ttsIndicator) {
     const checkInterval = setInterval(() => {
@@ -1462,6 +1508,8 @@ async function refreshRuntimeStatus(): Promise<void> {
   if (!isServicePoweredOn) return;
   try {
     const runtime = await window.jarvisDesktop.getRuntimeStatus(); serviceEndpoint.textContent = runtime.serviceBaseUrl.replace(/^https?:\/\//, "");
+    const versionBadge = document.querySelector<HTMLElement>("[data-app-version]");
+    if (versionBadge) versionBadge.textContent = `J.A.R.V.I.S v${runtime.version} / Bearhands v${runtime.barehandsVersion}`;
     if (!isJarvisHealthSnapshot(runtime.health)) throw new Error(runtime.startupError ?? "Health payload failed validation");
     const health: JarvisHealthSnapshot = runtime.health; serviceBadge.dataset.status = "online"; serviceBadge.textContent = "Service online"; serviceUptime.textContent = `${Math.floor(health.uptimeSeconds)}s`;
     const model = await window.jarvisDesktop.getModelReadiness();
@@ -2297,6 +2345,7 @@ function handleChatEvent(event: JarvisChatStreamEvent): void {
 function handleLiveEvent(event: JarvisLiveEvent): void {
   if (event.type === "service.connected") {
     addEntry("system", `Live event stream connected (service v${event.payload.serviceVersion}).`);
+    void loadLifeOSData(); // auto-open LifeOS onboarding on first launch
   } else if (event.type === "orb.state.changed") {
     if (activeRequestId === undefined) setLiveState(event.payload.state);
   } else if (event.type === "diagnostics.updated") {
@@ -2402,6 +2451,7 @@ function selectShellSurface(item: HTMLElement): void {
 }
 
 function showTelemetryPanel(): void {
+  setStageView(null); // collapse all stage views + other surfaces first
   if (servicePanelEl) servicePanelEl.hidden = true;
   if (diagnosticsPanelEl) diagnosticsPanelEl.hidden = false;
   document.querySelectorAll<HTMLElement>(".shell-nav-item").forEach((navItem) => {
@@ -2412,6 +2462,7 @@ function showTelemetryPanel(): void {
 }
 
 function showServicePanel(): void {
+  setStageView(null); // collapse all stage views + other surfaces first
   if (servicePanelEl) servicePanelEl.hidden = false;
   if (diagnosticsPanelEl) diagnosticsPanelEl.hidden = true;
   document.querySelectorAll<HTMLElement>(".shell-nav-item").forEach((navItem) => {
@@ -2601,6 +2652,7 @@ async function loadSettings(): Promise<void> {
     const dictationSelect = optionalElement<HTMLSelectElement>("[data-config-key='dictationTarget']");
     const minimizeToTrayInput = optionalElement<HTMLInputElement>("[data-config-key='minimizeToTray']");
     const closeToTrayInput = optionalElement<HTMLInputElement>("[data-config-key='closeToTray']");
+    const newsFeedsInput = optionalElement<HTMLTextAreaElement>("[data-config-key='newsFeeds']");
 
     if (xaiInput && config.xaiApiKey !== undefined) xaiInput.value = config.xaiApiKey;
     if (tavilyInput && config.tavilyApiKey !== undefined) tavilyInput.value = config.tavilyApiKey;
@@ -2643,6 +2695,7 @@ async function saveAllSettings(): Promise<boolean> {
   const dictationSelect = optionalElement<HTMLSelectElement>("[data-config-key='dictationTarget']");
   const minimizeToTrayInput = optionalElement<HTMLInputElement>("[data-config-key='minimizeToTray']");
   const closeToTrayInput = optionalElement<HTMLInputElement>("[data-config-key='closeToTray']");
+  const newsFeedsInput = optionalElement<HTMLTextAreaElement>("[data-config-key='newsFeeds']");
 
   try {
     const payload: Record<string, unknown> = {};
@@ -2659,6 +2712,12 @@ async function saveAllSettings(): Promise<boolean> {
     if (dictationSelect) payload.dictationTarget = dictationSelect.value;
     if (minimizeToTrayInput) payload.minimizeToTray = minimizeToTrayInput.checked;
     if (closeToTrayInput) payload.closeToTray = closeToTrayInput.checked;
+    if (newsFeedsInput) {
+      payload.newsFeeds = newsFeedsInput.value
+        .split(/[\n,]/)
+        .map((s) => s.trim())
+        .filter((s) => s.startsWith("http"));
+    }
 
     const enabledModules: Record<string, boolean> = {};
     document.querySelectorAll<HTMLInputElement>("[data-config-module]").forEach((cb) => {
@@ -2679,7 +2738,7 @@ async function saveAllSettings(): Promise<boolean> {
     }
 
     addEntry("system", `⚙️ ${res.message}`);
-    await refreshRuntimeStatus();
+    void refreshRuntimeStatus();
     return true;
   } catch (err) {
     addEntry("warning", `Fehler beim Speichern der Einstellungen: ${err instanceof Error ? err.message : String(err)}`);
@@ -2707,17 +2766,17 @@ optionalElement<HTMLButtonElement>("[data-save-settings-btn]")?.addEventListener
 });
 
 // Confirm Modal Handler
-optionalElement<HTMLButtonElement>("[data-confirm-save-close]")?.addEventListener("click", async () => {
+optionalElement<HTMLButtonElement>("[data-confirm-save-close]")?.addEventListener("click", () => {
   if (confirmModalEl) confirmModalEl.hidden = true;
-  const saved = await saveAllSettings();
-  if (saved) {
-    forceCloseDrawer();
-  }
+  // Save in background — never block the UI on it.
+  void saveAllSettings().then((saved) => {
+    if (saved) forceCloseDrawer();
+  });
 });
 
-optionalElement<HTMLButtonElement>("[data-confirm-discard-close]")?.addEventListener("click", async () => {
+optionalElement<HTMLButtonElement>("[data-confirm-discard-close]")?.addEventListener("click", () => {
   if (confirmModalEl) confirmModalEl.hidden = true;
-  await loadSettings();
+  void loadSettings();
   hasUnsavedSettings = false;
   forceCloseDrawer();
 });
@@ -2758,36 +2817,79 @@ interface DrawerTarget {
 
 async function loadLifeOSData(): Promise<void> {
   try {
-    if (lifeosMissionEl) {
-      try {
-        const file = await window.jarvisDesktop.readFileContent(".agent/telos/MISSION.md");
-        lifeosMissionEl.textContent = file.content;
-      } catch {
-        lifeosMissionEl.textContent = "🎯 MISSION\n• Jarvis Souveränes AI OS\n• Rich Aesthetics & Modernes Webdesign\n• Modulare & Zuverlässige Systemarchitektur";
-      }
+    const state = (await window.jarvisDesktop.getLifeOSState()) as {
+      initialized: boolean;
+      mission: string;
+      values: string;
+      current: string;
+    };
+    const setupBox = optionalElement<HTMLElement>("[data-lifeos-setup]");
+    const onboardingEl = optionalElement<HTMLElement>("[data-lifeos-onboarding]");
+    if (!state.initialized) {
+      if (setupBox) setupBox.hidden = false;
+      if (onboardingEl) onboardingEl.hidden = false; // auto-open wizard on first launch
+      if (onboardingEl) (onboardingEl as HTMLElement).focus?.();
+      if (lifeosMissionEl) lifeosMissionEl.textContent = "Noch nicht eingerichtet. Bitte fülle das Einrichtungs-Fenster aus (erscheint automatisch beim Start).";
+      if (lifeosValuesEl) lifeosValuesEl.textContent = "";
+      if (lifeosCurrentStateEl) lifeosCurrentStateEl.textContent = "";
+      return;
     }
-    if (lifeosValuesEl) {
-      try {
-        const file = await window.jarvisDesktop.readFileContent(".agent/telos/VALUES.md");
-        lifeosValuesEl.textContent = file.content;
-      } catch {
-        lifeosValuesEl.textContent = "💎 CORE VALUES\n• Plain-Text First & Ripgrep\n• Rich Aesthetics & Visual Excellence\n• Modularität & Clean Code";
-      }
-    }
-    if (lifeosCurrentStateEl) {
-      try {
-        const file = await window.jarvisDesktop.readFileContent(".agent/telos/CURRENT_STATE.md");
-        lifeosCurrentStateEl.textContent = file.content;
-      } catch {
-        lifeosCurrentStateEl.textContent = "📊 CURRENT STATE\n• Jarvis Desktop UI aktiv\n• LifeOS Integration in Arbeit";
-      }
-    }
+    if (setupBox) setupBox.hidden = true;
+    if (onboardingEl) onboardingEl.hidden = true;
+    if (lifeosMissionEl) lifeosMissionEl.textContent = state.mission || "—";
+    if (lifeosValuesEl) lifeosValuesEl.textContent = state.values || "—";
+    if (lifeosCurrentStateEl) lifeosCurrentStateEl.textContent = state.current || "—";
   } catch (err) {
     console.warn("Fehler beim Laden der LifeOS Daten:", err);
   }
 }
 
+function bindLifeOSInterviewForm(selector: string): void {
+  const form = optionalElement<HTMLFormElement>(selector);
+  if (!form) return;
+  const submit = (): void => {
+    const mission = optionalElement<HTMLTextAreaElement>("[data-lifeos-mission-input-modal]")?.value ?? "";
+    const values = optionalElement<HTMLTextAreaElement>("[data-lifeos-values-input-modal]")?.value ?? "";
+    const current = optionalElement<HTMLTextAreaElement>("[data-lifeos-current-input-modal]")?.value ?? "";
+    const statusEl = optionalElement<HTMLElement>("[data-lifeos-onboarding-status]");
+    if (statusEl) statusEl.textContent = "Speichere…";
+    void (async () => {
+      try {
+        const res = (await window.jarvisDesktop.saveLifeOSInterview({ mission, values, current })) as { ok: boolean };
+        if (res.ok) {
+          const onboardingEl = optionalElement<HTMLElement>("[data-lifeos-onboarding]");
+          if (onboardingEl) onboardingEl.hidden = true;
+          void loadLifeOSData();
+          if (statusEl) statusEl.textContent = "";
+        } else {
+          if (statusEl) statusEl.textContent = "Speichern fehlgeschlagen.";
+        }
+      } catch (err) {
+        if (statusEl) statusEl.textContent = `Fehler: ${err instanceof Error ? err.message : String(err)}`;
+      }
+    })();
+  };
+  form.addEventListener("submit", (e) => { e.preventDefault(); submit(); });
+  const btn = optionalElement<HTMLButtonElement>("#lifeos-onboarding-submit");
+  btn?.addEventListener("click", submit);
+}
+bindLifeOSInterviewForm("[data-lifeos-setup-form]");
+bindLifeOSInterviewForm("[data-lifeos-onboarding-form]");
+
 refreshLifeosBtn?.addEventListener("click", () => void loadLifeOSData());
+
+// 7-Phase Gap-Closing Monitor: Detail-Element binden + Klick zeigt Verlauf (Hybrid).
+// Die aktive Phase folgt live Jarvis' Verarbeitung via setLiveState()->setPhase().
+(function bindPhaseMonitor(): void {
+  phaseDetailEl = optionalElement<HTMLElement>("[data-phase-detail]");
+  const container = optionalElement<HTMLElement>("[data-phase-steps-container]") ?? document.body;
+  // Klick auf eine Phase: Detail/Beschreibung einblenden (kein Wechsel der live-Phase).
+  container.addEventListener("click", (e: Event) => {
+    const target = e.target as HTMLElement;
+    const step = target.closest<HTMLElement>(".phase-step[data-phase]");
+    if (step && phaseDetailEl) phaseDetailEl.textContent = phaseDetailText[step.getAttribute("data-phase") ?? ""] ?? "";
+  });
+})();
 
 const drawerTabMap: Record<DrawerTabKey, DrawerTarget> = {
   lifeos: { key: "lifeos", title: "🎯 LIFEOS & TELOS GOVERNANCE DASHBOARD", panel: lifeosPanelBox, loadFn: loadLifeOSData },
@@ -3222,22 +3324,30 @@ document.querySelectorAll<HTMLButtonElement>("[data-toggle-browser-panel]").forE
 });
 
 // Real-Time Diagnostics UI & Event Handling
-const diagXaiLatency = optionalElement<HTMLElement>("[data-diag-xai-latency]");
-const diagRam = optionalElement<HTMLElement>("[data-diag-ram]");
-const diagUptime = optionalElement<HTMLElement>("[data-diag-uptime]");
-const diagMemories = optionalElement<HTMLElement>("[data-diag-memories]");
-const diagKnowledge = optionalElement<HTMLElement>("[data-diag-knowledge]");
-const diagWorkflows = optionalElement<HTMLElement>("[data-diag-workflows]");
+const diagService = optionalElement<HTMLElement>("[data-diagnostics-service]");
+const diagUptime = optionalElement<HTMLElement>("[data-diagnostics-uptime]");
+const diagMode = optionalElement<HTMLElement>("[data-diagnostics-mode]");
+const diagVoice = optionalElement<HTMLElement>("[data-diagnostics-voice]");
+const diagMemory = optionalElement<HTMLElement>("[data-diagnostics-memory]");
+const diagActions = optionalElement<HTMLElement>("[data-diagnostics-actions]");
+const diagApiLatency = optionalElement<HTMLElement>("[data-diagnostics-api-latency]");
+const diagRam = optionalElement<HTMLElement>("[data-diagnostics-ram]");
+const diagKnowledgeBase = optionalElement<HTMLElement>("[data-diagnostics-knowledge-base]");
+const diagWorkflows = optionalElement<HTMLElement>("[data-diagnostics-workflows]");
 
 async function refreshDiagnostics(): Promise<void> {
   try {
     const data = await window.jarvisDesktop.getDiagnostics();
-    if (diagXaiLatency) diagXaiLatency.textContent = data.latency.xaiApiMs > 0 ? `${data.latency.xaiApiMs} ms` : "OFFLINE";
-    if (diagRam) diagRam.textContent = `${data.memory.heapUsedMb} / ${data.memory.rssMb} MB`;
+    if (diagService) diagService.textContent = data.providers?.xaiStatus === "online" ? "ONLINE" : "OFFLINE";
     if (diagUptime) diagUptime.textContent = `${data.uptimeSeconds}s`;
-    if (diagMemories) diagMemories.textContent = String(data.stats.memoriesCount);
-    if (diagKnowledge) diagKnowledge.textContent = String(data.stats.knowledgeCount);
-    if (diagWorkflows) diagWorkflows.textContent = String(data.stats.workflowsCount);
+    if (diagMode) diagMode.textContent = "ACTIVE";
+    if (diagVoice) diagVoice.textContent = data.providers?.xaiStatus === "online" ? "READY" : "NO KEY";
+    if (diagMemory) diagMemory.textContent = `${data.memory.heapUsedMb} MB`;
+    if (diagActions) diagActions.textContent = String(data.stats?.activeSubAgents ?? 0);
+    if (diagApiLatency) diagApiLatency.textContent = data.latency.xaiApiMs > 0 ? `${data.latency.xaiApiMs} ms` : "OFFLINE";
+    if (diagRam) diagRam.textContent = `${data.memory.heapUsedMb} / ${data.memory.rssMb} MB`;
+    if (diagKnowledgeBase) diagKnowledgeBase.textContent = String(data.stats?.knowledgeCount ?? 0);
+    if (diagWorkflows) diagWorkflows.textContent = String(data.stats?.workflowsCount ?? 0);
   } catch (err) {
     console.warn("Fehler beim Abrufen der Diagnose:", err);
   }
@@ -3585,6 +3695,7 @@ function setupUpdaterBanner(): void {
 setupUpdaterBanner();
 addEntry("system", "Private Control Room initialized. Voice STT (Auto-Send) & High-Quality TTS ready.");
 void loadSettings();
+void loadLifeOSData(); // auto-open LifeOS onboarding on first launch (independent of service connection)
 applyOrbState("idle"); void refreshRuntimeStatus().then(() => addEntry(readiness?.status === "ready" ? "system" : "warning", readiness?.status === "ready" ? "Local Qwen3 8B chat is ready." : "Local model guidance is available; no download was started."));
 setInterval(() => void refreshRuntimeStatus(), 10_000);
 

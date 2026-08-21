@@ -254,7 +254,7 @@
                       <span>🎯 OVERARCHING MISSION</span>
                     </div>
                     <div data-lifeos-mission
-                      style="font-size: 0.8rem; color: var(--ui-text-secondary); line-height: 1.5; white-space: pre-wrap;">
+                      style="font-size: 0.8rem; color: var(--ui-text-secondary); line-height: 1.5; white-space: pre-wrap; min-height: 3.6em; max-height: 7.5em; overflow-y: auto;">
                       Lade MISSION.md…
                     </div>
                   </div>
@@ -267,7 +267,7 @@
                       <span>💎 CORE VALUES & PRINCIPLES</span>
                     </div>
                     <div data-lifeos-values
-                      style="font-size: 0.8rem; color: var(--ui-text-secondary); line-height: 1.5; white-space: pre-wrap;">
+                      style="font-size: 0.8rem; color: var(--ui-text-secondary); line-height: 1.5; white-space: pre-wrap; min-height: 3.6em; max-height: 7.5em; overflow-y: auto;">
                       Lade VALUES.md…
                     </div>
                   </div>
@@ -283,7 +283,7 @@
                       Aktualisieren</button>
                   </div>
                   <div data-lifeos-current-state
-                    style="font-size: 0.82rem; color: var(--ui-text-primary); margin-bottom: 12px; line-height: 1.5; white-space: pre-wrap;">
+                    style="font-size: 0.82rem; color: var(--ui-text-primary); margin-bottom: 12px; line-height: 1.5; white-space: pre-wrap; min-height: 3.6em; max-height: 7.5em; overflow-y: auto;">
                     Lade CURRENT_STATE.md…
                   </div>
                 </div>
@@ -294,9 +294,9 @@
                   <div style="color: var(--cyan); font-weight: 700; font-size: 0.85rem; margin-bottom: 10px;">
                     ⚡ 7-PHASE GAP-CLOSING ALGORITHM MONITOR
                   </div>
-                  <div class="phase-steps"
-                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 6px; font-size: 0.7rem; text-align: center;">
-                    <div class="phase-step phase-step--active" data-phase="1"
+                  <div class="phase-steps" data-phase-steps-container
+                    style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; font-size: 0.7rem; text-align: center;">
+                    <div class="phase-step" data-phase="1"
                       style="background: rgba(56, 189, 248, 0.2); border: 1px solid var(--cyan); border-radius: 4px; padding: 6px 2px; color: #fff;">
                       1. Signals</div>
                     <div class="phase-step" data-phase="2"
@@ -315,10 +315,14 @@
                       style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ui-stroke-tertiary); border-radius: 4px; padding: 6px 2px; color: var(--ui-text-tertiary);">
                       6. Verify</div>
                     <div class="phase-step" data-phase="7"
-                      style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ui-stroke-tertiary); border-radius: 4px; padding: 6px 2px; color: var(--ui-text-tertiary);">
-                      7. Anneal</div>
-                  </div>
-                </div>
+                        style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ui-stroke-tertiary); border-radius: 4px; padding: 6px 2px; color: var(--ui-text-tertiary);">
+                        7. Anneal</div>
+                    </div>
+                    <div data-phase-detail
+                      style="margin-top: 10px; font-size: 0.72rem; color: var(--ui-text-secondary); line-height: 1.4; min-height: 2.8em; max-height: 2.8em; overflow: hidden;">
+                      Wähle einen Schritt, um die Beschreibung zu sehen.
+                    </div>
+                    </div>
               </div>
             </div>
             <!-- App Settings HUD Panel -->
@@ -362,6 +366,12 @@
                     <label>Ollama Base URL (Lokaler LLM Fallback)</label>
                     <input type="text" class="settings-input" data-config-key="ollamaUrl"
                       placeholder="http://127.0.0.1:11434" />
+                  </div>
+                  <div class="settings-field">
+                    <label>News-Quellen (RSS-Feeds — individuell anpassbar)</label>
+                    <textarea class="settings-input" data-config-key="newsFeeds" rows="4"
+                      placeholder="https://www.tagesschau.de/index/rss2.xml&#10;https://feeds.bbci.co.uk/news/world/rss.xml"></textarea>
+                    <small class="settings-hint">Eine Feed-URL pro Zeile oder durch Komma getrennt. Leer = neutrale Standard-Feeds. Diese Quellen sind rein lokal gespeichert und nur für dich bestimmt.</small>
                   </div>
                 </div>
 
@@ -473,7 +483,7 @@
 
             <!-- Unsaved Changes Modal -->
             <div class="settings-confirm-overlay" data-settings-confirm-modal hidden
-              style="position: fixed; inset: 0; z-index: 9999; background: rgba(2, 6, 16, 0.85); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; padding: 20px;">
+              style="position: fixed; inset: 0; z-index: 9999; background: rgba(2, 6, 16, 0.96); display: flex; align-items: center; justify-content: center; padding: 20px;">
               <div
                 style="background: rgba(10, 25, 47, 0.95); border: 1px solid var(--cyan); border-radius: 12px; max-width: 480px; width: 100%; padding: 24px; box-shadow: 0 0 30px rgba(56, 189, 248, 0.3); text-align: center;">
                 <div style="font-size: 2.2rem; margin-bottom: 8px;">⚠️</div>
@@ -497,6 +507,36 @@
                     ↩ Zurück zu den Einstellungen
                   </button>
                 </div>
+              </div>
+            </div>
+
+            <!-- LifeOS Onboarding Modal (auto-shown on first launch) -->
+            <div class="lifeos-onboarding-overlay" data-lifeos-onboarding hidden>
+              <div class="lifeos-onboarding-box">
+                <div class="lifeos-onboarding-head">
+                  <span class="lifeos-onboarding-logo">🎯</span>
+                  <h3>LifeOS einrichten</h3>
+                </div>
+                <p class="lifeos-onboarding-intro">
+                  LifeOS ist dein persönliches <b>Brain</b> für Jarvis. Es speichert, wer du bist, was dir wichtig ist und wo du gerade stehst —
+                  damit Jarvis Antworten und Aktionen auf <b>dich</b> zuschneiden kann. Die Angaben werden nur lokal auf deinem Rechner gespeichert.
+                </p>
+                <form data-lifeos-onboarding-form>
+                  <div class="lifeos-field">
+                    <label>🎯 Mission — Wer bist du / was willst du erreichen?</label>
+                    <textarea data-lifeos-mission-input-modal class="lifeos-textarea" rows="3" placeholder="z.B. Ich baue ein KI-gesteuertes Smart-Home. Mein Ziel ist ein zuverlässiger, privater Assistent."></textarea>
+                  </div>
+                  <div class="lifeos-field">
+                    <label>💎 Core Values — Was ist dir wichtig?</label>
+                    <textarea data-lifeos-values-input-modal class="lifeos-textarea" rows="3" placeholder="z.B. Klarheit, Eigenständigkeit, Datenschutz, kluge Ästhetik."></textarea>
+                  </div>
+                  <div class="lifeos-field">
+                    <label>📊 Current State — Wo stehst du jetzt?</label>
+                    <textarea data-lifeos-current-input-modal class="lifeos-textarea" rows="3" placeholder="z.B. Gerade fokussiert auf die App-Installation und erste Automatisierungen."></textarea>
+                  </div>
+                  <button type="submit" id="lifeos-onboarding-submit" class="btn-primitive btn-cyan btn-md lifeos-submit">✅ Brain erstellen &amp; weiter</button>
+                  <span data-lifeos-onboarding-status class="lifeos-status"></span>
+                </form>
               </div>
             </div>
 
@@ -688,7 +728,7 @@
             <div class="state-preview-header">
               <div class="state-preview-title">
                 <span>STATE CONTROLS / LEGEND</span>
-                <b class="state-preview-badge">J.A.R.V.I.S v0.01.50/ Bearhands v0.01.00</b>
+                <b class="state-preview-badge" data-app-version>J.A.R.V.I.S … / Bearhands …</b>
               </div>
               <button type="button" class="collapse-toggle-btn" data-toggle-legend
                 title="Toggle State Controls Legend">⇲ Einklappen</button>

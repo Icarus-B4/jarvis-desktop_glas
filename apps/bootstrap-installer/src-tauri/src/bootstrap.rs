@@ -128,7 +128,8 @@ pub async fn get_bootstrap_status(
 #[tauri::command]
 pub async fn open_log_dir() -> Result<(), String> {
     let local = std::env::var("LOCALAPPDATA").unwrap_or_else(|_| "C:\\Users\\ed\\AppData\\Local".into());
-    let dir = format!("{}\\jarvis\\logs", local);
+    // Log file lives next to the installed app (install.ps1 writes bootstrap-installer.log into InstallRoot).
+    let dir = format!("{}\\Programs\\Jarvis-Glas", local);
     let _ = std::fs::create_dir_all(&dir);
     #[cfg(target_os = "windows")]
     {
@@ -158,8 +159,8 @@ async fn run_bootstrap(
         .unwrap_or_else(|| {
             let local =
                 std::env::var("LOCALAPPDATA").unwrap_or_else(|_| "C:\\Program Files".into());
-            // Hermes-style nested layout: %LOCALAPPDATA%\J.A.R.V.I.S\win-unpacked
-            format!("{}\\J.A.R.V.I.S\\win-unpacked", local)
+            // User-confirmed install path: %LOCALAPPDATA%\Programs\Jarvis-Glas
+            format!("{}\\Programs\\Jarvis-Glas", local)
         });
 
     // Granular stages, mirrored from install.ps1's [stage:NAME] markers.

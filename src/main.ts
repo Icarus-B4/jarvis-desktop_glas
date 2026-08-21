@@ -31,6 +31,7 @@ export type JarvisDesktopConfig = {
   ttsProvider: "xai" | "fishaudio";
   fishAudioApiKey: string;
   fishAudioModelId: string;
+  newsFeeds: string[];
 };
 
 function loadEnvFile(): void {
@@ -76,6 +77,7 @@ function loadDesktopConfig(): JarvisDesktopConfig {
     ttsProvider: "xai",
     fishAudioApiKey: process.env.FISAHAUDIO_API_KEY ?? process.env.FISH_AUDIO_API_KEY ?? "",
     fishAudioModelId: process.env.FISH_AUDIO_MODEL_ID ?? "5906764e120a4c608a524f351a5fe5be",
+    newsFeeds: [],
   };
 
   try {
@@ -358,6 +360,8 @@ type RuntimeStatus = {
   serviceBaseUrl: string;
   health: unknown;
   startupError?: string;
+  version: string;
+  barehandsVersion: string;
 };
 
 async function readHealth(): Promise<unknown> {
@@ -591,14 +595,33 @@ function getBarehandsStatus(): { running: boolean; baseUrl?: string; config?: { 
   };
 }
 
-async function getRuntimeStatus(): Promise<RuntimeStatus> {
+async function readBarehandsVersion(): Promise<string> {
   try {
-    return { serviceBaseUrl, health: await readHealth(), startupError: serviceStartupError };
+    const appPath = app.getAppPath();
+    const resourcesDir = appPath.endsWith(".asar") ? resolve(appPath, "..") : appPath;
+    const pkgPath = join(resourcesDir, "barehands", "package.json");
+    if (existsSync(pkgPath)) {
+      const pkg = JSON.parse(readFileSync(pkgPath, "utf8")) as { version?: string };
+      if (pkg.version) return pkg.version;
+    }
+  } catch {
+    /* optional */
+  }
+  return "0.0.0";
+}
+
+async function getRuntimeStatus(): Promise<RuntimeStatus> {
+  const appVersion = app.getVersion();
+  const barehandsVersion = await readBarehandsVersion();
+  try {
+    return { serviceBaseUrl, health: await readHealth(), startupError: serviceStartupError, version: appVersion, barehandsVersion };
   } catch (error) {
     return {
       serviceBaseUrl,
       health: null,
       startupError: error instanceof Error ? error.message : serviceStartupError ?? "Unknown service error",
+      version: appVersion,
+      barehandsVersion,
     };
   }
 }
@@ -1156,17 +1179,14 @@ async function getConfig(): Promise<unknown> {
 async function updateConfig(_event: Electron.IpcMainInvokeEvent, payload: unknown): Promise<unknown> {
   if (isRecord(payload)) {
     saveDesktopConfig(payload as Partial<JarvisDesktopConfig>);
-    try {
-      await fetch(`${serviceBaseUrl}/v1/config`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify(payload),
-        redirect: "error",
-        signal: AbortSignal.timeout(2_000),
-      });
-    } catch {
-      // Backend Benachrichtigung optional
-    }
+    // Backend notification is best-effort only — never block the IPC response on it.
+    fetch(`${serviceBaseUrl}/v1/config`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(payload),
+      redirect: "error",
+      signal: AbortSignal.timeout(2_000),
+    }).catch(() => { /* optional */ });
   }
   return { success: true, message: "Einstellungen dauerhaft auf Festplatte gespeichert." };
 }
@@ -1190,6 +1210,49 @@ async function getDiagnostics(): Promise<unknown> {
       providers: { xaiStatus: "offline", ollamaStatus: "ready" },
       stats: { memoriesCount: 0, knowledgeCount: 0, workflowsCount: 0, activeSubAgents: 0 },
     };
+  }
+}
+
+async function getNewsFeed(): Promise<unknown> {
+  try {
+    const feeds = desktopConfig.newsFeeds ?? [];
+    const response = await fetch(`${serviceBaseUrl}/v1/news`, {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ feeds }),
+      redirect: "error",
+      signal: AbortSignal.timeout(6_000),
+    });
+    if (!response.ok) throw new Error("Failed to fetch news");
+    return await response.json();
+  } catch {
+    return [];
+  }
+}
+
+async function getLifeOSState(): Promise<unknown> {
+  try {
+    const response = await fetch(`${serviceBaseUrl}/v1/lifeos/state`, { headers: { Accept: "application/json" }, redirect: "error", signal: AbortSignal.timeout(5_000) });
+    if (!response.ok) throw new Error("Failed to fetch LifeOS state");
+    return await response.json();
+  } catch {
+    return { initialized: false, mission: "", values: "", current: "" };
+  }
+}
+
+async function saveLifeOSInterview(_event: Electron.IpcMainInvokeEvent, payload: { mission: string; values: string; current: string }): Promise<unknown> {
+  try {
+    const response = await fetch(`${serviceBaseUrl}/v1/lifeos/interview`, {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      redirect: "error",
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!response.ok) throw new Error("Failed to save LifeOS state");
+    return await response.json();
+  } catch {
+    return { ok: false, error: "Failed to save LifeOS state" };
   }
 }
 
@@ -1299,6 +1362,21 @@ async function getSystemInfo(): Promise<{
 }
 
 app.whenReady().then(async () => {
+  // Single-instance lock: verhindert, dass die App mehrfach gestartet wird
+  // (zwei Fenster würden sonst um den Fokus kämpfen -> Klicks landen im falschen Fenster).
+  if (!app.requestSingleInstanceLock()) {
+    app.quit();
+    return;
+  }
+  app.on("second-instance", () => {
+    const win = BrowserWindow.getAllWindows()[0];
+    if (win) {
+      if (win.isMinimized()) win.restore();
+      win.show();
+      win.focus();
+    }
+  });
+
   if (process.platform === "win32") {
     app.setAppUserModelId("com.jarvis.desktop");
   }
@@ -1363,6 +1441,9 @@ app.whenReady().then(async () => {
   ipcMain.handle("jarvis:delete-knowledge", deleteKnowledgeItem);
   // Real-Time Diagnostics Handlers
   ipcMain.handle("jarvis:get-diagnostics", getDiagnostics);
+  ipcMain.handle("jarvis:get-news-feed", getNewsFeed);
+  ipcMain.handle("jarvis:get-lifeos-state", getLifeOSState);
+  ipcMain.handle("jarvis:save-lifeos-interview", saveLifeOSInterview);
   // System Config Handlers
   ipcMain.handle("jarvis:get-config", getConfig);
   ipcMain.handle("jarvis:update-config", updateConfig);

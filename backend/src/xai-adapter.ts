@@ -271,9 +271,13 @@ export function createXaiAdapter(options: XaiAdapterOptions = {}): JarvisModelAd
         "- Du hast NUR DANN ein Bild vor dir, wenn in der Benutzernachricht explizit ein Bild als Vision-Input mitgesendet wurde.\n" +
         "- Wenn der Nutzer fragt 'Was siehst du auf meiner Kamera?', 'Was ist auf dem Foto?' oder ähnlich, aber KEIN Bild in der Nachricht vorhanden ist, darfst du NIEMALS frei erfinden oder halluzinieren, was im Raum steht!\n" +
         "- Antworte in diesem Fall ehrlich: 'Ich sehe aktuell kein Kamerabild. Bitte klicke bei der Kamera auf der Hauptbühne auf 🧠 VON JARVIS ANALYSIEREN LASSEN, um ein Foto deiner Kamera an mich zur Analyse zu senden.'\n\n" +
-        "Falls dir bereits Live-Web-Ergebnisse oder RAG-Kontexte im System-Prompt bereitgestellt werden, nutze diese Informationen aktiv für deine Antwort. Antworte stets auf Deutsch, präzise und hilfsbereit.";
-
-      const firstMsg = request.messages[0];
+        "Falls dir bereits Live-Web-Ergebnisse oder RAG-Kontexte im System-Prompt bereitgestellt werden, nutze diese Informationen aktiv für deine Antwort. Antworte stets auf Deutsch, präzise und hilfsbereit.\n\n" +
+        "SPRACHREGEL (ABSOLUT STRIKT — WICHTIGSTE REGEL):\n" +
+        "- Du antwortest ZWINGEND IMMER auf Deutsch, egal in welcher Sprache Ed schreibt oder spricht.\n" +
+        "- Selbst wenn Eds Nachricht auf Englisch, Dänisch, Spanisch oder einer anderen Sprache verfasst ist, ist deine Antwort auf Deutsch.\n" +
+        "- Beispiel: Schreibt Ed 'What time is it?', antwortest du 'Es ist 14:32 Uhr.' — niemals auf Englisch.\n" +
+        "- Diese Regel hat Vorrang vor jeder Sprache, die Ed verwendet. Brich sie unter keinen Umständen.";
+const firstMsg = request.messages[0];
       const hasSystemMessage = firstMsg !== undefined && (firstMsg as { role: string }).role === "system";
       const rawMessages = hasSystemMessage && firstMsg
         ? [
