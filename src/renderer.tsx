@@ -367,14 +367,28 @@ function looksLikeLyrics(text: string): boolean {
             return;
           }
 
-          // Soft gate while external media (Spotify PWA) plays: drop spoken
-          // song lyrics / background chatter, but let real commands through
-          // so Ed can keep controlling Jarvis hands-free during playback.
-          if (isExternalMediaPlaying && !looksLikeCommand(text) && looksLikeLyrics(text)) {
-            if (voiceStatus && !voiceStatus.muted) {
-              setLiveState("listening");
+          // Gate while external media (Spotify PWA) plays: Jarvis must NOT
+          // react to song lyrics or background chatter — only to clear user
+          // commands (or an explicit barge-in). This mirrors Jared's design:
+          // the mic stays live during playback but ignores ambient speech
+          // that is not directed at the assistant.
+          if (isExternalMediaPlaying) {
+            if (looksLikeCommand(text)) {
+              // real command — let it through (handled below)
+            } else if (looksLikeLyrics(text)) {
+              // song lyrics / ambient music chatter — drop it
+              if (voiceStatus && !voiceStatus.muted) setLiveState("listening");
+              return;
+            } else {
+              // neither a command nor recognized lyrics: during playback, treat
+              // ambiguous speech as background noise unless it is a clear,
+              // substantial sentence (barge-in). Short/unclear input is dropped.
+              const words = text.trim().split(/\s+/).filter(Boolean);
+              if (words.length < 4) {
+                if (voiceStatus && !voiceStatus.muted) setLiveState("listening");
+                return;
+              }
             }
-            return;
           }
 
           // BARGE-IN: if Jarvis is currently speaking and the user starts
