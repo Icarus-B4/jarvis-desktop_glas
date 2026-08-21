@@ -354,6 +354,22 @@ function looksLikeLyrics(text: string): boolean {
             return;
           }
 
+          // BARGE-IN: if Jarvis is currently speaking and the user starts
+          // talking, interrupt immediately — stop TTS + cancel any in-flight
+          // model generation so Ed is never talked over with stale rambling.
+          // MUST run before the activeRequestId/isTtsPlaying gate below,
+          // otherwise that gate's early `return` would skip the interrupt.
+          if (isTtsPlaying) {
+            stopTtsPlayback();
+            const reqId = activeRequestId;
+            if (reqId) {
+              try { window.jarvisDesktop.cancelChat(reqId); } catch { /* noop */ }
+            }
+            if (voiceStatus && !voiceStatus.muted) {
+              setLiveState("listening");
+            }
+          }
+
           // Wenn KI bereits antwortet oder denkt: Hintergrund-Geräusche /
           // Tastaturklicks nicht als Abbruch werten. Wakeword-/Stopp-Kommandos
           // wurden oben bereits vor diesem Gate ausgewertet.
@@ -367,14 +383,28 @@ function looksLikeLyrics(text: string): boolean {
             return;
           }
 
-          // Soft gate while external media (Spotify PWA) plays: drop spoken
-          // song lyrics / background chatter, but let real commands through
-          // so Ed can keep controlling Jarvis hands-free during playback.
-          if (isExternalMediaPlaying && !looksLikeCommand(text) && looksLikeLyrics(text)) {
-            if (voiceStatus && !voiceStatus.muted) {
-              setLiveState("listening");
+          // Gate while external media (Spotify PWA) plays: Jarvis must NOT
+          // react to song lyrics or background chatter — only to clear user
+          // commands (or an explicit barge-in). This mirrors Jared's design:
+          // the mic stays live during playback but ignores ambient speech
+          // that is not directed at the assistant.
+          if (isExternalMediaPlaying) {
+            if (looksLikeCommand(text)) {
+              // real command — let it through (handled below)
+            } else if (looksLikeLyrics(text)) {
+              // song lyrics / ambient music chatter — drop it
+              if (voiceStatus && !voiceStatus.muted) setLiveState("listening");
+              return;
+            } else {
+              // neither a command nor recognized lyrics: during playback, treat
+              // ambiguous speech as background noise unless it is a clear,
+              // substantial sentence (barge-in). Short/unclear input is dropped.
+              const words = text.trim().split(/\s+/).filter(Boolean);
+              if (words.length < 4) {
+                if (voiceStatus && !voiceStatus.muted) setLiveState("listening");
+                return;
+              }
             }
-            return;
           }
 
           // Spracheingabe DIREKT an Jarvis senden (ohne ins Textfeld zu kopieren)

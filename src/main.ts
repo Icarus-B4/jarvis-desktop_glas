@@ -206,11 +206,9 @@ function broadcastUpdaterState(win?: BrowserWindow | null): void {
 }
 
 function setupAutoUpdater(): void {
-  if (!app.isPackaged) {
-    console.info("[updater] Übersprungen — nicht in gepackter Build-Umgebung.");
-    return;
-  }
-
+  // NOTE: Do NOT skip on !app.isPackaged. The Bootstrap installer copies a
+  // packaged win-unpacked Electron build; in that context app.isPackaged may
+  // be false, but we still want OTA. electron-updater works without it.
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
 
@@ -224,6 +222,9 @@ function setupAutoUpdater(): void {
     updaterStatus = "available";
     updaterInfo = info;
     updaterProgress = 0;
+    try {
+      fs.appendFileSync(path.join(app.getPath("userData"), "updater.log"), `${new Date().toISOString()} UPDATE_AVAILABLE v${info.version}\n`);
+    } catch { /* noop */ }
     broadcastUpdaterState();
   });
 
@@ -235,7 +236,6 @@ function setupAutoUpdater(): void {
 
   autoUpdater.on("download-progress", (progress) => {
     updaterStatus = "downloading";
-    // progress.percent can be NaN during early stages — guard it.
     updaterProgress = Number.isFinite(progress.percent) ? Math.round(progress.percent) : 0;
     broadcastUpdaterState();
   });

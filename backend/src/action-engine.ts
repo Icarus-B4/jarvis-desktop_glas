@@ -8,6 +8,28 @@ import type {
   JarvisActionIntent,
   JarvisActionProposeRequest,
 } from "@jarvis/shared";
+import { readFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
+import { homedir } from "node:os";
+
+// Read Ed's persistent location from LifeOS (so weather/search default to it
+// instead of asking every time). Never hardcoded — live from disk.
+function getLifeosLocation(): string {
+  try {
+    const dir = join(homedir(), "Documents", "Jarvis-Glas", "lifeos");
+    for (const file of ["CURRENT_STATE.md", "MISSION.md", "VALUES.md"]) {
+      const p = join(dir, file);
+      if (existsSync(p)) {
+        const txt = readFileSync(p, "utf-8");
+        // Match patterns like "Location: Bern" / "Standort: Bern" / "in Bern".
+        // Generic — works for ANY user's LifeOS location, not hardcoded.
+        const m = txt.match(/(?:location|standort|wohnort|city|ort)[:\s]+([A-Za-zäöüÄÖÜéè\-]+(?:\s+[A-Za-zäöüÄÖÜéè\-]+)?)/i);
+        if (m) return m[1].trim();
+      }
+    }
+  } catch { /* ignore */ }
+  return "";
+}
 
 export type UrlOpener = (url: string) => Promise<void>;
 
@@ -485,10 +507,18 @@ export class DefaultJarvisActionEngine implements JarvisActionEngine {
 
       // A concrete title/artist is searched and played inside the user's Spotify PWA.
       if (trackQuery) {
+        // Resolve script path robustly: works in dev (process.cwd = repo root)
+        // AND in the packaged build. In the packaged build scripts/ ships as an
+        // extraResource at <app>/../scripts (one level above app.asar), so we
+        // probe both cwd-relative and app-path-relative candidates.
+        const here = dirname(fileURLToPath(import.meta.url));
         const scriptCandidates = [
           join(process.cwd(), "scripts", "spotify-control.ps1"),
           join(process.cwd(), "..", "scripts", "spotify-control.ps1"),
           join(process.cwd(), "..", "..", "scripts", "spotify-control.ps1"),
+          join(here, "..", "..", "scripts", "spotify-control.ps1"),
+          join(here, "..", "..", "..", "scripts", "spotify-control.ps1"),
+          join(here, "..", "..", "..", "..", "scripts", "spotify-control.ps1"),
         ];
         const spotifyScript = scriptCandidates.find((candidate) => existsSync(candidate));
         if (!spotifyScript) throw new Error("Spotify-Steuerskript nicht gefunden.");

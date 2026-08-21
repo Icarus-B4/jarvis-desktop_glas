@@ -50,8 +50,8 @@ pub fn run() {
 
 #[tauri::command]
 fn get_install_root() -> String {
-    let local = std::env::var("LOCALAPPDATA").unwrap_or_else(|_| "C:\\Program Files".into());
-    format!("{}\\Programs\\@jarvisdesktop\\J.A.R.V.I.S", local)
+    let local = std::env::var("LOCALAPPDATA").unwrap_or_else(|_| "C:\\Users\\ed\\AppData\\Local".into());
+    format!("{}\\Programs\\Jarvis-Glas\\Jarvis-Glas", local)
 }
 
 #[tauri::command]

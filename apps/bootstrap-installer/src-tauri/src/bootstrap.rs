@@ -505,10 +505,10 @@ pub async fn launch_jarvis_desktop(
     app: AppHandle,
     install_root: String,
 ) -> Result<(), String> {
-    let exe = Path::new(&install_root).join("J.A.R.V.I.S.exe");
+    let exe = Path::new(&install_root).join("Jarvis-Glas.exe");
     if !exe.exists() {
         return Err(format!(
-            "J.A.R.V.I.S.exe nicht gefunden unter {}",
+            "Jarvis-Glas.exe nicht gefunden unter {}",
             exe.display()
         ));
     }
