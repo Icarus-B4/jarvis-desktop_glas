@@ -39,6 +39,9 @@ apps/*/.env
 apps/*/.env.*
 !apps/*/.env.example
 
+# Runtime memory / local state — never commit (may contain personal data)
+.jarvis-memory.json
+
 # Cache / build metadata
 .parcel-cache/
 .vite/
