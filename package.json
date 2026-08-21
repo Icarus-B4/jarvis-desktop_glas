@@ -24,12 +24,15 @@
     "files": [
       "dist/**/*",
       "icons/**/*",
-      "backend/**/*"
+      "backend/**/*",
+      "!**/.env",
+      "!**/.env.*"
     ],
     "extraResources": [
       {
         "from": "backend/dist",
-        "to": "backend/dist"
+        "to": "backend/dist",
+        "filter": ["**/*", "!**/.env", "!**/.env.*"]
       },
       {
         "from": "tools/bun",
