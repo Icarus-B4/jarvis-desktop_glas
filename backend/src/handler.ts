@@ -113,8 +113,9 @@ export function getLifeosLocation(): string {
       const p = join(dir, file);
       if (existsSync(p)) {
         const txt = readFileSync(p, "utf-8");
-        const m = txt.match(/(?:location|standort|wohnort|city)[:\s]+([A-Za-zäöüÄÖÜéè\-]+(?:\s+[A-Za-zäöüÄÖÜéè\-]+)?)/i)
-          ?? txt.match(/(Hasliberg|Interlaken|Bern|Zürich|Zurich|Thun|Grindelwald)/i);
+        // Match patterns like "Location: Bern" / "Standort: Bern" / "in Bern".
+        // Generic — works for ANY user's LifeOS location, not hardcoded.
+        const m = txt.match(/(?:location|standort|wohnort|city|ort)[:\s]+([A-Za-zäöüÄÖÜéè\-]+(?:\s+[A-Za-zäöüÄÖÜéè\-]+)?)/i);
         if (m) return m[1].trim();
       }
     }
@@ -312,6 +313,20 @@ const TOOL_DEFINITIONS: Array<Record<string, unknown>> = [
   {
     type: "function",
     function: {
+      name: "weather.show",
+      description: "Zeigt das aktuelle Wetter für einen Ort auf der Hauptbühne an. Nutzt automatisch die in LifeOS hinterlegte Location des Users, wenn keine Stadt angegeben wird. NIEMALS nur als Text antworten — immer diese Funktion nutzen bei Wetterfragen.",
+      parameters: {
+        type: "object",
+        properties: {
+          location: { type: "string", description: "Optionale Stadt/Region. Wenn leer, wird die LifeOS-Location des Users verwendet." },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "barehands.stage_media",
       description: "Kopiert eine lokale Bild-/Modell-Datei in die barehands Media-Airlock (den einzigen Ordner, aus dem das Board stage-t) und stellt sie auf dem Glas-Board dar. Nutze das, wenn Ed ein Bild/Modell aufs Board legen will, das noch nicht in der Airlock liegt. Gib src (absoluter Pfad) und optional name an.",
       parameters: {
@@ -413,13 +428,15 @@ async function executeTool(
     }
     case "weather.show": {
       const requested = String(args.location ?? args.city ?? args.ort ?? "").trim();
-      // Default to Ed's LifeOS location (Hasliberg) so we never ask "which city?".
+      // Default to the user's LifeOS location so we never ask "which city?".
       const location = requested || getLifeosLocation();
       if (!location) return JSON.stringify({ error: "Keine Location angegeben und keine in LifeOS gefunden." });
       try {
-        const results = await browserAdapter.searchWeb(`Wetter ${location} aktuell`, 3);
-        const url = results?.[0]?.url;
-        if (!url) return JSON.stringify({ ok: false, error: `Keine Wetter-Info für ${location} gefunden.` });
+        // Reliable: a fixed weather search URL works for ANY location
+        // (Hasliberg, Zürich, Tokyo, India — whatever the user says). No
+        // fragile web-search scrape that sometimes returns no URL.
+        const q = encodeURIComponent(`wetter ${location}`);
+        const url = `https://www.google.com/search?q=${q}`;
         const intent = await actionEngine.proposeAction({
           capability: "app.open_url",
           title: `Wetter ${location}`,
@@ -427,7 +444,7 @@ async function executeTool(
           params: { url },
         });
         const updated = await actionEngine.decideAction({ intentId: intent.id, decision: "approve" });
-        return JSON.stringify({ ok: true, capability: "weather.show", location, intent: updated });
+        return JSON.stringify({ ok: true, capability: "weather.show", location, url, intent: updated });
       } catch (err) {
         return JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) });
       }
@@ -617,7 +634,7 @@ async function* runToolLoopChat(
       })),
     ];
 
-    const maxTurns = 6;
+    const maxTurns = 12;
     const seenToolCalls = new Set<string>();
     let finalContent = "";
 

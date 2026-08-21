@@ -354,6 +354,22 @@ function looksLikeLyrics(text: string): boolean {
             return;
           }
 
+          // BARGE-IN: if Jarvis is currently speaking and the user starts
+          // talking, interrupt immediately — stop TTS + cancel any in-flight
+          // model generation so Ed is never talked over with stale rambling.
+          // MUST run before the activeRequestId/isTtsPlaying gate below,
+          // otherwise that gate's early `return` would skip the interrupt.
+          if (isTtsPlaying) {
+            stopTtsPlayback();
+            const reqId = activeRequestId;
+            if (reqId) {
+              try { window.jarvisDesktop.cancelChat(reqId); } catch { /* noop */ }
+            }
+            if (voiceStatus && !voiceStatus.muted) {
+              setLiveState("listening");
+            }
+          }
+
           // Wenn KI bereits antwortet oder denkt: Hintergrund-Geräusche /
           // Tastaturklicks nicht als Abbruch werten. Wakeword-/Stopp-Kommandos
           // wurden oben bereits vor diesem Gate ausgewertet.
@@ -388,20 +404,6 @@ function looksLikeLyrics(text: string): boolean {
                 if (voiceStatus && !voiceStatus.muted) setLiveState("listening");
                 return;
               }
-            }
-          }
-
-          // BARGE-IN: if Jarvis is currently speaking and the user starts
-          // talking, interrupt immediately — stop TTS + cancel any in-flight
-          // model generation so Ed is never talked over with stale rambling.
-          if (isTtsPlaying) {
-            stopTtsPlayback();
-            const reqId = activeRequestId;
-            if (reqId) {
-              try { window.jarvisDesktop.cancelChat(reqId); } catch { /* noop */ }
-            }
-            if (voiceStatus && !voiceStatus.muted) {
-              setLiveState("listening");
             }
           }
 
