@@ -62,8 +62,8 @@ if ($LASTEXITCODE -ge 8) {
 # Create Start Menu shortcut.
 $startMenu = [System.Environment]::GetFolderPath('StartMenu')
 $programsDir = Join-Path $startMenu "Programs"
-$shortcutPath = Join-Path $programsDir "J.A.R.V.I.S.lnk"
-$exePath = Join-Path $InstallRoot "J.A.R.V.I.S.exe"
+$shortcutPath = Join-Path $programsDir "Jarvis-Glas.lnk"
+$exePath = Join-Path $InstallRoot "Jarvis-Glas.exe"
 
 Log "Creating Start Menu shortcut: $shortcutPath"
 $WScriptShell = New-Object -ComObject WScript.Shell

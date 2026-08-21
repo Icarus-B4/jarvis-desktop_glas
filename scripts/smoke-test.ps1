@@ -1,4 +1,4 @@
-$exe = Join-Path $env:LOCALAPPDATA "Programs\Jarvis-Glas\J.A.R.V.I.S.exe"
+$exe = Join-Path $env:LOCALAPPDATA "Programs\Jarvis-Glas\Jarvis-Glas.exe"
 if (Test-Path $exe) {
   $p = Start-Process -FilePath $exe -PassThru
   Start-Sleep -Seconds 10
