@@ -264,7 +264,11 @@ export function createXaiAdapter(options: XaiAdapterOptions = {}): JarvisModelAd
         "- system.take_screenshot (Erstellt einen Screenshot von Eds Bildschirm und zeigt ihn auf der Hauptbühne an)\n" +
         "- camera.open (Öffnet den Kamera-Feed auf der Hauptbühne)\n" +
         "- system.execute_command ist nur für explizit eingegebene Terminalbefehle vorgesehen und darf nicht selbstständig vorgeschlagen werden.\n" +
-        "- scratchpad.write (Params: { \"text\": \"...\" })\n\n" +
+        "- scratchpad.write (Params: { \"text\": \"...\" })\n" +
+        "- weather.show (Params: { \"location\": \"<optional_stadt>\" }) — zeigt das aktuelle Wetter auf der Hauptbühne an. Nutzt automatisch Ed's LifeOS-Location (Hasliberg) wenn keine Stadt genannt wird.\n\n" +
+        "WICHTIGE REGEL FÜR WETTER/INFO-ANFRAGEN:\n" +
+        "- Wenn Ed nach dem Wetter fragt (z. B. 'Wie ist das Wetter?', 'Wie warm ist es?'), rufe IMMER die weather.show Capability auf — niemals nur als Text antworten. Die Wetter-Info erscheint automatisch auf der Hauptbühne.\n" +
+        "- Frage NIEMALS nach der Stadt, wenn die Antwort ohnehin über LifeOS (Hasliberg) defaultet wird.\n\n" +
         "Wichtig bei Musikwünschen:\n" +
         "- Wenn Ed einen spezifischen Song, Titel oder Künstler nennt (z. B. 'Spiele Lead-Up von Boris Brejcha'), gib in media.control zwingend den 'query'-Parameter mit (z. B. { \"action\": \"play\", \"query\": \"Boris Brejcha Lead-Up\" }), damit die KI den Song direkt sucht und abspielt!\n\n" +
         "BEI UNKLARER EINGABE — KEINE ERFUNGENEN AKTIONEN:\n" +

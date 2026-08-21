@@ -104,6 +104,24 @@ function loadLifeosContext(): string {
   }
 }
 
+// Extract Ed's location from LifeOS files (CURRENT_STATE/MISSION/VALUES) so
+// weather/search default to it instead of asking every turn. Never hardcoded.
+export function getLifeosLocation(): string {
+  try {
+    const dir = join(os.homedir(), "Documents", "Jarvis-Glas", "lifeos");
+    for (const file of ["CURRENT_STATE.md", "MISSION.md", "VALUES.md"]) {
+      const p = join(dir, file);
+      if (existsSync(p)) {
+        const txt = readFileSync(p, "utf-8");
+        const m = txt.match(/(?:location|standort|wohnort|city)[:\s]+([A-Za-zäöüÄÖÜéè\-]+(?:\s+[A-Za-zäöüÄÖÜéè\-]+)?)/i)
+          ?? txt.match(/(Hasliberg|Interlaken|Bern|Zürich|Zurich|Thun|Grindelwald)/i);
+        if (m) return m[1].trim();
+      }
+    }
+  } catch { /* ignore */ }
+  return "";
+}
+
 const dashboardFixture = {
   profile: {
     displayName: "Local Preview",
@@ -393,6 +411,27 @@ async function executeTool(
         return JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) });
       }
     }
+    case "weather.show": {
+      const requested = String(args.location ?? args.city ?? args.ort ?? "").trim();
+      // Default to Ed's LifeOS location (Hasliberg) so we never ask "which city?".
+      const location = requested || getLifeosLocation();
+      if (!location) return JSON.stringify({ error: "Keine Location angegeben und keine in LifeOS gefunden." });
+      try {
+        const results = await browserAdapter.searchWeb(`Wetter ${location} aktuell`, 3);
+        const url = results?.[0]?.url;
+        if (!url) return JSON.stringify({ ok: false, error: `Keine Wetter-Info für ${location} gefunden.` });
+        const intent = await actionEngine.proposeAction({
+          capability: "app.open_url",
+          title: `Wetter ${location}`,
+          description: `Zeigt das aktuelle Wetter für ${location} auf der Hauptbühne`,
+          params: { url },
+        });
+        const updated = await actionEngine.decideAction({ intentId: intent.id, decision: "approve" });
+        return JSON.stringify({ ok: true, capability: "weather.show", location, intent: updated });
+      } catch (err) {
+        return JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
     case "app.open_app": {
       const name = String(args.name ?? "").trim();
       if (!name) return JSON.stringify({ error: "name parameter required" });
@@ -567,7 +606,7 @@ async function* runToolLoopChat(
     // into every turn so the model disambiguates Ed's entities (sites, apps,
     // music service) instead of guessing. Never hardcoded; read live from disk.
     const lifeosCtx = loadLifeosContext();
-    const systemPrompt = `${JARVIS_TOOL_SYSTEM_PROMPT}\n\n${SOUL_PROMPT ? `=== AGENT IDENTITY (SOUL.md) ===\n${SOUL_PROMPT}\n=== END IDENTITY ===\n\n` : ""}${lifeosCtx ? `=== LIFEOS CONTEXT (Ed's persistent TELOS) ===\n${lifeosCtx}\n=== END LIFEOS CONTEXT ===\n\n` : ""}Du hast Zugriff auf folgende Tools:\n- memory.search: Suche im Langzeitgedächtnis\n- files.list: Dateien auflisten\n- files.read: Datei lesen\n- web.search: Websuche\n- knowledge.query: Wissensdatenbank durchsuchen\n- app.open_url: URL auf der Hauptbühne (im Desktop) öffnen, NICHT extern\n- app.open_app: Windows-App per Action Proposal starten (nicht als Tool-Call)\n- media.control: Medien steuern\n- system.execute_command: Nur explizite Benutzereingabe mit >, $ oder /; nicht als LLM-Tool\n- system.take_screenshot: Screenshot erstellen\n- camera.open: Kamera öffnen\n- scratchpad.write: Notiz schreiben\n- barehands.toggle: Barehands-/No-Hands-Modus umschalten\n- barehands.cursor: Cursor-Bewegung/Klick/Scroll senden`;
+    const systemPrompt = `${JARVIS_TOOL_SYSTEM_PROMPT}\n\n${SOUL_PROMPT ? `=== AGENT IDENTITY (SOUL.md) ===\n${SOUL_PROMPT}\n=== END IDENTITY ===\n\n` : ""}${lifeosCtx ? `=== LIFEOS CONTEXT (Ed's persistent TELOS) ===\n${lifeosCtx}\n=== END LIFEOS CONTEXT ===\n\n` : ""}Du hast Zugriff auf folgende Tools:\n- memory.search: Suche im Langzeitgedächtnis\n- files.list: Dateien auflisten\n- files.read: Datei lesen\n- web.search: Websuche\n- knowledge.query: Wissensdatenbank durchsuchen\n- app.open_url: URL auf der Hauptbühne (im Desktop) öffnen, NICHT extern\n- app.open_app: Windows-App per Action Proposal starten (nicht als Tool-Call)\n- media.control: Medien steuern\n- system.execute_command: Nur explizite Benutzereingabe mit >, $ oder /; nicht als LLM-Tool\n- system.take_screenshot: Screenshot erstellen\n- camera.open: Kamera öffnen\n- scratchpad.write: Notiz schreiben\n- barehands.toggle: Barehands-/No-Hands-Modus umschalten\n- barehands.cursor: Cursor-Bewegung/Klick/Scroll senden\n- weather.show: Aktuelles Wetter anzeigen (Params: { \"location\": \"<optional_stadt>\" }) — nutzt automatisch Ed's LifeOS-Location (Hasliberg) wenn keine Stadt angegeben wird. Zeigt das Wetter IMMER auf der Hauptbühne an.`;
 
     let messages: Array<{ role: string; content?: string; imageData?: string; tool_calls?: unknown; tool_call_id?: string }> = [
       { role: "system", content: systemPrompt },
