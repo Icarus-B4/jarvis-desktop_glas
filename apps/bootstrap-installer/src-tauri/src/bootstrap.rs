@@ -158,8 +158,8 @@ async fn run_bootstrap(
         .unwrap_or_else(|| {
             let local =
                 std::env::var("LOCALAPPDATA").unwrap_or_else(|_| "C:\\Program Files".into());
-            // Hermes-style nested layout: %LOCALAPPDATA%\J.A.R.V.I.S\win-unpacked
-            format!("{}\\J.A.R.V.I.S\\win-unpacked", local)
+            // Install into %LOCALAPPDATA%\Programs\J.A.R.V.I.S (clean, single location).
+            format!("{}\\Programs\\J.A.R.V.I.S", local)
         });
 
     // Granular stages, mirrored from install.ps1's [stage:NAME] markers.

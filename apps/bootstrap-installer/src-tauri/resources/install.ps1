@@ -86,19 +86,31 @@ if ($robocopyExit -ge 8) {
 Log "Application files copied."
 
 # Stage 3: shortcut
-Stage "shortcut" "Erstelle Startmenu-Verknuepfung..."
-$startMenu = [System.Environment]::GetFolderPath('StartMenu')
-$programsDir = Join-Path $startMenu "Programs"
-$shortcutPath = Join-Path $programsDir "J.A.R.V.I.S.lnk"
+Stage "shortcut" "Erstelle Verknuepfungen..."
 $exePath = Join-Path $InstallRoot "J.A.R.V.I.S.exe"
 
 $WScriptShell = New-Object -ComObject WScript.Shell
+
+# Start Menu shortcut
+$startMenu = [System.Environment]::GetFolderPath('StartMenu')
+$programsDir = Join-Path $startMenu "Programs"
+$shortcutPath = Join-Path $programsDir "J.A.R.V.I.S.lnk"
 $shortcut = $WScriptShell.CreateShortcut($shortcutPath)
 $shortcut.TargetPath = $exePath
 $shortcut.WorkingDirectory = $InstallRoot
 $shortcut.Description = "J.A.R.V.I.S. Desktop - Private Control Room"
 $shortcut.Save()
 Log "Start Menu shortcut created: $shortcutPath"
+
+# Desktop shortcut
+$desktop = [System.Environment]::GetFolderPath('Desktop')
+$desktopShortcutPath = Join-Path $desktop "J.A.R.V.I.S.lnk"
+$desktopShortcut = $WScriptShell.CreateShortcut($desktopShortcutPath)
+$desktopShortcut.TargetPath = $exePath
+$desktopShortcut.WorkingDirectory = $InstallRoot
+$desktopShortcut.Description = "J.A.R.V.I.S. Desktop - Private Control Room"
+$desktopShortcut.Save()
+Log "Desktop shortcut created: $desktopShortcutPath"
 
 # Stage 4: finalize
 Stage "finalize" "Schliesse Installation ab..."

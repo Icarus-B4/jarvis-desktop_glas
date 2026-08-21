@@ -1833,7 +1833,16 @@ async function submitCurrentMessage(textParam?: string, imageDataParam?: string)
 
   // Deterministic desktop shortcut command. Spotify must always use the user's
   // Desktop shortcut and must never enter the LLM tool loop or Microsoft Store.
+  // Combo: "Öffne Spotify und spiele X" opens the app AND starts the song so the
+  // song part is not silently dropped by the early return below.
   if (/^(?:öffne|oeffne|open|starte)\s+spotify\b/i.test(text)) {
+    const songSuffix = text.match(/\bund\s+(?:spiele|spiel|play|starte)\s+(.+)/i);
+    const songRaw = songSuffix?.[1]?.trim();
+    const songQuery = songRaw
+      ? songRaw.replace(/\s+(?:auf|mit)\s+spotify$/i, "").trim()
+      : undefined;
+    const hasSong = !!songQuery && !/^spotify$/i.test(songQuery);
+
     addEntry("user", text);
     try {
       const intent = await window.jarvisDesktop.proposeAction({
@@ -1845,6 +1854,20 @@ async function submitCurrentMessage(textParam?: string, imageDataParam?: string)
       await handleActionDecision(intent.id, "approve");
     } catch (err) {
       addEntry("warning", `Spotify konnte nicht geöffnet werden: ${err instanceof Error ? err.message : String(err)}`);
+    }
+
+    if (hasSong) {
+      try {
+        const playIntent = await window.jarvisDesktop.proposeAction({
+          capability: "media.control",
+          title: `${songQuery} auf Spotify abspielen`,
+          description: "Sucht den Titel in der Spotify-Web-App und startet die Wiedergabe.",
+          params: /^musik$/i.test(songQuery) ? { action: "play" } : { action: "play", query: songQuery },
+        });
+        await handleActionDecision(playIntent.id, "approve");
+      } catch (err) {
+        addEntry("warning", `Spotify-Wiedergabe fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`);
+      }
     }
     return;
   }

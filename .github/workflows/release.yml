@@ -69,37 +69,6 @@ jobs:
           bun install
           bun run build
 
-      - name: Build desktop app (Electron NSIS installer)
-        # --publish never overrides package.json build.publish so electron-builder
-        # only BUILDS (no self-upload). softprops/action-gh-release owns the Release.
-        run: |
-          bun run build
-          bunx electron-builder --win --config --publish never
-        working-directory: ${{ github.workspace }}
-
-      - name: Locate Electron NSIS installer
-        id: electron-installer
-        shell: pwsh
-        run: |
-          $outDir = Join-Path '${{ github.workspace }}' 'release'
-          if (-not (Test-Path $outDir)) { throw "release/ directory not found after electron-builder" }
-          # Retry: electron-builder may still be finalizing the .exe (signing/blockmap)
-          # a few seconds after the build step reports success — avoid a race crash.
-          $exe = $null
-          for ($i = 0; $i -lt 5; $i++) {
-            $exe = Get-ChildItem $outDir -Filter 'JARVIS-Setup-*.exe' -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Name -notmatch 'block' } | Select-Object -First 1
-            if ($exe) { break }
-            Write-Host "Waiting for JARVIS-Setup-*.exe ... ($($i+1)/5)"
-            Start-Sleep -Seconds 4
-          }
-          if (-not $exe) {
-            Write-Host "Contents of release/:"
-            Get-ChildItem $outDir -Recurse -Filter '*.exe' | Select-Object -First 20 | ForEach-Object { Write-Host $_.Name }
-            throw 'Electron NSIS installer not found in release/'
-          }
-          echo "path=$($exe.FullName)" >> $env:GITHUB_OUTPUT
-          Write-Host ('Found: ' + $exe.Name)
-
       - name: Copy win-unpacked into bootstrap resources
         # CRITICAL FIX (Run #14-17 root cause): `cargo tauri build` validates
         # bundle.resources at COMPILE time (tauri_build::build in build.rs).
@@ -184,14 +153,13 @@ jobs:
           exit 0
 
       - name: Publish GitHub Release
-        # softprops creates the Release (tag=v*) + uploads BOTH the NSIS
-        # installer (electron-builder) and the bootstrap exe (Tauri).
+        # Only the bootstrap exe (jarvis-bootstrap-setup.exe) is published — the
+        # NSIS installer is removed; the bootstrap does the full install itself.
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           name: J.A.R.V.I.S. Desktop v${{ github.ref_name }}
           files: |
-            ${{ steps.electron-installer.outputs.path }}
             ${{ steps.bootstrap-exe.outputs.path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
