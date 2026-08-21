@@ -115,7 +115,6 @@ $desktopShortcut.Description = "J.A.R.V.I.S. Desktop - Private Control Room"
 $desktopShortcut.Save()
 Log "Desktop shortcut created: $desktopShortcutPath"
 
-<<<<<<< HEAD
 # Stage 4: LifeOS Brain installieren (lokal im User-Home via bun) — NON-FATAL
 Stage "lifeos" "Installiere LifeOS Brain (lokal)..."
 try {
