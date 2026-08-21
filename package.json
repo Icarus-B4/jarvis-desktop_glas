@@ -1,6 +1,6 @@
 {
-  "name": "@jarvis/desktop",
-  "version": "0.1.0",
+  "name": "jarvis-glas",
+  "version": "0.1.5",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -18,13 +18,14 @@
   },
   "build": {
     "appId": "org.jarvis.desktop",
-    "productName": "J.A.R.V.I.S.",
-    "copyright": "Copyright © 2026 J.A.R.V.I.S.",
+    "productName": "Jarvis-Glas",
+    "copyright": "Copyright © 2026 Jarvis-Glas",
     "icon": "icons/icon.ico",
     "files": [
       "dist/**/*",
       "icons/**/*",
       "backend/**/*",
+      "scripts/**/*",
       "!**/.env",
       "!**/.env.*"
     ],
@@ -37,6 +38,10 @@
       {
         "from": "tools/bun",
         "to": "bun"
+      },
+      {
+        "from": "scripts",
+        "to": "scripts"
       }
     ],
     "directories": {

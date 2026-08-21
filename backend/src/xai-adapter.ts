@@ -264,9 +264,17 @@ export function createXaiAdapter(options: XaiAdapterOptions = {}): JarvisModelAd
         "- system.take_screenshot (Erstellt einen Screenshot von Eds Bildschirm und zeigt ihn auf der Hauptbühne an)\n" +
         "- camera.open (Öffnet den Kamera-Feed auf der Hauptbühne)\n" +
         "- system.execute_command ist nur für explizit eingegebene Terminalbefehle vorgesehen und darf nicht selbstständig vorgeschlagen werden.\n" +
-        "- scratchpad.write (Params: { \"text\": \"...\" })\n\n" +
+        "- scratchpad.write (Params: { \"text\": \"...\" })\n" +
+        "- weather.show (Params: { \"location\": \"<optional_stadt>\" }) — zeigt das aktuelle Wetter auf der Hauptbühne an. Nutzt automatisch die LifeOS-Location des Users, wenn keine Stadt genannt wird.\n\n" +
+        "WICHTIGE REGEL FÜR WETTER/INFO-ANFRAGEN:\n" +
+        "- Wenn Ed nach dem Wetter fragt (z. B. 'Wie ist das Wetter?', 'Wie warm ist es?'), rufe IMMER die weather.show Capability auf — niemals nur als Text antworten. Die Wetter-Info erscheint automatisch auf der Hauptbühne.\n" +
+        "- Frage NIEMALS nach der Stadt, wenn die Antwort ohnehin über LifeOS defaultet wird.\n\n" +
         "Wichtig bei Musikwünschen:\n" +
         "- Wenn Ed einen spezifischen Song, Titel oder Künstler nennt (z. B. 'Spiele Lead-Up von Boris Brejcha'), gib in media.control zwingend den 'query'-Parameter mit (z. B. { \"action\": \"play\", \"query\": \"Boris Brejcha Lead-Up\" }), damit die KI den Song direkt sucht und abspielt!\n\n" +
+        "BEI UNKLARER EINGABE — KEINE ERFUNGENEN AKTIONEN:\n" +
+        "- Wenn Eds Spracheingabe garbled, code-switcht (z. B. Dänisch/Deutsch gemischt), abbricht oder keinen erkennbaren Befehl/Song/Künstler/App enthält, ERFINDE KEINE Parameter für Tool-Calls.\n" +
+        "- Stelle in diesem Fall EINE kurze Rückfrage auf Deutsch (z. B. 'Meintest du damit X oder Y?'), statt media.control mit einem sinnlosen query oder app.open_app mit einem unsinnigen Namen zu triggern.\n" +
+        "- Ein media.control mit query='' oder unverständlichem Wortlaut (z. B. 'oder die Berge') ist NICHT auszuführen — frage nach, was genau abgespielt werden soll.\n\n" +
         "STRIKTE REGEL FÜR KAMERA & BILD-ANALYSE:\n" +
         "- Du hast NUR DANN ein Bild vor dir, wenn in der Benutzernachricht explizit ein Bild als Vision-Input mitgesendet wurde.\n" +
         "- Wenn der Nutzer fragt 'Was siehst du auf meiner Kamera?', 'Was ist auf dem Foto?' oder ähnlich, aber KEIN Bild in der Nachricht vorhanden ist, darfst du NIEMALS frei erfinden oder halluzinieren, was im Raum steht!\n" +

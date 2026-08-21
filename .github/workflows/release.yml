@@ -59,6 +59,13 @@ jobs:
         working-directory: ${{ github.workspace }}/apps/bootstrap-installer
         run: bun install
 
+      - name: Build bootstrap web UI
+        # Tauri's frontendDist is ../dist (apps/bootstrap-installer/dist).
+        # On a clean checkout that dir does not exist, so cargo tauri build fails
+        # with "Unable to find your web assets". Build the Vite UI first.
+        working-directory: ${{ github.workspace }}/apps/bootstrap-installer
+        run: bun run build
+
       - name: Strip secret env before build (no keys in release)
         # Hard guard: ensure no API keys leak into the bundled app. electron-builder
         # would otherwise pick up a local .env via main.ts loadEnvFile().

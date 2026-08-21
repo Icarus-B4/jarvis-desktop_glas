@@ -90,7 +90,7 @@ Stage "shortcut" "Erstelle Startmenu-Verknuepfung..."
 $startMenu = [System.Environment]::GetFolderPath('StartMenu')
 $programsDir = Join-Path $startMenu "Programs"
 $shortcutPath = Join-Path $programsDir "Jarvis-Glas.lnk"
-$exePath = Join-Path $InstallRoot "J.A.R.V.I.S.exe"
+$exePath = Join-Path $InstallRoot "Jarvis-Glas.exe"
 
 $WScriptShell = New-Object -ComObject WScript.Shell
 

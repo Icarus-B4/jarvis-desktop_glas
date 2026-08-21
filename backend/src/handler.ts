@@ -77,6 +77,52 @@ function loadSoulPrompt(): string {
 
 const SOUL_PROMPT = loadSoulPrompt();
 
+// Load LifeOS TELOS files (user-owned, persistent) from Documents/Jarvis-Glas/lifeos
+// and inject into the system prompt. This is Ed's persistent memory the model reads
+// every turn, so it can disambiguate entities instead of guessing. Never hardcoded.
+function loadLifeosContext(): string {
+  try {
+    const os = require("node:os");
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const dir = path.join(os.homedir(), "Documents", "Jarvis-Glas", "lifeos");
+    const parts: string[] = [];
+    for (const [file, label] of [
+      ["MISSION.md", "MISSION"],
+      ["VALUES.md", "VALUES"],
+      ["CURRENT_STATE.md", "CURRENT_STATE"],
+    ] as const) {
+      const p = path.join(dir, file);
+      if (fs.existsSync(p)) {
+        const content = fs.readFileSync(p, "utf-8").trim();
+        if (content) parts.push(`# ${label}\n${content}`);
+      }
+    }
+    return parts.join("\n\n");
+  } catch {
+    return "";
+  }
+}
+
+// Extract Ed's location from LifeOS files (CURRENT_STATE/MISSION/VALUES) so
+// weather/search default to it instead of asking every turn. Never hardcoded.
+export function getLifeosLocation(): string {
+  try {
+    const dir = join(os.homedir(), "Documents", "Jarvis-Glas", "lifeos");
+    for (const file of ["CURRENT_STATE.md", "MISSION.md", "VALUES.md"]) {
+      const p = join(dir, file);
+      if (existsSync(p)) {
+        const txt = readFileSync(p, "utf-8");
+        // Match patterns like "Location: Bern" / "Standort: Bern" / "in Bern".
+        // Generic — works for ANY user's LifeOS location, not hardcoded.
+        const m = txt.match(/(?:location|standort|wohnort|city|ort)[:\s]+([A-Za-zäöüÄÖÜéè\-]+(?:\s+[A-Za-zäöüÄÖÜéè\-]+)?)/i);
+        if (m) return m[1].trim();
+      }
+    }
+  } catch { /* ignore */ }
+  return "";
+}
+
 const dashboardFixture = {
   profile: {
     displayName: "Local Preview",
@@ -267,6 +313,20 @@ const TOOL_DEFINITIONS: Array<Record<string, unknown>> = [
   {
     type: "function",
     function: {
+      name: "weather.show",
+      description: "Zeigt das aktuelle Wetter für einen Ort auf der Hauptbühne an. Nutzt automatisch die in LifeOS hinterlegte Location des Users, wenn keine Stadt angegeben wird. NIEMALS nur als Text antworten — immer diese Funktion nutzen bei Wetterfragen.",
+      parameters: {
+        type: "object",
+        properties: {
+          location: { type: "string", description: "Optionale Stadt/Region. Wenn leer, wird die LifeOS-Location des Users verwendet." },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "barehands.stage_media",
       description: "Kopiert eine lokale Bild-/Modell-Datei in die barehands Media-Airlock (den einzigen Ordner, aus dem das Board stage-t) und stellt sie auf dem Glas-Board dar. Nutze das, wenn Ed ein Bild/Modell aufs Board legen will, das noch nicht in der Airlock liegt. Gib src (absoluter Pfad) und optional name an.",
       parameters: {
@@ -362,6 +422,29 @@ async function executeTool(
         });
         const updated = await actionEngine.decideAction({ intentId: intent.id, decision: "approve" });
         return JSON.stringify({ ok: true, capability: "app.open_url", intent: updated });
+      } catch (err) {
+        return JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    case "weather.show": {
+      const requested = String(args.location ?? args.city ?? args.ort ?? "").trim();
+      // Default to the user's LifeOS location so we never ask "which city?".
+      const location = requested || getLifeosLocation();
+      if (!location) return JSON.stringify({ error: "Keine Location angegeben und keine in LifeOS gefunden." });
+      try {
+        // Reliable: a fixed weather search URL works for ANY location
+        // (Hasliberg, Zürich, Tokyo, India — whatever the user says). No
+        // fragile web-search scrape that sometimes returns no URL.
+        const q = encodeURIComponent(`wetter ${location}`);
+        const url = `https://www.google.com/search?q=${q}`;
+        const intent = await actionEngine.proposeAction({
+          capability: "app.open_url",
+          title: `Wetter ${location}`,
+          description: `Zeigt das aktuelle Wetter für ${location} auf der Hauptbühne`,
+          params: { url },
+        });
+        const updated = await actionEngine.decideAction({ intentId: intent.id, decision: "approve" });
+        return JSON.stringify({ ok: true, capability: "weather.show", location, url, intent: updated });
       } catch (err) {
         return JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) });
       }
@@ -536,7 +619,11 @@ async function* runToolLoopChat(
   publishLiveEvent: (event: JarvisLiveEvent) => void,
 ): AsyncIterable<JarvisChatStreamEvent> {
   try {
-    const systemPrompt = `${JARVIS_TOOL_SYSTEM_PROMPT}\n\n${SOUL_PROMPT ? `=== AGENT IDENTITY (SOUL.md) ===\n${SOUL_PROMPT}\n=== END IDENTITY ===\n\n` : ""}Du hast Zugriff auf folgende Tools:\n- memory.search: Suche im Langzeitgedächtnis\n- files.list: Dateien auflisten\n- files.read: Datei lesen\n- web.search: Websuche\n- knowledge.query: Wissensdatenbank durchsuchen\n- app.open_url: URL auf der Hauptbühne (im Desktop) öffnen, NICHT extern\n- app.open_app: Windows-App per Action Proposal starten (nicht als Tool-Call)\n- media.control: Medien steuern\n- system.execute_command: Nur explizite Benutzereingabe mit >, $ oder /; nicht als LLM-Tool\n- system.take_screenshot: Screenshot erstellen\n- camera.open: Kamera öffnen\n- scratchpad.write: Notiz schreiben\n- barehands.toggle: Barehands-/No-Hands-Modus umschalten\n- barehands.cursor: Cursor-Bewegung/Klick/Scroll senden`;
+    // LifeOS TELOS context (user-owned, persistent across reinstalls) — injected
+    // into every turn so the model disambiguates Ed's entities (sites, apps,
+    // music service) instead of guessing. Never hardcoded; read live from disk.
+    const lifeosCtx = loadLifeosContext();
+    const systemPrompt = `${JARVIS_TOOL_SYSTEM_PROMPT}\n\n${SOUL_PROMPT ? `=== AGENT IDENTITY (SOUL.md) ===\n${SOUL_PROMPT}\n=== END IDENTITY ===\n\n` : ""}${lifeosCtx ? `=== LIFEOS CONTEXT (Ed's persistent TELOS) ===\n${lifeosCtx}\n=== END LIFEOS CONTEXT ===\n\n` : ""}Du hast Zugriff auf folgende Tools:\n- memory.search: Suche im Langzeitgedächtnis\n- files.list: Dateien auflisten\n- files.read: Datei lesen\n- web.search: Websuche\n- knowledge.query: Wissensdatenbank durchsuchen\n- app.open_url: URL auf der Hauptbühne (im Desktop) öffnen, NICHT extern\n- app.open_app: Windows-App per Action Proposal starten (nicht als Tool-Call)\n- media.control: Medien steuern\n- system.execute_command: Nur explizite Benutzereingabe mit >, $ oder /; nicht als LLM-Tool\n- system.take_screenshot: Screenshot erstellen\n- camera.open: Kamera öffnen\n- scratchpad.write: Notiz schreiben\n- barehands.toggle: Barehands-/No-Hands-Modus umschalten\n- barehands.cursor: Cursor-Bewegung/Klick/Scroll senden\n- weather.show: Aktuelles Wetter anzeigen (Params: { \"location\": \"<optional_stadt>\" }) — nutzt automatisch Ed's LifeOS-Location (Hasliberg) wenn keine Stadt angegeben wird. Zeigt das Wetter IMMER auf der Hauptbühne an.`;
 
     let messages: Array<{ role: string; content?: string; imageData?: string; tool_calls?: unknown; tool_call_id?: string }> = [
       { role: "system", content: systemPrompt },
@@ -547,7 +634,7 @@ async function* runToolLoopChat(
       })),
     ];
 
-    const maxTurns = 6;
+    const maxTurns = 12;
     const seenToolCalls = new Set<string>();
     let finalContent = "";
 

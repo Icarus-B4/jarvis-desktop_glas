@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, appendFileSync } from "node:fs";
 import { execFile, spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { cpus, freemem, totalmem, uptime } from "node:os";
 import { join, resolve } from "node:path";
@@ -206,17 +206,18 @@ function broadcastUpdaterState(win?: BrowserWindow | null): void {
 }
 
 function setupAutoUpdater(): void {
-  if (!app.isPackaged) {
-    console.info("[updater] Übersprungen — nicht in gepackter Build-Umgebung.");
-    return;
-  }
-
+ try {
+  // The Bootstrap installer copies a packaged win-unpacked Electron build.
+  // In that context app.isPackaged may be false, but we still want OTA.
+  // electron-updater skips checks when !app.isPackaged unless forced.
+  autoUpdater.forceDevUpdateConfig = true;
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
 
   autoUpdater.on("checking-for-update", () => {
     updaterStatus = "checking";
     updaterError = null;
+    try { appendFileSync(path.join(app.getPath("userData"), "updater.log"), `${new Date().toISOString()} CHECKING_FOR_UPDATE\n`); } catch { /* noop */ }
     broadcastUpdaterState();
   });
 
@@ -224,6 +225,9 @@ function setupAutoUpdater(): void {
     updaterStatus = "available";
     updaterInfo = info;
     updaterProgress = 0;
+    try {
+      appendFileSync(path.join(app.getPath("userData"), "updater.log"), `${new Date().toISOString()} UPDATE_AVAILABLE v${info.version}\n`);
+    } catch { /* noop */ }
     broadcastUpdaterState();
   });
 
@@ -235,7 +239,6 @@ function setupAutoUpdater(): void {
 
   autoUpdater.on("download-progress", (progress) => {
     updaterStatus = "downloading";
-    // progress.percent can be NaN during early stages — guard it.
     updaterProgress = Number.isFinite(progress.percent) ? Math.round(progress.percent) : 0;
     broadcastUpdaterState();
   });
@@ -250,6 +253,7 @@ function setupAutoUpdater(): void {
   autoUpdater.on("error", (err: Error) => {
     updaterStatus = "error";
     updaterError = err.message;
+    try { appendFileSync(path.join(app.getPath("userData"), "updater.log"), `${new Date().toISOString()} UPDATER_ERROR ${err.message}\n`); } catch { /* noop */ }
     broadcastUpdaterState();
     console.warn("[updater] Fehler:", err.message);
   });
@@ -277,6 +281,9 @@ function setupAutoUpdater(): void {
   void autoUpdater.checkForUpdatesAndNotify().catch((err) => {
     console.warn("[updater] Initialer Check fehlgeschlagen:", err);
   });
+ } catch (e) {
+  console.error("[updater] setupAutoUpdater crashed:", e);
+ }
 }
 
 function createSystemTray(win: BrowserWindow): void {
