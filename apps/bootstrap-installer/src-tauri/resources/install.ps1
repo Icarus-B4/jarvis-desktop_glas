@@ -93,6 +93,11 @@ $shortcutPath = Join-Path $programsDir "Jarvis-Glas.lnk"
 $exePath = Join-Path $InstallRoot "J.A.R.V.I.S.exe"
 
 $WScriptShell = New-Object -ComObject WScript.Shell
+
+# Start Menu shortcut
+$startMenu = [System.Environment]::GetFolderPath('StartMenu')
+$programsDir = Join-Path $startMenu "Programs"
+$shortcutPath = Join-Path $programsDir "Jarvis-Glas.lnk"
 $shortcut = $WScriptShell.CreateShortcut($shortcutPath)
 $shortcut.TargetPath = $exePath
 $shortcut.WorkingDirectory = $InstallRoot
@@ -110,6 +115,7 @@ $desktopShortcut.Description = "J.A.R.V.I.S. Desktop - Private Control Room"
 $desktopShortcut.Save()
 Log "Desktop shortcut created: $desktopShortcutPath"
 
+<<<<<<< HEAD
 # Stage 4: LifeOS Brain installieren (lokal im User-Home via bun) — NON-FATAL
 Stage "lifeos" "Installiere LifeOS Brain (lokal)..."
 try {
@@ -149,6 +155,9 @@ try {
 }
 
 # Stage 5: finalize
+=======
+# Stage 4: finalize
+>>>>>>> fix/bootstrap-installer-resource-check
 Stage "finalize" "Schliesse Installation ab..."
 Log "Installation complete."
 exit 0

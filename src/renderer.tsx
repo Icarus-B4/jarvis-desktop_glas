@@ -2003,7 +2003,16 @@ async function submitCurrentMessage(textParam?: string, imageDataParam?: string)
 
   // Deterministic desktop shortcut command. Spotify must always use the user's
   // Desktop shortcut and must never enter the LLM tool loop or Microsoft Store.
+  // Combo: "Öffne Spotify und spiele X" opens the app AND starts the song so the
+  // song part is not silently dropped by the early return below.
   if (/^(?:öffne|oeffne|open|starte)\s+spotify\b/i.test(text)) {
+    const songSuffix = text.match(/\bund\s+(?:spiele|spiel|play|starte)\s+(.+)/i);
+    const songRaw = songSuffix?.[1]?.trim();
+    const songQuery = songRaw
+      ? songRaw.replace(/\s+(?:auf|mit)\s+spotify$/i, "").trim()
+      : undefined;
+    const hasSong = !!songQuery && !/^spotify$/i.test(songQuery);
+
     addEntry("user", text);
     try {
       const intent = await window.jarvisDesktop.proposeAction({
@@ -2015,19 +2024,19 @@ async function submitCurrentMessage(textParam?: string, imageDataParam?: string)
       await handleActionDecision(intent.id, "approve");
     } catch (err) {
       addEntry("warning", `Spotify konnte nicht geöffnet werden: ${err instanceof Error ? err.message : String(err)}`);
-    }
-    // Combined command like "Öffne Spotify und spiele Ol Dirty Bastard":
-    // extract the song part and let the lower Spotify-song block (which calls
-    // media.control + handleActionDecision, setting isExternalMediaPlaying)
-    // handle it. Without this, "und spiele X" was dropped and media.control
-    // never ran, so the mic gate stayed open and lyrics flooded the chat.
-    const songPart = text.match(/\b(?:und\s+)?spiel(?:e|)\b\s+(.+)$/i);
-    if (songPart?.[1]) {
-      text = `spiele ${songPart[1].trim()}`;
-    } else {
-      return;
-    }
-  }
+      }
+      // Combined command like "Öffne Spotify und spiele Ol Dirty Bastard":
+      // extract the song part and let the lower Spotify-song block (which calls
+      // media.control + handleActionDecision, setting isExternalMediaPlaying)
+      // handle it. Without this, "und spiele X" was dropped and media.control
+      // never ran, so the mic gate stayed open and lyrics flooded the chat.
+      const songPart = text.match(/\b(?:und\s+)?spiel(?:e|)\b\s+(.+)$/i);
+      if (songPart?.[1]) {
+        text = `spiele ${songPart[1].trim()}`;
+      } else {
+        return;
+      }
+      }
 
   const deterministicFolder = parseDeterministicFolderCommand(text);
   if (deterministicFolder) {

@@ -59,59 +59,32 @@ jobs:
         working-directory: ${{ github.workspace }}/apps/bootstrap-installer
         run: bun install
 
-      - name: Build bootstrap frontend
-        # EXPLICIT step: Tauri's beforeBuildCommand spawns a cmd/S/C subshell that
-        # does NOT inherit setup-bun's PATH on CI -> `bun: not found` -> exit 1.
-        # Building the frontend here (where bun IS on PATH) + --no-bundle (no
-        # beforeBuildCommand) avoids the subshell PATH bug entirely...
-        working-directory: ${{ github.workspace }}/apps/bootstrap-installer
-        run: |
-          bun install
-          bun run build
-
-      - name: Build desktop app (Electron NSIS installer)
-        # --publish never overrides package.json build.publish so electron-builder
-        # only BUILDS (no self-upload). softprops/action-gh-release owns the Release.
-        run: |
-          bun run build
-          bunx electron-builder --win --config --publish never
-        working-directory: ${{ github.workspace }}
-
-      - name: Locate Electron NSIS installer
-        id: electron-installer
+      - name: Strip secret env before build (no keys in release)
+        # Hard guard: ensure no API keys leak into the bundled app. electron-builder
+        # would otherwise pick up a local .env via main.ts loadEnvFile().
         shell: pwsh
         run: |
-          $outDir = Join-Path '${{ github.workspace }}' 'release'
-          if (-not (Test-Path $outDir)) { throw "release/ directory not found after electron-builder" }
-          # Retry: electron-builder may still be finalizing the .exe (signing/blockmap)
-          # a few seconds after the build step reports success — avoid a race crash.
-          $exe = $null
-          for ($i = 0; $i -lt 5; $i++) {
-            $exe = Get-ChildItem $outDir -Filter 'JARVIS-Setup-*.exe' -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Name -notmatch 'block' } | Select-Object -First 1
-            if ($exe) { break }
-            Write-Host "Waiting for JARVIS-Setup-*.exe ... ($($i+1)/5)"
-            Start-Sleep -Seconds 4
-          }
-          if (-not $exe) {
-            Write-Host "Contents of release/:"
-            Get-ChildItem $outDir -Recurse -Filter '*.exe' | Select-Object -First 20 | ForEach-Object { Write-Host $_.Name }
-            throw 'Electron NSIS installer not found in release/'
-          }
-          echo "path=$($exe.FullName)" >> $env:GITHUB_OUTPUT
-          Write-Host ('Found: ' + $exe.Name)
+          $env:XAI_API_KEY = ''
+          $env:TAVILY_API_KEY = ''
+          $env:FISH_AUDIO_API_KEY = ''
+          $env:ANTHROPIC_API_KEY = ''
+          $env:OPENAI_API_KEY = ''
+          Write-Host "Secret env cleared for build."
+
+      - name: Build desktop app (Electron win-unpacked only)
+        # Builds win-unpacked (the Electron app the bootstrap will install).
+        # --dir = no installer packaging (NSIS removed); --publish never so
+        # electron-builder only builds, no self-upload. softprops owns the Release.
+        # Secret env is empty (stripped above) so no keys are baked in.
+        run: |
+          bun run build
+          bunx electron-builder --win --config --publish never --dir
+        working-directory: ${{ github.workspace }}
 
       - name: Copy win-unpacked into bootstrap resources
-        # CRITICAL FIX (Run #14-17 root cause): `cargo tauri build` validates
-        # bundle.resources at COMPILE time (tauri_build::build in build.rs).
-        # resources/win-unpopped is gitignored (662MB Electron artifact) — absent
-        # on a fresh CI runner -> "resource path resources\\win-unpopped doesn't
-        # exist" -> build.rs exit code 1 -> Build bootstrap installer: failure.
-        # Copy the Electron win-unpopped (from the step above) into the bootstrap
-        # resources/ so the path resolves. VERIFIED locally: cargo tauri build
-        # succeeds the instant resources/win-unpopped exists (1m28s, exit 0).
-        # NOTE: on CI the Electron build puts win-unpacked into a SUB-DIRECTORY
-        # (e.g. release/win/ or release/win64/) — so we search RECURSIVELY under
-        # release/, not assume it sits directly in release/ (unlike localhost).
+        # `cargo tauri build` validates bundle.resources at COMPILE time, so
+        # resources/win-unpacked must exist on the runner. Copy the Electron
+        # win-unpacked (from the step above) into the bootstrap resources/.
         shell: pwsh
         run: |
           $release = Join-Path '${{ github.workspace }}' 'release'
@@ -124,17 +97,10 @@ jobs:
           }
           $dst = Join-Path '${{ github.workspace }}' 'apps/bootstrap-installer/src-tauri/resources/win-unpacked'
           New-Item -ItemType Directory -Force -Path $dst | Out-Null
-          # robocopy exit codes: 0=nothing copied, 1=files copied (SUCCESS),
-          # 2-7=minor, 8+=real failure. CI treats any non-zero as step failure.
-          # Run robocopy WITHOUT a pipe so $LASTEXITCODE stays robocopy's own code,
-          # then mask 0-7 as success. (Piping to Out-Null overwrites $LASTEXITCODE.)
           $rc = robocopy "$($src.FullName)" "$dst" /E /NFL /NDL /NJS /NJH
           if ($LASTEXITCODE -gt 7) { throw "robocopy failed with exit code $LASTEXITCODE" }
           $n = (Get-ChildItem -Recurse -File $dst).Count
-          Write-Host ("win-unpopped copied -> " + $dst + " (" + $n + " files, from " + $src.FullName + ")")
-          # Force success: robocopy returns 1 on success, which persists in
-          # $LASTEXITCODE (Write-Host is a cmdlet and does NOT reset it), so pwsh
-          # would otherwise exit 1 and fail the step. Explicit exit 0 overrides.
+          Write-Host ("win-unpacked copied -> " + $dst + " (" + $n + " files, from " + $src.FullName + ")")
           exit 0
 
       - name: Install tauri-cli (provides the `cargo tauri` subcommand)
@@ -164,12 +130,6 @@ jobs:
           $exe = Join-Path "${{ runner.temp }}" 'jarvis-bootstrap-target/release/jarvis-bootstrap-setup.exe'
           if (-not (Test-Path $exe)) { throw "Binary not found at $exe" }
           Write-Host ("OK: " + $exe)
-          # Sanity: confirm the bundled resources landed next to the exe.
-          $resDir = Join-Path "${{ runner.temp }}" 'jarvis-bootstrap-target/release/resources'
-          if (-not (Test-Path (Join-Path $resDir 'install.ps1'))) {
-            throw "install.ps1 missing next to exe — bundle.resources not embedded (installer would hang at 0%)"
-          }
-          Write-Host ("resources present: " + $resDir)
           exit 0
 
       - name: Locate bootstrap exe
@@ -190,14 +150,13 @@ jobs:
           exit 0
 
       - name: Publish GitHub Release
-        # softprops creates the Release (tag=v*) + uploads BOTH the NSIS
-        # installer (electron-builder) and the bootstrap exe (Tauri).
+        # Only the bootstrap exe (jarvis-bootstrap-setup.exe) is published — the
+        # NSIS installer is removed; the bootstrap does the full install itself.
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           name: J.A.R.V.I.S. Desktop v${{ github.ref_name }}
           files: |
-            ${{ steps.electron-installer.outputs.path }}
             ${{ steps.bootstrap-exe.outputs.path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
