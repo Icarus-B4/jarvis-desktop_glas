@@ -4,6 +4,8 @@
 
 A local-first, Windows-native AI control room that turns typed or spoken intent into visible, validated desktop actions.
 
+> This wiki is auto-synced from the `wiki/` folder in the main repository via the `Sync Wiki` GitHub Action.
+
 > ⚠️ This repository is **alpha-stage** developer software. Suitable for experimentation and collaborative development, not yet a hardened production release.
 
 ## What it is
