@@ -694,31 +694,49 @@ Die Anwendung kann Betriebssystem, Kamera, Mikrofon, Dateien, Anwendungen und Cl
 
 ## 🗺️ Roadmap
 
-Entwicklung ist öffentlich im [GitHub Project #5](https://github.com/Icarus-B4/jarvis-desktop_glas/projects) trackbar. Status: **Done** (geliefert), **In Progress**, **Backlog** (Roadmap).
+Entwicklung ist öffentlich im [GitHub Project #5](https://github.com/Icarus-B4/jarvis-desktop_glas/projects) trackbar (Status: **Done** / **In Progress** / **Backlog**). Die Roadmap gruppiert geplante Arbeit in Phasen — keine starren Termine, da das Projekt iterativ schnell voranschreitet. Zeitangaben sind **relativ** („nach v0.2.0"), sofern keine Release vorliegt.
 
-### ✅ Geliefert (Done)
-- **v0.1.0–v0.1.5** — Stabile Basis: OTA-Pfad (`Programs/Jarvis-Glas`), Bootstrap-Installer ohne NSIS (nur `jarvis-bootstrap-setup.exe`), Intelligence-Fixes (Barge-in, Lyrics-Filter, LifeOS-Prompt), Voice-Barge-in Robustheit (Confidence-Gate), App-Stabilität (OTA-Handler `appendFileSync`-Fix), CI-Bootstrap-Build-Fix.
+### ✅ Abgeschlossen (Done)
+
+- **Basis v0.1.x** — OTA-Pfad (`Programs/Jarvis-Glas`), Bootstrap-Installer ohne NSIS (nur `jarvis-bootstrap-setup.exe`), Intelligence-Fixes (Barge-in, Lyrics-Filter, LifeOS-Prompt), Voice-Barge-in Robustheit (Confidence-Gate), App-Stabilität (OTA-Handler `appendFileSync`-Fix), CI-Bootstrap-Build-Fix.
 - **Contributor-Setup** — CONTRIBUTING.md (DE), Issue/PR-Templates, Labels (`priority/*`, `size/*`), Milestones.
 
-### 🎯 Geplant — v0.2.0 (Features)
-- **Uninstall-Funktion** im Bootstrap-Installer (sauberes Entfernen + Registry-Cleanup)
-- **Handtracking/Barehands-Optimierung** (gesten-spezifisch, Präzision/Latenz)
-- **Telemetrie-Dashboard** (Live-Metriken: CPU/RAM/Netzwerk/Voice-Status)
-- **Multi-User Location-Generik** (LifeOS ortsunabhängig)
+### 🎯 Phase A — Kernfeatures (Ziel: v0.2.0)
 
-### 🎨 Geplant — v0.3.0 (UX & Polish)
-- **Auto-Update-UX**: Sichtbarer Banner + Changelog-Modal + "Jetzt aktualisieren"-Button
-- **Settings/Preferences-Panel**: Konfig-UI statt manueller `.env` (API-Keys, Voice, Theme)
-- **Onboarding-Wizard**: Erststart-Assistent (Keys, Mic-Test, LifeOS-Pfad)
-- **i18n**: DE/EN Umschaltung in der UI
-- **Security-Hardening**: Update-Signaturen-Verifikation, Secret-Vault (OS-Keychain), Sandbox-Audit
+| Feature | Nutzen | Abhängigkeiten | Priorität |
+|---------|--------|---------------|-----------|
+| **Uninstall-Funktion** (Bootstrap) | Sauberes Entfernen + Registry-Cleanup | — | Hoch |
+| **Handtracking/Barehands-Optimierung** | Präzision/Latenz bei Gesten | — | Hoch |
+| **Telemetrie-Dashboard** | Live-Metriken (CPU/RAM/Netz/ Voice) | — | Hoch |
+| **Multi-User Location-Generik** | LifeOS ortsunabhängig | — | Mittel |
 
-### 🚀 Geplant — v0.4.0 (Scaling & Ecosystem)
-- **Plugin/Extension-System**: Drittanbieter-Skills als Module (Manifest + Sandbox)
-- **Mobile-Companion**: Smartphone-Remote (Push, Schnellbefehle, Live-Status)
-- **Performance-Hardening**: Start < 3s, RAM-Profil, GPU-Offload für 3D-Scene
-- **Test-Suite + CI-Stability**: Vitest-Unit, Playwright-E2E, CI-Matrix (Win/Mac/Linux)
-- **Docs/Contributor-Portal**: Architecture.md, API-Ref (TypeDoc), Video-Tutorials
+### 🎨 Phase B — UX & Polish (Ziel: v0.3.0, *nach Phase A*)
+
+| Feature | Nutzen | Abhängigkeiten | Priorität |
+|---------|--------|---------------|-----------|
+| **Settings/Preferences-Panel** | Konfig-UI statt `.env` | — | Hoch |
+| **Onboarding-Wizard** | Erststart-Assistent (Keys, Mic, LifeOS) | Settings-Panel | Hoch |
+| **Auto-Update-UX** | Banner + Changelog + Update-Button | Settings-Panel | Hoch |
+| **i18n** | DE/EN-Umschaltung | — | Mittel |
+| **Security-Hardening** | Sign-Check, Secret-Vault, Sandbox | Tauri-Signing (vorh.) | Kritisch |
+
+### 🚀 Phase C — Scaling & Ecosystem (Ziel: v0.4.0, *nach Phase B*)
+
+| Feature | Nutzen | Abhängigkeiten | Priorität |
+|---------|--------|---------------|-----------|
+| **Plugin/Extension-System** | Drittanbieter-Skills (Manifest+Sandbox) | Security-Hardening | Mittel |
+| **Mobile-Companion** | Smartphone-Remote (Push, Status) | — | Mittel |
+| **Performance-Hardening** | Start < 3s, RAM, GPU-Offload | — | Hoch |
+| **Test-Suite + CI-Stability** | Vitest + Playwright + Matrix | — | Kritisch |
+| **Docs/Contributor-Portal** | Architecture, API-Ref, Tutorials | — | Mittel |
+
+### 💡 Langfristige Ideen (Backlog, unsortiert)
+
+- Cross-Platform (macOS/Linux)
+- Multi-Agent-Orchestrierung
+- Cloud-Sync für LifeOS
+
+**Legende:** *Kritisch* = Sicherheit/Stabilität fundamen; *Hoch* = Kernnutzen; *Mittel* = Ecosystem/Wachs. Reihenfolge folgt Abhängigkeiten (z.B. Auto-Update-UX erst nach Settings-Panel).
 
 ---
 
