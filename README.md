@@ -24,6 +24,9 @@
 
 <a id="english"></a>
 
+<details>
+<summary><strong>English</strong></summary>
+
 # English
 
 ## Overview
@@ -33,6 +36,9 @@
 The application is designed around one rule: **actions must be real, visible and bounded**. Read-only questions can be answered immediately. Sensitive or destructive operations—such as closing applications, vision-directed clicks or shutting down Windows—are represented as action proposals and require explicit user approval.
 
 This repository is currently an **alpha-stage developer project**. It is suitable for experimentation and collaborative development, but it is not yet a hardened production release.
+
+<details>
+<summary><strong>What the application can do</strong></summary>
 
 ## What the application can do
 
@@ -148,6 +154,11 @@ Without Google API credentials, Jarvis can use the authenticated web session on 
 - open today’s calendar view.
 
 Structured Gmail and Calendar reading requires a separate Google OAuth authorization and is intentionally disabled until the repository owner selects the required scopes.
+
+</details>
+
+<details>
+<summary><strong>Architecture</strong></summary>
 
 ## Architecture
 
@@ -341,6 +352,11 @@ Schau auf meinen Bildschirm
 Aktiviere Cursorsteuerung
 ```
 
+</details>
+
+<details>
+<summary><strong>Security and privacy model</strong></summary>
+
 ## Security and privacy model
 
 - Local HTTP services bind only to `127.0.0.1`.
@@ -400,6 +416,11 @@ AI-generated output is provided **without warranty** and must not be treated as 
 
 This project embeds and modifies Barehands. Preserve Jared Rhodenizer’s copyright notices and provide corresponding source when distributing or serving modified versions.
 
+</details>
+
+<details>
+<summary><strong>Resources and third-party technologies</strong></summary>
+
 ## Resources and third-party technologies
 
 | Resource | Role | Project / terms |
@@ -420,6 +441,11 @@ This project embeds and modifies Barehands. Preserve Jared Rhodenizer’s copyri
 
 Spotify, YouTube, Google, Microsoft, Windows, Brave, xAI and other product names are trademarks of their respective owners. This project is not endorsed by or affiliated with those companies unless explicitly stated.
 
+</details>
+
+<details>
+<summary><strong>License and reuse</strong></summary>
+
 ## License and reuse
 
 The repository is distributed under the **GNU Affero General Public License v3 or later (`AGPL-3.0-or-later`)**. See [`LICENSE`](./LICENSE).
@@ -437,6 +463,8 @@ When you distribute the software—or provide a modified version for users over 
 For a closed-source commercial product containing Barehands, contact Jared Rhodenizer at `license@jaredrhod.com` for a separate license.
 
 > This section is a practical summary, not legal advice. Read the full license and obtain qualified legal advice for commercial distribution.
+
+</details>
 
 ## Contributing
 
@@ -463,9 +491,14 @@ docs: document Barehands attribution
 
 This application can interact with the operating system, camera, microphone, files, applications and cloud AI providers. Run it only on systems and accounts you are authorized to control. Never use automation to bypass access controls, consent, platform rules or applicable law.
 
+</details>
+
 ---
 
 <a id="deutsch"></a>
+
+<details open>
+<summary><strong>Deutsch</strong></summary>
 
 # Deutsch
 
@@ -476,6 +509,9 @@ This application can interact with the operating system, camera, microphone, fil
 Die zentrale Regel lautet: **Aktionen müssen real, sichtbar und begrenzt sein.** Reine Informationsanfragen können direkt beantwortet werden. Sensible oder destruktive Eingriffe – etwa das Beenden von Anwendungen, Vision-Klicks oder das Herunterfahren von Windows – werden als Action-Vorschlag angezeigt und benötigen eine ausdrückliche Freigabe.
 
 Das Projekt befindet sich im **Alpha-Stadium**. Es eignet sich für Experimente und gemeinsame Entwicklung, ist aber noch keine gehärtete Produktionssoftware.
+
+<details>
+<summary><strong>Was kann die App?</strong></summary>
 
 ## Was kann die App?
 
@@ -560,6 +596,11 @@ Aktiviere Cursorsteuerung
 | Pinch mindestens 0,9 Sekunden halten und lösen | Rechtsklick |
 | `Deaktiviere Cursorsteuerung` | Zurück zur internen Bühne |
 
+</details>
+
+<details>
+<summary><strong>Installation</strong></summary>
+
 ## Installation
 
 ```bash
@@ -571,6 +612,11 @@ bun run start
 ```
 
 In dieser Arbeitskopie ist noch kein öffentlicher Git-Remote eingetragen. Ersetze den Platzhalter durch die URL des veröffentlichten Repositories oder Forks.
+
+</details>
+
+<details>
+<summary><strong>Konfiguration</strong></summary>
 
 ## Konfiguration
 
@@ -587,6 +633,11 @@ Keine Secrets committen. Spotify benötigt die Desktop-Verknüpfung:
 ```text
 %USERPROFILE%\Desktop\Spotify.lnk
 ```
+
+</details>
+
+<details>
+<summary><strong>Bedienung</strong></summary>
 
 ## Bedienung
 
@@ -614,6 +665,11 @@ Wie bin ich angezogen?
 Aktiviere Cursorsteuerung / (funktioniert noch nicht!)
 ```
 
+</details>
+
+<details>
+<summary><strong>Sicherheit und Datenschutz</strong></summary>
+
 ## Sicherheit und Datenschutz
 
 - Services binden ausschließlich an `127.0.0.1`.
@@ -625,6 +681,11 @@ Aktiviere Cursorsteuerung / (funktioniert noch nicht!)
 - Lokales Ollama/Qwen ist in diesem Build textbasiert.
 - Memory-Daten liegen lokal als unverschlüsselte JSON-Datei.
 - Terminalbefehle sind eine mächtige Funktion für vertrauenswürdige lokale Benutzer und dürfen nicht für untrusted Input freigegeben werden.
+
+</details>
+
+<details>
+<summary><strong>KI-generierter / KI-unterstützter Code</strong></summary>
 
 ## KI-generierter / KI-unterstützter Code
 
@@ -643,6 +704,11 @@ Regeln für weitere KI-unterstützte Entwicklung:
 
 KI-Ausgaben besitzen keine Gewährleistung und ersetzen keine Sicherheits- oder Rechtsprüfung.
 
+</details>
+
+<details>
+<summary><strong>Entwickler und Attribution</strong></summary>
+
 ## Entwickler und Attribution
 
 - **Ed** — Projektgründer, Produktidee, Jarvis-Control-Room-Konzept, Windows-Integration und Hauptentwicklung.
@@ -655,6 +721,11 @@ KI-Ausgaben besitzen keine Gewährleistung und ersetzen keine Sicherheits- oder 
   - Lizenz: AGPL-3.0-or-later
 
 Barehands wurde in dieses Projekt integriert und angepasst. Copyright-Hinweise müssen erhalten und der entsprechende Quellcode bei Weitergabe oder Netzwerkbetrieb bereitgestellt werden.
+
+</details>
+
+<details>
+<summary><strong>Lizenz und Weiterverwendung</strong></summary>
 
 ## Lizenz und Weiterverwendung
 
@@ -674,6 +745,11 @@ Für eine proprietäre Closed-Source-Nutzung von Barehands ist eine separate Liz
 
 Diese Zusammenfassung ist keine Rechtsberatung.
 
+</details>
+
+<details>
+<summary><strong>Beiträge</strong></summary>
+
 ## Beiträge
 
 1. Repository forken und fokussierten Branch erstellen.
@@ -686,9 +762,16 @@ Diese Zusammenfassung ist keine Rechtsberatung.
 8. Electron-Runtime real testen.
 9. Sicherheits-, Datenschutz- und Lizenzfolgen dokumentieren.
 
+</details>
+
+<details>
+<summary><strong>Verantwortungsvolle Nutzung</strong></summary>
+
 ## Verantwortungsvolle Nutzung
 
 Die Anwendung kann Betriebssystem, Kamera, Mikrofon, Dateien, Anwendungen und Cloud-KI-Dienste ansprechen. Sie darf nur auf Geräten, Konten und Daten eingesetzt werden, für die eine Berechtigung vorliegt. Automatisierung darf keine Zugriffskontrollen, Einwilligungen, Plattformregeln oder Gesetze umgehen.
+
+</details>
 
 ---
 
@@ -745,3 +828,5 @@ Entwicklung ist öffentlich im [GitHub Project #5](https://github.com/Icarus-B4/
 **Built under the direction of Ed · Barehands by Jared Rhodenizer · AI-assisted, human-reviewed**
 
 </div>
+
+</details>
