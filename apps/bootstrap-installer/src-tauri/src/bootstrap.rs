@@ -127,7 +127,11 @@ pub async fn get_bootstrap_status(
 
 #[tauri::command]
 pub async fn open_log_dir() -> Result<(), String> {
-    let local = std::env::var("LOCALAPPDATA").unwrap_or_else(|_| "C:\\Users\\ed\\AppData\\Local".into());
+    let local = std::env::var("LOCALAPPDATA").unwrap_or_else(|_| {
+        std::env::var("USERPROFILE")
+            .map(|u| format!("{u}\\AppData\\Local"))
+            .unwrap_or_else(|_| "C:\\Program Files".into())
+    });
     // Log file lives next to the installed app (install.ps1 writes bootstrap-installer.log into InstallRoot).
     let dir = format!("{}\\Programs\\Jarvis-Glas", local);
     let _ = std::fs::create_dir_all(&dir);

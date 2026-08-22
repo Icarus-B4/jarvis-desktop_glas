@@ -22,7 +22,12 @@ bun install
 bun run build
 bunx electron-builder --win --config
 robocopy release/win-unpacked apps/bootstrap-installer/src-tauri/resources/win-unpacked /E /IS /IT
-cd apps/bootstrap-installer/src-tauri && cargo tauri build
+# Bootstrap-Installer Web-UI bauen (cargo tauri build scheitert sonst an fehlenden web assets)
+cd apps/bootstrap-installer
+bun install
+bun run build
+cd src-tauri && cargo tauri build
+cd ../../..
 
 # 5. Installer finden
 #    apps/bootstrap-installer/src-tauri/target/release/bundle/.../jarvis-bootstrap-setup.exe
