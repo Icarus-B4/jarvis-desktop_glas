@@ -1,5 +1,5 @@
 import { exec, execFile } from "node:child_process";
-import { copyFileSync, existsSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { clickCursor, setCursorNormalizedPosition, typeAtCursor } from "./cursor-bridge";
@@ -8,28 +8,6 @@ import type {
   JarvisActionIntent,
   JarvisActionProposeRequest,
 } from "@jarvis/shared";
-import { readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
-import { homedir } from "node:os";
-
-// Read Ed's persistent location from LifeOS (so weather/search default to it
-// instead of asking every time). Never hardcoded — live from disk.
-function getLifeosLocation(): string {
-  try {
-    const dir = join(homedir(), "Documents", "Jarvis-Glas", "lifeos");
-    for (const file of ["CURRENT_STATE.md", "MISSION.md", "VALUES.md"]) {
-      const p = join(dir, file);
-      if (existsSync(p)) {
-        const txt = readFileSync(p, "utf-8");
-        // Match patterns like "Location: Bern" / "Standort: Bern" / "in Bern".
-        // Generic — works for ANY user's LifeOS location, not hardcoded.
-        const m = txt.match(/(?:location|standort|wohnort|city|ort)[:\s]+([A-Za-zäöüÄÖÜéè\-]+(?:\s+[A-Za-zäöüÄÖÜéè\-]+)?)/i);
-        if (m) return m[1].trim();
-      }
-    }
-  } catch { /* ignore */ }
-  return "";
-}
 
 export type UrlOpener = (url: string) => Promise<void>;
 

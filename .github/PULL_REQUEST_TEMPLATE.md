@@ -1,8 +1,5 @@
 name: 📦 Pull-Request
 about: Code-Beitrag einreichen
-title: "<type>(<scope>): <beschreibung>"
-labels: ''
-assignees: ''
 ---
 
 ## Verknüpftes Issue

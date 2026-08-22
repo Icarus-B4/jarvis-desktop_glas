@@ -50,19 +50,34 @@ pub fn run() {
 
 #[tauri::command]
 fn get_install_root() -> String {
-    let local = std::env::var("LOCALAPPDATA").unwrap_or_else(|_| "C:\\Users\\ed\\AppData\\Local".into());
-    format!("{}\\Programs\\Jarvis-Glas\\Jarvis-Glas", local)
+    let local = std::env::var("LOCALAPPDATA").unwrap_or_else(|_| {
+        // User-agnostic fallback: derive from USERPROFILE, never a developer's
+        // hardcoded profile path (breaks on other machines).
+        std::env::var("USERPROFILE")
+            .map(|u| format!("{u}\\AppData\\Local"))
+            .unwrap_or_else(|_| "C:\\Program Files".into())
+    });
+    // Matches run_bootstrap: %LOCALAPPDATA%\Programs\Jarvis-Glas
+    format!("{}\\Programs\\Jarvis-Glas", local)
 }
 
 #[tauri::command]
 fn get_log_path() -> String {
-    let local = std::env::var("LOCALAPPDATA").unwrap_or_else(|_| "C:\\Users\\ed\\AppData\\Local".into());
+    let local = std::env::var("LOCALAPPDATA").unwrap_or_else(|_| {
+        std::env::var("USERPROFILE")
+            .map(|u| format!("{u}\\AppData\\Local"))
+            .unwrap_or_else(|_| "C:\\Program Files".into())
+    });
     format!("{}\\jarvis\\logs\\bootstrap-installer.log", local)
 }
 
 #[tauri::command]
 fn get_jarvis_home() -> String {
-    let local = std::env::var("LOCALAPPDATA").unwrap_or_else(|_| "C:\\Users\\ed\\AppData\\Local".into());
+    let local = std::env::var("LOCALAPPDATA").unwrap_or_else(|_| {
+        std::env::var("USERPROFILE")
+            .map(|u| format!("{u}\\AppData\\Local"))
+            .unwrap_or_else(|_| "C:\\Program Files".into())
+    });
     format!("{}\\jarvis", local)
 }
 

@@ -626,7 +626,20 @@ TAVILY_API_KEY=
 OLLAMA_BASE_URL=http://127.0.0.1:11434
 JARVIS_SERVICE_PORT=4320
 JARVIS_SERVICE_HOST=127.0.0.1
+
+# --- Datenschutz / Sicherheit ---
+# LifeOS-Kontext (MISSION/VALUES/CURRENT_STATE) an Cloud-Modelle (xAI) senden.
+# true  (Default): LifeOS wird wie bisher an xAI gesendet — erhält Jarvis' Persönlichkeit/Intelligenz im Cloud-Modus.
+# false          : LifeOS wird NICHT an externe Modelle gesendet (nur lokales qwen/ollama bekommt es).
+#                  Erhöht Datenschutz, reduziert aber Cloud-Intelligenz um den LifeOS-Kontext.
+HHQ_CLOUD_LIFEOS_CONSENT=true
+
+# Server-.env-Fallback im Release-Build erlauben (Default: false im Build).
+# Lokaler Dev kann true setzen, um eigene .env Vorrang zu geben.
+HHQ_ALLOW_ENV_FALLBACK=false
 ```
+
+Eine `.env.example` im Repo zeigt alle Variablen.
 
 Keine Secrets committen. Spotify benötigt die Desktop-Verknüpfung:
 
